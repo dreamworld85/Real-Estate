@@ -1,0 +1,31 @@
+# Node & Dependencies
+node_modules/
+server/node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.production
+.env.local
+.env.*.local
+server/.env
+server/.env.production
+server/.env.local
+server/.env.*.local
+
+# Build/packaging artifacts
+package-lock.zip
+*.tar.gz
+*.zip
+
+# IDEs & System files
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
