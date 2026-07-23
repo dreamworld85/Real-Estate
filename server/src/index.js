@@ -18,6 +18,23 @@ app.use(express.json());
 app.use("/uploads", express.static(path.resolve("src/uploads")));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.get("/api/debug-files", (_req, res) => {
+  try {
+    const cwd = process.cwd();
+    const resolvedPath = path.resolve("src/uploads");
+    const exists = fs.existsSync(resolvedPath);
+    const files = exists ? fs.readdirSync(resolvedPath) : [];
+    res.json({
+      cwd,
+      resolvedPath,
+      exists,
+      filesCount: files.length,
+      files: files.slice(0, 100),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/admin", adminRoutes);
