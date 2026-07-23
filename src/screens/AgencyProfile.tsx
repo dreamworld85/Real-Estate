@@ -4,6 +4,7 @@ import { Phone, Mail, Building2 } from "lucide-react";
 import { api, ApiPublicProfile, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
 
 export default function AgencyProfile() {
   const { id } = useParams();
@@ -31,7 +32,7 @@ export default function AgencyProfile() {
   if (error || !profile) return <p className="px-4 py-10 text-sm text-coral">{error || "Profile not found."}</p>;
 
   return (
-    <div className="min-h-screen pb-8">
+    <div className="min-h-screen pb-28">
       <Header title="Agent / Agency" showBack />
 
       <div className="px-4 pt-2">
@@ -83,6 +84,7 @@ export default function AgencyProfile() {
           ))}
         </div>
       </div>
+      <BottomNav />
     </div>
   );
 }

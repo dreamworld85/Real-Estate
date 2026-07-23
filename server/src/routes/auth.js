@@ -43,6 +43,7 @@ router.post("/register", async (req, res) => {
     );
 
     const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
+    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [result.insertId]);
     const token = signToken(result.insertId);
     res.status(201).json({ token, user: toPublicUser(rows[0]) });
   } catch (err) {
@@ -72,6 +73,7 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [rows[0].id]);
     const token = signToken(rows[0].id);
     res.json({ token, user: toPublicUser(rows[0]) });
   } catch (err) {

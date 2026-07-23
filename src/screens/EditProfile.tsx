@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import Header from "@/components/Header";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
+import BottomNav from "@/components/BottomNav";
 
 export default function EditProfile() {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ export default function EditProfile() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col pb-28">
       <Header title="Edit Profile" showBack />
 
       <div className="px-4 pt-2 flex flex-col gap-5 flex-1">
@@ -60,6 +61,7 @@ export default function EditProfile() {
           {saving ? "Saving…" : "Save"}
         </Button>
       </div>
+      <BottomNav />
     </div>
   );
 }

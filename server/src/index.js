@@ -15,13 +15,6 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").sp
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
-app.use((req, _res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  if (req.method !== "GET" && req.body) {
-    console.log("Request Body:", JSON.stringify(req.body));
-  }
-  next();
-});
 app.use("/uploads", express.static(path.resolve("src/uploads")));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));

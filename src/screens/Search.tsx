@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { Search as SearchIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw } from "lucide-react";
 import { api, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import BottomNav from "@/components/BottomNav";
-import Select from "@/components/Select";
 
 const propertyTypes = ["House", "Villa", "Apartment", "Land", "Commercial Space"];
 const purposes = ["For Sale", "For Rent"];
@@ -18,82 +17,157 @@ export default function Search() {
   const [propertyType, setPropertyType] = useState("");
   const [purpose, setPurpose] = useState("");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ApiProperty[]>([]);
+  
+  const [rawResults, setRawResults] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function runSearch() {
+  // Run search automatically when filters change
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     setSearched(true);
-    try {
-      const params: Record<string, string> = {};
-      if (district) params.district = district;
-      if (propertyType) params.propertyType = propertyType;
-      if (purpose) params.purpose = purpose;
-      const data = await api.fetchProperties(params);
-      const filtered = query
-        ? data.filter(
-            (p) =>
-              p.title.toLowerCase().includes(query.toLowerCase()) ||
-              p.address.toLowerCase().includes(query.toLowerCase())
-          )
-        : data;
-      setResults(filtered);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Search failed");
-    } finally {
-      setLoading(false);
-    }
-  }
+
+    const params: Record<string, string> = {};
+    if (district) params.district = district;
+    if (propertyType) params.propertyType = propertyType;
+    if (purpose) params.purpose = purpose;
+
+    api.fetchProperties(params)
+      .then((data) => { if (!cancelled) setRawResults(data); })
+      .catch((err) => { if (!cancelled) setError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [district, propertyType, purpose]);
+
+  // Local filter by search query
+  const results = rawResults.filter((p) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      p.title.toLowerCase().includes(q) ||
+      p.address.toLowerCase().includes(q) ||
+      p.district.toLowerCase().includes(q)
+    );
+  });
 
   return (
-    <div className="min-h-screen pb-28">
-      <div className="px-4 pt-5 pb-3">
-        <h1 className="font-display font-bold text-lg text-ink mb-4">Search</h1>
+    <div className="min-h-screen pb-28 bg-slate-50/50">
+      <div className="px-6 pt-6 pb-4 max-w-7xl mx-auto w-full">
+        {/* Search Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="font-display font-extrabold text-2xl text-ink">Search Properties</h1>
+            <p className="text-xs text-slate mt-0.5 font-medium">Find properties across Kerala</p>
+          </div>
+          {(district || propertyType || purpose || query) && (
+            <button
+              onClick={() => {
+                setDistrict("");
+                setPropertyType("");
+                setPurpose("");
+                setQuery("");
+              }}
+              className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl transition-all active:scale-95"
+            >
+              <RefreshCw size={12} />
+              Reset Filters
+            </button>
+          )}
+        </div>
 
-        <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-charcoal/10 mb-4">
+        {/* Search Input Bar */}
+        <div className="flex items-center gap-2.5 bg-white rounded-2xl px-4 py-3 border border-charcoal/10 shadow-sm focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all mb-4">
           <SearchIcon size={18} className="text-slate" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && runSearch()}
-            placeholder="Search by title or address..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/60"
+            placeholder="Search address, title, district..."
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium"
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          <Select
-            label="Property Type"
-            options={propertyTypes}
-            value={propertyType}
-            onChange={(e) => setPropertyType(e.target.value)}
-          />
-          <Select label="Purpose" options={purposes} value={purpose} onChange={(e) => setPurpose(e.target.value)} />
-          <Select label="District" options={districts} value={district} onChange={(e) => setDistrict(e.target.value)} />
-        </div>
+        {/* 3-Column Pill Dropdowns */}
+        <div className="grid grid-cols-3 gap-2.5 mb-2">
+          {/* Property Type Dropdown */}
+          <div className="relative">
+            <select
+              value={propertyType}
+              onChange={(e) => setPropertyType(e.target.value)}
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-3.5 pr-8 py-3 text-xs font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
+            >
+              <option value="">All Types</option>
+              {propertyTypes.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+          </div>
 
-        <button
-          onClick={runSearch}
-          className="w-full mt-4 rounded-2xl py-3.5 font-display font-semibold text-[15px] bg-ink text-cream"
-        >
-          Search
-        </button>
+          {/* Purpose Dropdown */}
+          <div className="relative">
+            <select
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-3.5 pr-8 py-3 text-xs font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
+            >
+              <option value="">All Purpose</option>
+              {purposes.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+          </div>
+
+          {/* District Dropdown */}
+          <div className="relative">
+            <select
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-3.5 pr-8 py-3 text-xs font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
+            >
+              <option value="">All Districts</option>
+              {districts.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+          </div>
+        </div>
       </div>
 
-      <div className="px-4">
-        {loading && <p className="text-sm text-slate">Searching…</p>}
-        {error && <p className="text-sm text-coral">{error}</p>}
-        {!loading && searched && results.length === 0 && !error && (
-          <p className="text-sm text-slate">No properties matched your search.</p>
+      {/* Grid Results Section */}
+      <div className="px-6 max-w-7xl mx-auto w-full mt-2">
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+          </div>
         )}
-        <div className="flex flex-col gap-4">
-          {results.map((p) => (
-            <PropertyCard key={p.id} property={p} />
-          ))}
-        </div>
+        
+        {error && (
+          <div className="bg-red-50 text-red-600 rounded-2xl p-4 text-sm font-medium border border-red-100">
+            {error}
+          </div>
+        )}
+
+        {!loading && searched && results.length === 0 && !error && (
+          <div className="text-center py-16 bg-white rounded-2xl border border-charcoal/10 px-4">
+            <SlidersHorizontal className="mx-auto text-slate/40 mb-3" size={32} />
+            <p className="text-sm font-semibold text-charcoal">No properties matched your search.</p>
+            <p className="text-xs text-slate mt-1">Try resetting the filters or typing a different keyword.</p>
+          </div>
+        )}
+
+        {!loading && results.length > 0 && (
+          <div className="grid grid-cols-2 gap-4">
+            {results.map((p) => (
+              <PropertyCard key={p.id} property={p} compact />
+            ))}
+          </div>
+        )}
       </div>
 
       <BottomNav />

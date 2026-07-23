@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, MessageSquare } from "lucide-react";
 import { api, ApiDashboardStats } from "@/lib/api";
 import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -20,7 +21,7 @@ export default function VisitorsEnquiries() {
   }, []);
 
   return (
-    <div className="min-h-screen pb-8">
+    <div className="min-h-screen pb-28">
       <Header title="Visitors & Enquiries" showBack />
 
       <div className="px-4 pt-2">
@@ -61,6 +62,7 @@ export default function VisitorsEnquiries() {
           </>
         )}
       </div>
+      <BottomNav />
     </div>
   );
 }

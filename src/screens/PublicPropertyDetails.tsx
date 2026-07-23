@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, MapPin } from "lucide-react";
-import { api, ApiPropertyDetail, mediaUrl } from "@/lib/api";
+import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, MapPin, X, Star, Maximize, BedDouble, Bath, Compass } from "lucide-react";
+import { api, ApiPropertyDetail, mediaUrl, formatArea } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import RoleBadge from "@/components/RoleBadge";
+import BottomNav from "@/components/BottomNav";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -14,6 +15,16 @@ function formatPrice(price: number): string {
   return `₹${price.toLocaleString("en-IN")}`;
 }
 
+function getYoutubeEmbedUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  if (match && match[2].length === 11) {
+    return `https://www.youtube.com/embed/${match[2]}`;
+  }
+  return null;
+}
+
 export default function PublicPropertyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -22,26 +33,36 @@ export default function PublicPropertyDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [showContactModal, setShowContactModal] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     api
       .fetchProperty(id)
-      .then(setProperty)
+      .then((data) => setProperty(data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id]);
 
-  async function handleSave() {
+  async function handleToggleSave() {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
     if (!property) return;
-    if (!token) return navigate("/login");
+
     setSaving(true);
     try {
       const { saved } = await api.toggleSaveProperty(property.id);
-      setProperty((p) => (p ? { ...p, isSaved: saved, saveCount: p.saveCount + (saved ? 1 : -1) } : p));
-    } catch {
-      // Silently ignore — the button state just won't flip.
+      setProperty({ 
+        ...property, 
+        isSaved: saved, 
+        saveCount: property.saveCount + (saved ? 1 : -1) 
+      });
+    } catch (err: any) {
+      alert(err.message || "Failed to update saved status.");
     } finally {
       setSaving(false);
     }
@@ -56,6 +77,15 @@ export default function PublicPropertyDetails() {
     }
   }
 
+  const logClickEnquiry = async (type: "WhatsApp" | "Call") => {
+    if (!property) return;
+    try {
+      await api.sendEnquiry(property.id, `Clicked ${type} contact button`);
+    } catch (err) {
+      console.error("Failed to log contact click:", err);
+    }
+  };
+
   if (loading) {
     return <p className="px-4 py-10 text-sm text-slate">Loading property…</p>;
   }
@@ -63,90 +93,355 @@ export default function PublicPropertyDetails() {
     return <p className="px-4 py-10 text-sm text-coral">{error || "Property not found."}</p>;
   }
 
-  const heroImage = property.images[0] ? mediaUrl(property.images[0]) : FALLBACK_IMAGE;
   const waMessage = encodeURIComponent(`Hi, I'm interested in "${property.title}" listed on Kerala Realty.`);
 
   return (
-    <div className="min-h-screen pb-8">
-      <div className="relative">
-        <img src={heroImage} alt={property.title} className="w-full h-64 object-cover" />
-        <button
-          onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 bg-white/90 rounded-full p-2"
-          aria-label="Go back"
-        >
-          <ChevronLeft size={20} className="text-ink" />
-        </button>
-        <div className="absolute top-4 right-4 flex gap-2">
-          <button onClick={handleSave} disabled={saving} className="bg-white/90 rounded-full p-2">
-            <Heart size={18} className={property.isSaved ? "fill-coral text-coral" : "text-ink"} />
-          </button>
-          <button onClick={handleShare} className="bg-white/90 rounded-full p-2">
-            <Share2 size={18} className="text-ink" />
-          </button>
+    <div className="min-h-screen pb-28 bg-cream">
+      {/* Top Banner Carousel */}
+      <div className="relative px-4 pt-4">
+        <div className="relative aspect-[4/3] rounded-3xl overflow-hidden border border-charcoal/8 bg-slate-100 shadow-md">
+          <div 
+            onScroll={(e) => {
+              const container = e.currentTarget;
+              const scrollPos = container.scrollLeft;
+              const width = container.offsetWidth;
+              if (width > 0) {
+                setActiveIdx(Math.round(scrollPos / width));
+              }
+            }}
+            className="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
+          >
+            {property.images && property.images.length > 0 ? (
+              <>
+                {property.images.map((img, idx) => (
+                  <div key={`img-${idx}`} className="w-full h-full flex-shrink-0 snap-start">
+                    <img
+                      src={mediaUrl(img)}
+                      alt={`${property.title} - ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+                {property.videos && property.videos.map((vid, idx) => (
+                  <div key={`vid-${idx}`} className="w-full h-full flex-shrink-0 snap-start bg-black flex items-center justify-center">
+                    <video
+                      src={mediaUrl(vid)}
+                      controls
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate">
+                No images available
+              </div>
+            )}
+          </div>
+
+          {/* Floating Top Control Actions */}
+          <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
+            <button
+              onClick={() => navigate(-1)}
+              className="w-8.5 h-8.5 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-ink shadow-sm hover:scale-105 active:scale-95 transition-all"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleToggleSave}
+                disabled={saving}
+                className="w-8.5 h-8.5 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-ink shadow-sm hover:scale-105 active:scale-95 transition-all"
+              >
+                <Heart size={18} className={property.isSaved ? "fill-coral text-coral border-none" : ""} />
+              </button>
+              <button
+                onClick={handleShare}
+                className="w-8.5 h-8.5 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-ink shadow-sm hover:scale-105 active:scale-95 transition-all"
+              >
+                <Share2 size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Carousel indicators count */}
+          {property.images && property.images.length > 0 && (
+            <div className="absolute bottom-3 right-3 bg-black/60 px-2.5 py-0.5 rounded-full text-white text-[9px] font-bold">
+              {activeIdx + 1} / {property.images.length + (property.videos?.length || 0)}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="px-4 pt-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="font-display font-extrabold text-2xl text-ink">
-              {formatPrice(property.price)}
-            </p>
-            <p className="font-display font-semibold text-charcoal mt-1">{property.title}</p>
+      <div className="px-5 pt-4 flex flex-col gap-4">
+        {/* Price & Details Header */}
+        <div className="bg-white rounded-2xl border border-charcoal/5 p-4 shadow-sm flex flex-col gap-3">
+          <div className="flex justify-between items-start gap-3">
+            <div>
+              <h1 className="font-display font-extrabold text-2xl text-ink leading-none">
+                {formatPrice(property.price)}
+              </h1>
+              <p className="text-sm font-bold text-charcoal mt-1.5">
+                {property.propertyType} in {property.district}
+              </p>
+              <p className="flex items-center gap-1 text-[11px] text-slate mt-1">
+                <MapPin size={12} className="text-slate/60" /> {property.address}
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              {property.listingRole && (
+                <button 
+                  onClick={() => setShowContactModal(true)}
+                  className="hover:opacity-95 active:scale-95 transition-all select-none cursor-pointer"
+                  title="View contact details"
+                >
+                  <RoleBadge role={property.listingRole} />
+                </button>
+              )}
+              <button 
+                onClick={() => navigate(`/property/${property.id}/reviews`)}
+                className="flex items-center gap-0.5 bg-amber bg-opacity-10 hover:bg-opacity-20 text-amber px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer"
+              >
+                <Star size={11} className="fill-gold text-gold" />
+                <span>{property.avgRating ? property.avgRating.toFixed(1) : "0.0"}</span>
+                <span className="text-slate/75">({property.ratingCount || 0})</span>
+              </button>
+            </div>
           </div>
-          <RoleBadge role={property.listingRole} />
+
+          {/* Specifications Grid */}
+          <div className="border-t border-charcoal/8 pt-3.5 mt-1">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="flex items-center gap-2.5 bg-slate-50/50 p-2.5 rounded-2xl border border-charcoal/5">
+                <div className="w-8 h-8 rounded-xl bg-forest/8 text-forest flex items-center justify-center shrink-0">
+                  <Maximize size={15} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-bold text-slate/65 tracking-wider uppercase leading-none">Area</p>
+                  <p className="text-xs font-bold text-ink truncate mt-0.5">{formatArea(property.areaSqft, property.propertyType)}</p>
+                </div>
+              </div>
+              
+              {property.bedrooms > 0 && (
+                <div className="flex items-center gap-2.5 bg-slate-50/50 p-2.5 rounded-2xl border border-charcoal/5">
+                  <div className="w-8 h-8 rounded-xl bg-sky-500/8 text-sky-600 flex items-center justify-center shrink-0">
+                    <BedDouble size={15} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold text-slate/65 tracking-wider uppercase leading-none">Beds</p>
+                    <p className="text-xs font-bold text-ink truncate mt-0.5">{property.bedrooms} Bedrooms</p>
+                  </div>
+                </div>
+              )}
+              
+              {property.bathrooms > 0 && (
+                <div className="flex items-center gap-2.5 bg-slate-50/50 p-2.5 rounded-2xl border border-charcoal/5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/8 text-purple-600 flex items-center justify-center shrink-0">
+                    <Bath size={15} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold text-slate/65 tracking-wider uppercase leading-none">Baths</p>
+                    <p className="text-xs font-bold text-ink truncate mt-0.5">{property.bathrooms} Bathrooms</p>
+                  </div>
+                </div>
+              )}
+              
+              {property.facing && (
+                <div className="flex items-center gap-2.5 bg-slate-50/50 p-2.5 rounded-2xl border border-charcoal/5">
+                  <div className="w-8 h-8 rounded-xl bg-amber bg-opacity-10 text-amber flex items-center justify-center shrink-0">
+                    <Compass size={15} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold text-slate/65 tracking-wider uppercase leading-none">Facing</p>
+                    <p className="text-xs font-bold text-ink truncate mt-0.5">{property.facing} Facing</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <p className="flex items-center gap-1 text-sm text-slate mt-2">
-          <MapPin size={14} /> {property.address}, {property.district}
-        </p>
-
-        <div className="flex items-center gap-4 text-sm text-charcoal mt-4 py-3 border-y border-charcoal/8">
-          <span>{property.areaSqft} sq.ft</span>
-          {property.bedrooms > 0 && <span>{property.bedrooms} Beds</span>}
-          {property.bathrooms > 0 && <span>{property.bathrooms} Baths</span>}
-          {property.facing && <span>{property.facing} Facing</span>}
-        </div>
-
+        {/* Description Card */}
         {property.description && (
-          <div className="mt-4">
-            <h2 className="font-display font-bold text-ink mb-1.5">Description</h2>
-            <p className="text-sm text-slate leading-relaxed">{property.description}</p>
+          <div className="bg-white rounded-2xl border border-charcoal/5 p-4 shadow-sm">
+            <h2 className="font-display font-bold text-sm text-ink mb-1.5">Description</h2>
+            <p className="text-xs text-slate leading-relaxed whitespace-pre-line">{property.description}</p>
           </div>
         )}
 
-        <div className="mt-5 bg-white rounded-card shadow-card p-4">
-          <p className="text-xs text-slate mb-0.5">Listed by</p>
-          <Link
-            to={`/agency/${property.ownerId}`}
-            className="font-display font-semibold text-ink hover:underline"
+        {/* Video Tour (YouTube) */}
+        {property.youtubeUrl && getYoutubeEmbedUrl(property.youtubeUrl) && (
+          <div className="bg-white rounded-2xl border border-charcoal/5 p-4 shadow-sm">
+            <h2 className="font-display font-bold text-sm text-ink mb-2">Video Tour</h2>
+            <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-charcoal/8 shadow-sm">
+              <iframe
+                src={getYoutubeEmbedUrl(property.youtubeUrl)!}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full"
+              ></iframe>
+            </div>
+          </div>
+        )}
+
+        {/* Listed by / Contact details box */}
+        <div className="bg-white rounded-2xl border border-charcoal/5 p-4 shadow-sm flex flex-col gap-3">
+          <button 
+            onClick={() => setShowContactModal(true)}
+            className="w-full bg-slate-50/50 hover:bg-slate-100/60 rounded-xl border border-charcoal/5 p-3 text-left active:scale-[0.99] transition-all cursor-pointer flex justify-between items-center"
           >
-            {property.ownerName}
-          </Link>
+            <div>
+              <p className="text-[9px] font-bold text-slate/70 tracking-wider uppercase leading-none">Listed by</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                {property.listingRole === "Agency" && property.agencyLogoUrl && (
+                  <img 
+                    src={mediaUrl(property.agencyLogoUrl)} 
+                    alt="Logo" 
+                    className="w-5.5 h-5.5 rounded-full object-cover border border-charcoal/8"
+                  />
+                )}
+                <span className="font-display font-bold text-ink text-xs hover:underline truncate max-w-[150px]">
+                  {property.listingRole === "Agency"
+                    ? (property.agencyName || "Agency")
+                    : property.listingRole === "Broker"
+                    ? (property.brokerName || "Broker")
+                    : (property.ownerName || "Owner")}
+                </span>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Contact</span>
+          </button>
+
+          {/* Primary Contact CTAs */}
+          <div className="grid grid-cols-2 gap-2.5 mt-1">
+            <a
+              href={property.contactNumber || property.ownerPhone ? `tel:${property.contactNumber || property.ownerPhone}` : undefined}
+              onClick={() => logClickEnquiry("Call")}
+              className="flex items-center justify-center gap-1.5 rounded-xl py-3 bg-ink text-cream font-display font-bold text-xs hover:bg-black transition-all active:scale-[0.98]"
+            >
+              <Phone size={14} /> Call
+            </a>
+            <a
+              href={property.whatsappNumber || property.ownerPhone ? `https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${waMessage}` : undefined}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => logClickEnquiry("WhatsApp")}
+              className="flex items-center justify-center gap-1.5 rounded-xl py-3 border border-forest text-forest font-display font-bold text-xs hover:bg-forest/5 transition-all active:scale-[0.98]"
+            >
+              <MessageCircle size={14} /> WhatsApp
+            </a>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mt-5">
-          <a
-            href={property.ownerPhone ? `tel:${property.ownerPhone}` : undefined}
-            className="flex items-center justify-center gap-2 rounded-2xl py-3.5 bg-ink text-cream font-display font-semibold text-[15px]"
-          >
-            <Phone size={16} /> Call
-          </a>
-          <a
-            href={property.ownerPhone ? `https://wa.me/${property.ownerPhone.replace(/\D/g, "")}?text=${waMessage}` : undefined}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center gap-2 rounded-2xl py-3.5 border border-forest text-forest font-display font-semibold text-[15px]"
-          >
-            <MessageCircle size={16} /> WhatsApp
-          </a>
-        </div>
-
-        <button className="w-full flex items-center justify-center gap-1.5 text-sm text-slate mt-4">
-          <Flag size={14} /> Report this listing
+        {/* Report button */}
+        <button 
+          onClick={() => navigate(`/property/${property.id}/report`)}
+          className="w-full flex items-center justify-center gap-1 text-[11px] text-slate hover:text-coral transition-colors py-1"
+        >
+          <Flag size={11} /> Report this listing
         </button>
       </div>
+
+      {/* Contact Profile Details Popup Modal */}
+      {showContactModal && (
+        <div 
+          className="fixed inset-0 bg-black/45 z-50 flex items-center justify-center p-6 animate-fade-in"
+          onClick={() => setShowContactModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-6 w-full max-w-[340px] shadow-2xl relative flex flex-col items-center text-center gap-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowContactModal(false)}
+              className="absolute top-4 right-4 p-1 hover:bg-slate-100 rounded-full text-slate transition-all"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Entity Icon / Image Profile Header */}
+            {property.listingRole === "Agency" ? (
+              <div className="flex flex-col items-center gap-2.5 mt-2">
+                {property.agencyLogoUrl ? (
+                  <img 
+                    src={mediaUrl(property.agencyLogoUrl)} 
+                    alt="Agency Logo" 
+                    className="w-16 h-16 rounded-full object-cover border-2 border-charcoal/10 shadow-sm"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center border-2 border-charcoal/10 shadow-sm text-slate">
+                    <span className="text-xl font-bold text-slate-500">A</span>
+                  </div>
+                )}
+                <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full select-none">
+                  Agency Profile
+                </span>
+                <h3 className="font-display font-extrabold text-lg text-ink leading-snug">
+                  {property.agencyName || "Agency"}
+                </h3>
+              </div>
+            ) : property.listingRole === "Broker" ? (
+              <div className="flex flex-col items-center gap-2.5 mt-2">
+                <div className="w-16 h-16 rounded-full bg-sky-50 flex items-center justify-center border-2 border-sky-500/25 shadow-sm text-sky-600">
+                  <span className="text-xl font-bold">B</span>
+                </div>
+                <span className="text-[10px] uppercase font-bold text-sky-600 bg-sky-50 px-2.5 py-0.5 rounded-full select-none">
+                  Broker Profile
+                </span>
+                <h3 className="font-display font-extrabold text-lg text-ink leading-snug">
+                  {property.brokerName || "Broker"}
+                </h3>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2.5 mt-2">
+                <div className="w-16 h-16 rounded-full bg-indigo-50/50 flex items-center justify-center border-2 border-indigo-500/20 shadow-sm text-indigo-600">
+                  <span className="text-xl font-bold">O</span>
+                </div>
+                <span className="text-[10px] uppercase font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full select-none">
+                  Owner Profile
+                </span>
+                <h3 className="font-display font-extrabold text-lg text-ink leading-snug">
+                  {property.ownerName || "Owner"}
+                </h3>
+              </div>
+            )}
+
+            {/* Contact Buttons with Icon & Label */}
+            <div className="w-full flex flex-col gap-2.5 mt-1 border-t border-slate-100 pt-4">
+              {(property.contactNumber || property.ownerPhone) && (
+                <a
+                  href={`tel:${property.contactNumber || property.ownerPhone}`}
+                  onClick={() => logClickEnquiry("Call")}
+                  className="w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-cream text-xs font-bold font-display flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.98]"
+                >
+                  <Phone size={14} />
+                  <span>Call: {property.contactNumber || property.ownerPhone}</span>
+                </a>
+              )}
+              
+              {(property.whatsappNumber || property.ownerPhone) && (
+                <a
+                  href={`https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${waMessage}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => logClickEnquiry("WhatsApp")}
+                  className="w-full py-3 px-4 rounded-xl border border-forest hover:bg-forest/5 text-forest text-xs font-bold font-display flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]"
+                >
+                  <MessageCircle size={14} className="fill-forest/5" />
+                  <span>WhatsApp: {property.whatsappNumber || property.ownerPhone}</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <BottomNav />
     </div>
   );
 }

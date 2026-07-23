@@ -2,13 +2,14 @@ import { useNavigate } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import Button from "@/components/Button";
+import BottomNav from "@/components/BottomNav";
 
 export default function Success() {
   const navigate = useNavigate();
   const { reset } = useAddProperty();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center pb-28">
       <div className="w-20 h-20 rounded-full bg-forest flex items-center justify-center mb-6">
         <CheckCircle2 size={40} className="text-cream" strokeWidth={2} />
       </div>
@@ -42,6 +43,7 @@ export default function Success() {
           Add Another Property
         </button>
       </div>
+      <BottomNav />
     </div>
   );
 }

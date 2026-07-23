@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export interface ApiUser {
@@ -30,7 +31,11 @@ export interface ApiProperty {
   views: number;
   images: string[];
   videos: string[];
+  youtubeUrl?: string | null;
   createdAt: string;
+  isSaved?: boolean;
+  avgRating?: number;
+  ratingCount?: number;
 }
 
 export interface ApiPropertyDetail extends ApiProperty {
@@ -39,12 +44,25 @@ export interface ApiPropertyDetail extends ApiProperty {
   saveCount: number;
   enquiryCount: number;
   isSaved: boolean;
+  contactNumber?: string | null;
+  whatsappNumber?: string | null;
+  brokerName?: string | null;
+  agencyName?: string | null;
+  agencyLogoUrl?: string | null;
 }
 
 export interface ApiPublicProfile extends ApiUser {
   totalListings: number;
   distinctEnquirers: number;
   yearsActive: number;
+}
+
+export interface ApiReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  reviewer_name: string;
+  created_at: string;
 }
 
 export interface ApiDashboardStats {
@@ -93,7 +111,9 @@ export const api = {
 
   async fetchProperties(params: Record<string, string> = {}) {
     const query = new URLSearchParams(params).toString();
-    const res = await fetch(`${API_URL}/api/properties${query ? `?${query}` : ""}`);
+    const res = await fetch(`${API_URL}/api/properties${query ? `?${query}` : ""}`, {
+      headers: authHeaders(),
+    });
     return handle<ApiProperty[]>(res);
   },
 
@@ -178,8 +198,49 @@ export const api = {
     });
     return handle<void>(res);
   },
+
+  async reportProperty(id: number | string, reason: string, description?: string) {
+    const res = await fetch(`${API_URL}/api/properties/${id}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ reason, description }),
+    });
+    return handle<{ message: string }>(res);
+  },
+
+  async fetchReviews(propertyId: number | string) {
+    const res = await fetch(`${API_URL}/api/properties/${propertyId}/reviews`);
+    return handle<ApiReview[]>(res);
+  },
+
+  async submitReview(propertyId: number | string, rating: number, comment?: string) {
+    const res = await fetch(`${API_URL}/api/properties/${propertyId}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ rating, comment }),
+    });
+    return handle<{ message: string }>(res);
+  },
+
+  async fetchSetting(key: string): Promise<{ key: string; value: string }> {
+    const res = await fetch(`${API_URL}/api/admin/settings/${key}`);
+    return handle<{ key: string; value: string }>(res);
+  },
 };
 
 export function mediaUrl(path: string): string {
   return path.startsWith("http") ? path : `${API_URL}${path}`;
+}
+
+export function formatArea(areaSqft: number, propertyType: string): string {
+  const isLand = propertyType === "Land" || propertyType === "Plot / Land" || propertyType?.toLowerCase().includes("land");
+  if (isLand) {
+    const cents = areaSqft / 435.6;
+    if (cents >= 100) {
+      const acres = cents / 100;
+      return `${Number(acres.toFixed(2))} Acres`;
+    }
+    return `${Number(cents.toFixed(1))} Cents`;
+  }
+  return `${areaSqft.toLocaleString("en-IN")} sq.ft`;
 }

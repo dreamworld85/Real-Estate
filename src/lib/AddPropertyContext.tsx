@@ -4,37 +4,57 @@ import { ListingRole } from "./types";
 export interface NewPropertyForm {
   role: ListingRole | null;
   propertyType: string;
+  propertyCategory: string;
   purpose: string;
   price: string;
   areaSqft: string;
+  areaUnit: string;
   address: string;
   district: string;
   images: File[];
   video: File | null;
+  youtubeUrl: string;
   bedrooms: string;
   bathrooms: string;
   furnishing: string;
   facing: string;
   propertyAge: string;
   description: string;
+  contactPhone: string;
+  whatsappNumber: string;
+  sameAsContact: boolean;
+  ownerName: string;
+  brokerName: string;
+  agencyName: string;
+  agencyLogo: File | null;
 }
 
 const initialForm: NewPropertyForm = {
   role: null,
   propertyType: "",
-  purpose: "",
+  propertyCategory: "Residential",
+  purpose: "For Sale",
   price: "",
   areaSqft: "",
+  areaUnit: "Cents",
   address: "",
   district: "",
   images: [],
   video: null,
+  youtubeUrl: "",
   bedrooms: "",
   bathrooms: "",
   furnishing: "",
   facing: "",
   propertyAge: "",
   description: "",
+  contactPhone: "",
+  whatsappNumber: "",
+  sameAsContact: false,
+  ownerName: "",
+  brokerName: "",
+  agencyName: "",
+  agencyLogo: null,
 };
 
 interface AddPropertyContextValue {

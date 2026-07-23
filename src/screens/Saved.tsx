@@ -19,7 +19,7 @@ export default function Saved() {
 
   return (
     <div className="min-h-screen pb-28">
-      <Header title="Saved Properties" />
+      <Header title="Saved Properties" showBack />
 
       <div className="px-4">
         {loading && <p className="text-sm text-slate">Loading…</p>}
@@ -29,9 +29,17 @@ export default function Saved() {
             Nothing saved yet. Tap the heart on a listing to save it here.
           </p>
         )}
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-4">
           {properties.map((p) => (
-            <PropertyCard key={p.id} property={p} />
+            <PropertyCard 
+              key={p.id} 
+              property={p} 
+              onToggleSave={(id, isSaved) => {
+                if (!isSaved) {
+                  setProperties((prev) => prev.filter((item) => item.id !== id));
+                }
+              }}
+            />
           ))}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Pencil, Power, Trash2 } from "lucide-react";
+import { Eye, Pencil, Power, Trash2, Star } from "lucide-react";
 import { api, ApiProperty, mediaUrl } from "@/lib/api";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
@@ -66,7 +66,7 @@ export default function MyProperties() {
 
   return (
     <div className="min-h-screen pb-28">
-      <Header title="My Properties" />
+      <Header title="My Properties" showBack />
 
       <div className="px-4 mb-4 flex gap-2 overflow-x-auto no-scrollbar">
         {tabs.map((t) => {
@@ -114,6 +114,12 @@ export default function MyProperties() {
                   <span className="text-xs text-slate flex items-center gap-1">
                     <Eye size={12} /> {p.views} Views
                   </span>
+                  {p.avgRating !== undefined && p.avgRating > 0 && (
+                    <span className="text-xs text-amber font-semibold flex items-center gap-0.5 ml-1">
+                      <Star size={11} className="fill-gold text-gold shrink-0" />
+                      <span>{p.avgRating.toFixed(1)} ({p.ratingCount})</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </button>

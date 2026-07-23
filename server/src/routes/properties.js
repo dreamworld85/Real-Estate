@@ -5,7 +5,7 @@ import { upload } from "../middleware/upload.js";
 
 const router = Router();
 
-function toPublicProperty(row, media = []) {
+function toPublicProperty(row, media = [], isSaved = false) {
   return {
     id: row.id,
     ownerId: row.owner_id,
@@ -27,7 +27,15 @@ function toPublicProperty(row, media = []) {
     views: row.views,
     images: media.filter((m) => m.media_type === "image").map((m) => m.url),
     videos: media.filter((m) => m.media_type === "video").map((m) => m.url),
+    youtubeUrl: row.youtube_url,
     createdAt: row.created_at,
+    isSaved,
+    contactNumber: row.contact_number,
+    whatsappNumber: row.whatsapp_number,
+    ownerName: row.owner_name,
+    brokerName: row.broker_name,
+    agencyName: row.agency_name,
+    agencyLogoUrl: row.agency_logo_url,
   };
 }
 
@@ -46,7 +54,7 @@ async function fetchMediaByPropertyIds(ids) {
 
 // GET /api/properties?district=Wayanad&propertyType=House&status=Active&ownerId=3
 // Public browse — only returns Active listings unless overridden.
-router.get("/", async (req, res) => {
+router.get("/", optionalAuth, async (req, res) => {
   try {
     const { district, propertyType, purpose, status = "Active", ownerId } = req.query;
     const clauses = ["status = ?"];
@@ -62,7 +70,40 @@ router.get("/", async (req, res) => {
       params
     );
     const mediaByProperty = await fetchMediaByPropertyIds(rows.map((r) => r.id));
-    res.json(rows.map((r) => toPublicProperty(r, mediaByProperty[r.id] || [])));
+
+    let savedIds = new Set();
+    if (req.userId) {
+      const [savedRows] = await pool.query(
+        "SELECT property_id FROM saved_properties WHERE user_id = ?",
+        [req.userId]
+      );
+      savedIds = new Set(savedRows.map((r) => r.property_id));
+    }
+
+    let ratingsMap = {};
+    if (rows.length > 0) {
+      const [ratingRows] = await pool.query(
+        `SELECT property_id, COALESCE(AVG(rating), 0) AS avgRating, COUNT(*) AS ratingCount 
+         FROM property_reviews 
+         WHERE property_id IN (${rows.map(r => r.id).join(",")}) 
+         GROUP BY property_id`
+      );
+      ratingRows.forEach(row => {
+        ratingsMap[row.property_id] = {
+          avgRating: Number(row.avgRating) || 0,
+          ratingCount: Number(row.ratingCount) || 0
+        };
+      });
+    }
+
+    res.json(rows.map((r) => {
+      const stats = ratingsMap[r.id] || { avgRating: 0, ratingCount: 0 };
+      return {
+        ...toPublicProperty(r, mediaByProperty[r.id] || [], savedIds.has(r.id)),
+        avgRating: stats.avgRating,
+        ratingCount: stats.ratingCount,
+      };
+    }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch properties" });
@@ -77,7 +118,37 @@ router.get("/mine", requireAuth, async (req, res) => {
       [req.userId]
     );
     const mediaByProperty = await fetchMediaByPropertyIds(rows.map((r) => r.id));
-    res.json(rows.map((r) => toPublicProperty(r, mediaByProperty[r.id] || [])));
+
+    const [savedRows] = await pool.query(
+      "SELECT property_id FROM saved_properties WHERE user_id = ?",
+      [req.userId]
+    );
+    const savedIds = new Set(savedRows.map((r) => r.property_id));
+
+    let ratingsMap = {};
+    if (rows.length > 0) {
+      const [ratingRows] = await pool.query(
+        `SELECT property_id, COALESCE(AVG(rating), 0) AS avgRating, COUNT(*) AS ratingCount 
+         FROM property_reviews 
+         WHERE property_id IN (${rows.map(r => r.id).join(",")}) 
+         GROUP BY property_id`
+      );
+      ratingRows.forEach(row => {
+        ratingsMap[row.property_id] = {
+          avgRating: Number(row.avgRating) || 0,
+          ratingCount: Number(row.ratingCount) || 0
+        };
+      });
+    }
+
+    res.json(rows.map((r) => {
+      const stats = ratingsMap[r.id] || { avgRating: 0, ratingCount: 0 };
+      return {
+        ...toPublicProperty(r, mediaByProperty[r.id] || [], savedIds.has(r.id)),
+        avgRating: stats.avgRating,
+        ratingCount: stats.ratingCount,
+      };
+    }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch your properties" });
@@ -110,6 +181,10 @@ router.get("/:id", optionalAuth, async (req, res) => {
       "SELECT COUNT(*) AS enquiryCount FROM enquiries WHERE property_id = ?",
       [req.params.id]
     );
+    const [[ratingRow]] = await pool.query(
+      "SELECT COALESCE(AVG(rating), 0) AS avgRating, COUNT(*) AS ratingCount FROM property_reviews WHERE property_id = ?",
+      [req.params.id]
+    );
     let isSaved = false;
     if (req.userId) {
       const [savedRows] = await pool.query(
@@ -127,6 +202,8 @@ router.get("/:id", optionalAuth, async (req, res) => {
       saveCount: saveCountRow.saveCount,
       enquiryCount: enquiryCountRow.enquiryCount,
       isSaved,
+      avgRating: Number(ratingRow.avgRating) || 0,
+      ratingCount: Number(ratingRow.ratingCount) || 0,
     });
   } catch (err) {
     console.error(err);
@@ -159,7 +236,6 @@ router.post("/:id/save", requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/properties/saved/mine — the logged-in user's saved listings
 router.get("/saved/mine", requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -169,7 +245,7 @@ router.get("/saved/mine", requireAuth, async (req, res) => {
       [req.userId]
     );
     const mediaByProperty = await fetchMediaByPropertyIds(rows.map((r) => r.id));
-    res.json(rows.map((r) => toPublicProperty(r, mediaByProperty[r.id] || [])));
+    res.json(rows.map((r) => toPublicProperty(r, mediaByProperty[r.id] || [], true)));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch saved properties" });
@@ -193,12 +269,13 @@ router.post("/:id/enquiries", requireAuth, async (req, res) => {
 
 // POST /api/properties — create a new listing (multipart/form-data)
 // Fields match the Add Property wizard's steps 1–4.
-router.post("/", requireAuth, upload.array("media", 17), async (req, res) => {
+router.post("/", requireAuth, upload.any(), async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const {
       title, propertyType, purpose, price, areaSqft, address, district,
       bedrooms, bathrooms, furnishing, facing, propertyAge, description, listingRole,
+      contactNumber, whatsappNumber, ownerName, brokerName, agencyName, youtubeUrl,
     } = req.body;
 
     if (!propertyType || !purpose || !price || !areaSqft || !address || !district || !listingRole) {
@@ -207,24 +284,32 @@ router.post("/", requireAuth, upload.array("media", 17), async (req, res) => {
 
     await conn.beginTransaction();
 
+    const files = req.files || [];
+    const logoFile = files.find((f) => f.fieldname === "agencyLogo");
+    const mediaFiles = files.filter((f) => f.fieldname === "media");
+    const agencyLogoUrl = logoFile ? `/uploads/${logoFile.filename}` : null;
+
     const [result] = await conn.query(
       `INSERT INTO properties
         (owner_id, title, property_type, purpose, price, area_sqft, address, district,
-         bedrooms, bathrooms, furnishing, facing, property_age, description, listing_role, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+         bedrooms, bathrooms, furnishing, facing, property_age, description, listing_role,
+         contact_number, whatsapp_number, owner_name, broker_name, agency_name, agency_logo_url, youtube_url, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
       [
         req.userId,
         title || `${propertyType} in ${district}`,
         propertyType, purpose, price, areaSqft, address, district,
         bedrooms || 0, bathrooms || 0, furnishing || null, facing || null,
         propertyAge || null, description || null, listingRole,
+        contactNumber || null, whatsappNumber || null,
+        ownerName || null, brokerName || null, agencyName || null, agencyLogoUrl,
+        youtubeUrl || null,
       ]
     );
 
     const propertyId = result.insertId;
-    const files = req.files || [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    for (let i = 0; i < mediaFiles.length; i++) {
+      const file = mediaFiles[i];
       const mediaType = file.mimetype.startsWith("video") ? "video" : "image";
       await conn.query(
         "INSERT INTO property_media (property_id, media_type, url, sort_order) VALUES (?, ?, ?, ?)",
@@ -265,6 +350,34 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/properties/:id/report — report this property listing
+router.post("/:id/report", requireAuth, async (req, res) => {
+  try {
+    const { reason, description } = req.body;
+    if (!reason) {
+      return res.status(400).json({ error: "Reason is required" });
+    }
+
+    const fullReason = description ? `${reason} - ${description}` : reason;
+
+    // Check if the property exists
+    const [propRows] = await pool.query("SELECT 1 FROM properties WHERE id = ?", [req.params.id]);
+    if (propRows.length === 0) {
+      return res.status(404).json({ error: "Property not found" });
+    }
+
+    await pool.query(
+      "INSERT INTO reported_listings (property_id, reporter_id, reason, status) VALUES (?, ?, ?, 'Pending')",
+      [req.params.id, req.userId, fullReason.substring(0, 255)]
+    );
+
+    res.json({ message: "Property reported successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to report property" });
+  }
+});
+
 // DELETE /api/properties/:id
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
@@ -277,6 +390,50 @@ router.delete("/:id", requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to delete property" });
+  }
+});
+
+// GET /api/properties/:id/reviews — retrieve all reviews for a property
+router.get("/:id/reviews", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT pr.id, pr.rating, pr.comment, pr.created_at, u.name as reviewer_name
+       FROM property_reviews pr
+       JOIN users u ON pr.user_id = u.id
+       WHERE pr.property_id = ?
+       ORDER BY pr.created_at DESC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch reviews" });
+  }
+});
+
+// POST /api/properties/:id/reviews — submit a new review
+router.post("/:id/reviews", requireAuth, async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "Rating must be between 1 and 5" });
+    }
+
+    // Check if the property exists
+    const [propRows] = await pool.query("SELECT 1 FROM properties WHERE id = ?", [req.params.id]);
+    if (propRows.length === 0) {
+      return res.status(404).json({ error: "Property not found" });
+    }
+
+    await pool.query(
+      "INSERT INTO property_reviews (property_id, user_id, rating, comment) VALUES (?, ?, ?, ?)",
+      [req.params.id, req.userId, rating, comment]
+    );
+
+    res.json({ message: "Review submitted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to submit review" });
   }
 });
 

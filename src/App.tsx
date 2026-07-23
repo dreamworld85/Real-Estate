@@ -12,6 +12,8 @@ import VisitorsEnquiries from "@/screens/VisitorsEnquiries";
 import PublicPropertyDetails from "@/screens/PublicPropertyDetails";
 import OwnerPropertyDetails from "@/screens/OwnerPropertyDetails";
 import AgencyProfile from "@/screens/AgencyProfile";
+import ReportProperty from "@/screens/ReportProperty";
+import PropertyReviews from "@/screens/PropertyReviews";
 import ChooseRole from "@/screens/AddProperty/ChooseRole";
 import DetailsStep1 from "@/screens/AddProperty/DetailsStep1";
 import MediaStep2 from "@/screens/AddProperty/MediaStep2";
@@ -19,6 +21,20 @@ import MoreInfoStep3 from "@/screens/AddProperty/MoreInfoStep3";
 import ReviewStep4 from "@/screens/AddProperty/ReviewStep4";
 import Success from "@/screens/AddProperty/Success";
 import ComingSoon from "@/screens/ComingSoon";
+
+// Admin Screens
+import AdminLayout from "@/screens/Admin/AdminLayout";
+import AdminLogin from "@/screens/Admin/Login";
+import AdminDashboard from "@/screens/Admin/Dashboard";
+import AdminUsers from "@/screens/Admin/Users";
+import AdminUserDetails from "@/screens/Admin/UserDetails";
+import AdminProperties from "@/screens/Admin/Properties";
+import AdminPropertyDetails from "@/screens/Admin/PropertyDetails";
+import AdminReportedListings from "@/screens/Admin/ReportedListings";
+import AdminAnalytics from "@/screens/Admin/Analytics";
+import AdminActivityLogs from "@/screens/Admin/ActivityLogs";
+import AdminSettings from "@/screens/Admin/Settings";
+import AdminUserReviews from "@/screens/Admin/UserReviews";
 
 export default function App() {
   return (
@@ -40,6 +56,8 @@ export default function App() {
 
         {/* Public — no auth required to browse */}
         <Route path="/property/:id" element={<PublicPropertyDetails />} />
+        <Route path="/property/:id/report" element={<ProtectedRoute><ReportProperty /></ProtectedRoute>} />
+        <Route path="/property/:id/reviews" element={<ProtectedRoute><PropertyReviews /></ProtectedRoute>} />
         <Route path="/agency/:id" element={<AgencyProfile />} />
 
         {/* Add Property wizard — shares form state via AddPropertyProvider */}
@@ -60,6 +78,21 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Admin Section */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="users/:id" element={<AdminUserDetails />} />
+          <Route path="users/:id/reviews" element={<AdminUserReviews />} />
+          <Route path="properties" element={<AdminProperties />} />
+          <Route path="properties/:id" element={<AdminPropertyDetails />} />
+          <Route path="reports" element={<AdminReportedListings />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="logs" element={<AdminActivityLogs />} />
+          <Route path="settings" element={<AdminSettings />} />
+        </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
