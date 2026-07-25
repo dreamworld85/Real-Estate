@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
+import { pool } from "./db.js";
 
 import authRoutes from "./routes/auth.js";
 import propertyRoutes from "./routes/properties.js";
