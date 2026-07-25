@@ -199,7 +199,8 @@ public class MainActivity extends AppCompatActivity {
 
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
+                String url = request.getUrl().toString();
                 if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.contains("wa.me") || url.startsWith("intent:")) {
                     try {
                         android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url));
@@ -210,8 +211,7 @@ public class MainActivity extends AppCompatActivity {
                         return false;
                     }
                 }
-                view.loadUrl(url);
-                return true;
+                return false;
             }
         });
 
