@@ -11,23 +11,65 @@ import userRoutes from "./routes/users.js";
 
 dotenv.config();
 
+// Auto-configure persistent UPLOADS_DIR on Hostinger server
+if (process.cwd().includes("api.greensparrows.com")) {
+  const envPath = path.resolve(".env");
+  if (fs.existsSync(envPath)) {
+    let envContent = fs.readFileSync(envPath, "utf8");
+    if (!envContent.includes("UPLOADS_DIR")) {
+      console.log("Auto-injecting persistent UPLOADS_DIR into .env");
+      envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
+      fs.writeFileSync(envPath, envContent, "utf8");
+      // Reload environment variables
+      dotenv.config();
+    }
+  }
+}
+
 const app = express();
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",");
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
-app.use("/uploads", express.static(path.resolve("src/uploads")));
+
+const uploadsDir = process.env.UPLOADS_DIR 
+  ? path.resolve(process.env.UPLOADS_DIR) 
+  : path.resolve("src/uploads");
+
+// Ensure persistent upload directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Auto-migrate files from Git folder to persistent uploads folder
+const gitUploadsDir = path.resolve("src/uploads");
+if (fs.existsSync(gitUploadsDir) && gitUploadsDir !== uploadsDir) {
+  try {
+    const files = fs.readdirSync(gitUploadsDir);
+    files.forEach(file => {
+      const srcFile = path.join(gitUploadsDir, file);
+      const destFile = path.join(uploadsDir, file);
+      if (!fs.existsSync(destFile)) {
+        fs.copyFileSync(srcFile, destFile);
+        console.log(`Migrated upload asset: ${file}`);
+      }
+    });
+  } catch (err) {
+    console.error("Failed to migrate upload assets:", err);
+  }
+}
+
+app.use("/uploads", express.static(uploadsDir));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.get("/api/debug-files", (_req, res) => {
   try {
     const cwd = process.cwd();
-    const resolvedPath = path.resolve("src/uploads");
-    const exists = fs.existsSync(resolvedPath);
-    const files = exists ? fs.readdirSync(resolvedPath) : [];
+    const exists = fs.existsSync(uploadsDir);
+    const files = exists ? fs.readdirSync(uploadsDir) : [];
     res.json({
       cwd,
-      resolvedPath,
+      uploadsDir,
       exists,
       filesCount: files.length,
       files: files.slice(0, 100),
