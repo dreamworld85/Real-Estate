@@ -79,6 +79,15 @@ app.get("/api/debug-files", (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+app.get("/api/debug-properties", async (_req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT id, title, status, owner_id, created_at FROM properties ORDER BY id DESC LIMIT 20");
+    const [media] = await pool.query("SELECT * FROM property_media ORDER BY id DESC LIMIT 20");
+    res.json({ properties: rows, media });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/admin", adminRoutes);
