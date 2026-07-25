@@ -82,11 +82,11 @@ app.get("/api/debug-files", (_req, res) => {
 });
 app.get("/api/debug-webapp", (_req, res) => {
   try {
-    const parentPath = "/home/u859202671/domains/greensparrows.com/public_html";
-    const parentFiles = fs.existsSync(parentPath) ? fs.readdirSync(parentPath) : [];
-    const homePath = "/home/u859202671";
-    const homeFiles = fs.existsSync(homePath) ? fs.readdirSync(homePath) : [];
-    res.json({ parentFiles, homeFiles });
+    const gitClonesPath = "/home/u859202671/.git_clones";
+    const gitClonesFiles = fs.existsSync(gitClonesPath) ? fs.readdirSync(gitClonesPath) : [];
+    const webappGitPath = "/home/u859202671/domains/greensparrows.com/public_html/webapp/.git";
+    const webappGitExists = fs.existsSync(webappGitPath);
+    res.json({ gitClonesFiles, webappGitExists });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
