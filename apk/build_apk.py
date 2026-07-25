@@ -174,10 +174,17 @@ import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
+import android.webkit.ValueCallback;
+import android.content.Intent;
+import android.net.Uri;
+import android.content.ClipData;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
     private WebView mWebView;
+    private ValueCallback<Uri[]> mUploadMessage;
+    private final static int REQUEST_SELECT_FILE = 100;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -203,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
                 String url = request.getUrl().toString();
                 if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.contains("wa.me") || url.startsWith("intent:")) {
                     try {
-                        android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url));
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                         view.getContext().startActivity(intent);
                         return true;
                     } catch (Exception e) {
@@ -215,8 +222,50 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        mWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                if (mUploadMessage != null) {
+                    mUploadMessage.onReceiveValue(null);
+                }
+                mUploadMessage = filePathCallback;
+
+                Intent intent = fileChooserParams.createIntent();
+                try {
+                    startActivityForResult(intent, REQUEST_SELECT_FILE);
+                } catch (Exception e) {
+                    mUploadMessage = null;
+                    return false;
+                }
+                return true;
+            }
+        });
+
         if (savedInstanceState == null) {
             mWebView.loadUrl("{app_url}");
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_SELECT_FILE) {
+            if (mUploadMessage == null) return;
+            Uri[] results = null;
+            if (resultCode == RESULT_OK && data != null) {
+                String dataString = data.getDataString();
+                ClipData clipData = data.getClipData();
+                if (clipData != null) {
+                    results = new Uri[clipData.getItemCount()];
+                    for (int i = 0; i < clipData.getItemCount(); i++) {
+                        results[i] = clipData.getItemAt(i).getUri();
+                    }
+                } else if (dataString != null) {
+                    results = new Uri[]{Uri.parse(dataString)};
+                }
+            }
+            mUploadMessage.onReceiveValue(results);
+            mUploadMessage = null;
         }
     }
 
