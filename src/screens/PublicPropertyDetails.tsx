@@ -93,7 +93,24 @@ export default function PublicPropertyDetails() {
     return <p className="px-4 py-10 text-sm text-coral">{error || "Property not found."}</p>;
   }
 
-  const waMessage = encodeURIComponent(`Hi, I'm interested in "${property.title}" (${window.location.origin}/property/${property.id}) listed on Kerala Realty.`);
+  const priceStr = formatPrice(property.price);
+  const locationStr = `${property.address}, ${property.district}`;
+  const listedByStr = property.listingRole === "Agency"
+    ? (property.agencyName || "Agency")
+    : property.listingRole === "Broker"
+    ? (property.brokerName || "Broker")
+    : (property.ownerName || "Owner");
+
+  const messageText = `Hi, I'm interested in "${property.title}" listed on Kerala Realty.
+
+*Property Details:*
+- *Price*: ${priceStr}
+- *Location*: ${locationStr}
+- *Listed By*: ${listedByStr}
+
+View Details: ${window.location.origin}/property/${property.id}`;
+
+  const waMessage = encodeURIComponent(messageText);
 
   return (
     <div className="min-h-screen pb-28 bg-cream">
