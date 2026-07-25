@@ -65,12 +65,12 @@ export default function Home() {
   };
 
   // Filter Drawer Temp State
-  const [filterType, setFilterType] = useState("");
+  const [filterTypes, setFilterTypes] = useState<string[]>([]);
   const [filterPurpose, setFilterPurpose] = useState("");
   const [filterDistrict, setFilterDistrict] = useState("");
 
   // Applied Filter State (triggers API fetch)
-  const [appliedType, setAppliedType] = useState("");
+  const [appliedTypes, setAppliedTypes] = useState<string[]>([]);
   const [appliedPurpose, setAppliedPurpose] = useState("");
   const [appliedDistrict, setAppliedDistrict] = useState("");
 
@@ -80,10 +80,13 @@ export default function Home() {
     setError(null);
 
     const params: Record<string, string> = {};
-    if (activeCategory !== "All") params.propertyType = activeCategory;
     
-    // Override with explicit filters if applied
-    if (appliedType) params.propertyType = appliedType;
+    if (appliedTypes.length > 0) {
+      params.propertyType = appliedTypes.join(",");
+    } else if (activeCategory !== "All") {
+      params.propertyType = activeCategory;
+    }
+    
     if (appliedPurpose) params.purpose = appliedPurpose;
     if (appliedDistrict) params.district = appliedDistrict;
 
@@ -94,7 +97,7 @@ export default function Home() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [activeCategory, appliedType, appliedPurpose, appliedDistrict]);
+  }, [activeCategory, appliedTypes, appliedPurpose, appliedDistrict]);
 
   const filteredProperties = properties.filter((p) => {
     if (!searchQuery) return true;
@@ -137,7 +140,7 @@ export default function Home() {
         <button 
           onClick={() => setIsFilterOpen(true)}
           className={`rounded-xl px-3.5 border transition-colors ${
-            appliedType || appliedPurpose || appliedDistrict
+            appliedTypes.length > 0 || appliedPurpose || appliedDistrict
               ? "bg-ink border-ink text-cream"
               : "bg-white border-charcoal/10 text-ink"
           }`}
@@ -248,19 +251,68 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <Select
-                label="Property Type"
-                options={["House", "Villa", "Apartment", "Land", "Commercial Space"]}
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-              />
-              <Select
-                label="Purpose"
-                options={["For Sale", "For Rent"]}
-                value={filterPurpose}
-                onChange={(e) => setFilterPurpose(e.target.value)}
-              />
+            <div className="flex flex-col gap-5">
+              {/* Property Type - Multi-Select Pills */}
+              <div className="flex flex-col gap-2">
+                <label className="font-display font-bold text-sm text-ink">
+                  Property Type
+                </label>
+                <div className="flex flex-wrap gap-2.5">
+                  {["House", "Villa", "Apartment", "Land", "Commercial Space"].map((type) => {
+                    const active = filterTypes.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          setFilterTypes((prev) =>
+                            prev.includes(type)
+                              ? prev.filter((t) => t !== type)
+                              : [...prev, type]
+                          );
+                        }}
+                        className={`px-4 py-2.5 rounded-full border text-xs font-medium transition-all ${
+                          active
+                            ? "bg-sky-50/50 border-sky-500 text-sky-700 font-semibold shadow-sm"
+                            : "bg-white border-charcoal/8 text-charcoal hover:bg-slate-50"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Purpose - Single-Select Pills */}
+              <div className="flex flex-col gap-2">
+                <label className="font-display font-bold text-sm text-ink">
+                  Purpose
+                </label>
+                <div className="flex flex-wrap gap-2.5">
+                  {["For Sale", "For Rent"].map((p) => {
+                    const active = filterPurpose === p;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => {
+                          setFilterPurpose(active ? "" : p);
+                        }}
+                        className={`px-4 py-2.5 rounded-full border text-xs font-medium transition-all ${
+                          active
+                            ? "bg-sky-50/50 border-sky-500 text-sky-700 font-semibold shadow-sm"
+                            : "bg-white border-charcoal/8 text-charcoal hover:bg-slate-50"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* District - Kept as same dropdown */}
               <Select
                 label="District"
                 options={[
@@ -276,10 +328,10 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-3 mt-6">
               <button
                 onClick={() => {
-                  setFilterType("");
+                  setFilterTypes([]);
                   setFilterPurpose("");
                   setFilterDistrict("");
-                  setAppliedType("");
+                  setAppliedTypes([]);
                   setAppliedPurpose("");
                   setAppliedDistrict("");
                   setIsFilterOpen(false);
@@ -290,7 +342,7 @@ export default function Home() {
               </button>
               <button
                 onClick={() => {
-                  setAppliedType(filterType);
+                  setAppliedTypes(filterTypes);
                   setAppliedPurpose(filterPurpose);
                   setAppliedDistrict(filterDistrict);
                   setIsFilterOpen(false);

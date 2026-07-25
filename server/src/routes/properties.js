@@ -61,7 +61,15 @@ router.get("/", optionalAuth, async (req, res) => {
     const params = [status];
 
     if (district) { clauses.push("district = ?"); params.push(district); }
-    if (propertyType) { clauses.push("property_type = ?"); params.push(propertyType); }
+    if (propertyType) {
+      const types = (Array.isArray(propertyType) ? propertyType : String(propertyType).split(","))
+        .map(t => t.trim())
+        .filter(Boolean);
+      if (types.length > 0) {
+        clauses.push(`property_type IN (${types.map(() => "?").join(",")})`);
+        params.push(...types);
+      }
+    }
     if (purpose) { clauses.push("purpose = ?"); params.push(purpose); }
     if (ownerId) { clauses.push("owner_id = ?"); params.push(ownerId); }
 
