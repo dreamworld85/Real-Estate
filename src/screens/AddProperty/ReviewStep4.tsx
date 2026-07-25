@@ -19,7 +19,7 @@ function formatPrice(price: string): string {
 
 export default function ReviewStep4() {
   const navigate = useNavigate();
-  const { form } = useAddProperty();
+  const { form, isEditing, editingId, reset } = useAddProperty();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,7 +95,12 @@ export default function ReviewStep4() {
       form.images.forEach((img) => fd.append("media", img));
       if (form.video) fd.append("media", form.video);
 
-      await api.createProperty(fd);
+      if (isEditing && editingId) {
+        await api.updateProperty(editingId, fd);
+      } else {
+        await api.createProperty(fd);
+      }
+      reset();
       navigate("/add-property/success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit property");
@@ -106,11 +111,13 @@ export default function ReviewStep4() {
 
   return (
     <div className="min-h-screen flex flex-col pb-28">
-      <Header title="Add Property" showBack />
+      <Header title={isEditing ? "Edit Property" : "Add Property"} showBack />
       <StepProgress step={4} />
 
       <div className="px-4 flex flex-col gap-5 flex-1">
-        <h2 className="font-display font-bold text-lg text-ink -mt-1">Review Your Property</h2>
+        <h2 className="font-display font-bold text-lg text-ink -mt-1">
+          {isEditing ? "Review Your Changes" : "Review Your Property"}
+        </h2>
 
         <div className="relative rounded-2xl overflow-hidden bg-slate-100 border border-charcoal/8 h-44 flex items-center justify-center shadow-sm">
           {form.images.length > 0 ? (
@@ -180,7 +187,7 @@ export default function ReviewStep4() {
               : "hover:bg-emerald-700"
           }`}
         >
-          {submitting ? "Submitting…" : "Submit Property"}
+          {submitting ? "Submitting…" : isEditing ? "Update Property" : "Submit Property"}
         </button>
       </div>
       <BottomNav />

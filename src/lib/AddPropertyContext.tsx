@@ -61,12 +61,16 @@ interface AddPropertyContextValue {
   form: NewPropertyForm;
   update: (patch: Partial<NewPropertyForm>) => void;
   reset: () => void;
+  isEditing: boolean;
+  editingId: number | null;
+  startEditing: (property: any) => void;
 }
 
 const AddPropertyContext = createContext<AddPropertyContextValue | null>(null);
 
 export function AddPropertyProvider({ children }: { children: ReactNode }) {
   const [form, setForm] = useState<NewPropertyForm>(initialForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   function update(patch: Partial<NewPropertyForm>) {
     setForm((prev) => ({ ...prev, ...patch }));
@@ -74,10 +78,51 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
 
   function reset() {
     setForm(initialForm);
+    setEditingId(null);
+  }
+
+  function startEditing(property: any) {
+    setEditingId(property.id);
+    setForm({
+      role: property.listingRole || null,
+      propertyType: property.propertyType || "",
+      propertyCategory: property.propertyCategory || "Residential",
+      purpose: property.purpose || "For Sale",
+      price: String(property.price || ""),
+      areaSqft: String(property.areaSqft || ""),
+      areaUnit: property.areaUnit || "Cents",
+      address: property.address || "",
+      district: property.district || "",
+      images: [], // New images to upload
+      video: null,
+      youtubeUrl: property.youtubeUrl || "",
+      bedrooms: String(property.bedrooms || "0"),
+      bathrooms: String(property.bathrooms || "0"),
+      furnishing: property.furnishing || "",
+      facing: property.facing || "",
+      propertyAge: property.propertyAge || "",
+      description: property.description || "",
+      contactPhone: property.contactNumber || "",
+      whatsappNumber: property.whatsappNumber || "",
+      sameAsContact: property.whatsappNumber === property.contactNumber,
+      ownerName: property.ownerName || "",
+      brokerName: property.brokerName || "",
+      agencyName: property.agencyName || "",
+      agencyLogo: null,
+    });
   }
 
   return (
-    <AddPropertyContext.Provider value={{ form, update, reset }}>
+    <AddPropertyContext.Provider 
+      value={{ 
+        form, 
+        update, 
+        reset, 
+        isEditing: editingId !== null, 
+        editingId, 
+        startEditing 
+      }}
+    >
       {children}
     </AddPropertyContext.Provider>
   );

@@ -182,6 +182,15 @@ export const api = {
     return handle<{ id: number; status: string }>(res);
   },
 
+  async updateProperty(id: number | string, formData: FormData) {
+    const res = await fetch(`${API_URL}/api/properties/${id}`, {
+      method: "PUT",
+      headers: authHeaders(),
+      body: formData,
+    });
+    return handle<{ success: boolean; message: string }>(res);
+  },
+
   async updatePropertyStatus(id: number, status: "Active" | "Inactive" | "Draft") {
     const res = await fetch(`${API_URL}/api/properties/${id}/status`, {
       method: "PATCH",

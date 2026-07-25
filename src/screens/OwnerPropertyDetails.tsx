@@ -4,6 +4,7 @@ import { Eye, MessageSquare, Heart, Pencil, Power, Trash2, ChevronLeft, Share2, 
 import { api, ApiPropertyDetail, mediaUrl, formatArea } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import BottomNav from "@/components/BottomNav";
+import { useAddProperty } from "@/lib/AddPropertyContext";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -27,6 +28,7 @@ function getYoutubeEmbedUrl(url: string | null | undefined): string | null {
 export default function OwnerPropertyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { startEditing } = useAddProperty();
   const [property, setProperty] = useState<ApiPropertyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -202,7 +204,15 @@ export default function OwnerPropertyDetails() {
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-3.5 border border-forest text-forest font-display font-semibold text-[15px]">
+          <button 
+            onClick={() => {
+              if (property) {
+                startEditing(property);
+                navigate("/add-property/details");
+              }
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-3.5 border border-forest text-forest font-display font-semibold text-[15px]"
+          >
             <Pencil size={16} /> Edit Property
           </button>
         </div>

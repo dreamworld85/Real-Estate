@@ -5,6 +5,7 @@ import { api, ApiProperty, mediaUrl } from "@/lib/api";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import StatusBadge from "@/components/StatusBadge";
+import { useAddProperty } from "@/lib/AddPropertyContext";
 
 type Tab = "All" | ApiProperty["status"];
 const tabs: Tab[] = ["All", "Active", "Pending", "Inactive", "Draft"];
@@ -19,6 +20,7 @@ function formatPrice(price: number): string {
 
 export default function MyProperties() {
   const navigate = useNavigate();
+  const { startEditing } = useAddProperty();
   const [tab, setTab] = useState<Tab>("All");
   const [properties, setProperties] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +132,13 @@ export default function MyProperties() {
               >
                 <Eye size={14} /> View
               </button>
-              <button className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-forest border-r border-charcoal/6">
+              <button 
+                onClick={() => {
+                  startEditing(p);
+                  navigate("/add-property/details");
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-forest border-r border-charcoal/6"
+              >
                 <Pencil size={14} /> Edit
               </button>
               <button
