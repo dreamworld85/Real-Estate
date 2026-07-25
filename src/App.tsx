@@ -39,7 +39,8 @@ import AdminUserReviews from "@/screens/Admin/UserReviews";
 export default function App() {
   return (
     <div className="max-w-[420px] mx-auto bg-cream min-h-screen relative">
-      <Routes>
+      <AddPropertyProvider>
+        <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
@@ -65,16 +66,14 @@ export default function App() {
           path="/add-property/*"
           element={
             <ProtectedRoute>
-              <AddPropertyProvider>
-                <Routes>
-                  <Route index element={<ChooseRole />} />
-                  <Route path="details" element={<DetailsStep1 />} />
-                  <Route path="media" element={<MediaStep2 />} />
-                  <Route path="more-info" element={<MoreInfoStep3 />} />
-                  <Route path="review" element={<ReviewStep4 />} />
-                  <Route path="success" element={<Success />} />
-                </Routes>
-              </AddPropertyProvider>
+              <Routes>
+                <Route index element={<ChooseRole />} />
+                <Route path="details" element={<DetailsStep1 />} />
+                <Route path="media" element={<MediaStep2 />} />
+                <Route path="more-info" element={<MoreInfoStep3 />} />
+                <Route path="review" element={<ReviewStep4 />} />
+                <Route path="success" element={<Success />} />
+              </Routes>
             </ProtectedRoute>
           }
         />
@@ -96,6 +95,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </AddPropertyProvider>
     </div>
   );
 }
