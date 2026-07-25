@@ -14,15 +14,16 @@ dotenv.config();
 // Auto-configure persistent UPLOADS_DIR on Hostinger server
 if (process.cwd().includes("api.greensparrows.com")) {
   const envPath = path.resolve(".env");
+  let envContent = "";
   if (fs.existsSync(envPath)) {
-    let envContent = fs.readFileSync(envPath, "utf8");
-    if (!envContent.includes("UPLOADS_DIR")) {
-      console.log("Auto-injecting persistent UPLOADS_DIR into .env");
-      envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
-      fs.writeFileSync(envPath, envContent, "utf8");
-      // Reload environment variables
-      dotenv.config();
-    }
+    envContent = fs.readFileSync(envPath, "utf8");
+  }
+  if (!envContent.includes("UPLOADS_DIR")) {
+    console.log("Auto-injecting persistent UPLOADS_DIR into .env");
+    envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
+    fs.writeFileSync(envPath, envContent, "utf8");
+    // Reload environment variables
+    dotenv.config();
   }
 }
 
