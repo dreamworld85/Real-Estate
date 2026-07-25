@@ -386,6 +386,80 @@ router.post("/:id/report", requireAuth, async (req, res) => {
   }
 });
 
+// PUT /api/properties/:id - Edit property details and add new media files
+router.put("/:id", requireAuth, upload.any(), async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const {
+      title, propertyType, purpose, price, areaSqft, address, district,
+      bedrooms, bathrooms, furnishing, facing, propertyAge, description, listingRole,
+      contactNumber, whatsappNumber, ownerName, brokerName, agencyName, youtubeUrl,
+    } = req.body;
+
+    await conn.beginTransaction();
+
+    const [rows] = await conn.query("SELECT owner_id, agency_logo_url FROM properties WHERE id = ?", [req.params.id]);
+    if (rows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ error: "Property not found" });
+    }
+    if (rows[0].owner_id !== req.userId) {
+      await conn.rollback();
+      return res.status(403).json({ error: "Unauthorized - not your listing" });
+    }
+
+    const files = req.files || [];
+    const logoFile = files.find((f) => f.fieldname === "agencyLogo");
+    const mediaFiles = files.filter((f) => f.fieldname === "media");
+    const agencyLogoUrl = logoFile ? `/uploads/${logoFile.filename}` : rows[0].agency_logo_url;
+
+    await conn.query(
+      `UPDATE properties SET
+        title = ?, property_type = ?, purpose = ?, price = ?, area_sqft = ?, address = ?, district = ?,
+        bedrooms = ?, bathrooms = ?, furnishing = ?, facing = ?, property_age = ?, description = ?, listing_role = ?,
+        contact_number = ?, whatsapp_number = ?, owner_name = ?, broker_name = ?, agency_name = ?, agency_logo_url = ?, youtube_url = ?
+       WHERE id = ?`,
+      [
+        title || `${propertyType} in ${district}`,
+        propertyType, purpose, price, areaSqft, address, district,
+        bedrooms || 0, bathrooms || 0, furnishing || null, facing || null,
+        propertyAge || null, description || null, listingRole,
+        contactNumber || null, whatsappNumber || null,
+        ownerName || null, brokerName || null, agencyName || null, agencyLogoUrl,
+        youtubeUrl || null,
+        req.params.id,
+      ]
+    );
+
+    // If new media files are uploaded, insert them (appending to existing ones)
+    if (mediaFiles.length > 0) {
+      // Find current max sort_order
+      const [[maxSortRow]] = await conn.query(
+        "SELECT COALESCE(MAX(sort_order), -1) AS maxSort FROM property_media WHERE property_id = ?",
+        [req.params.id]
+      );
+      let startIdx = maxSortRow.maxSort + 1;
+      for (let i = 0; i < mediaFiles.length; i++) {
+        const file = mediaFiles[i];
+        const mediaType = file.mimetype.startsWith("video") ? "video" : "image";
+        await conn.query(
+          "INSERT INTO property_media (property_id, media_type, url, sort_order) VALUES (?, ?, ?, ?)",
+          [req.params.id, mediaType, `/uploads/${file.filename}`, startIdx + i]
+        );
+      }
+    }
+
+    await conn.commit();
+    res.json({ success: true, message: "Property updated successfully" });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ error: "Failed to update property" });
+  } finally {
+    conn.release();
+  }
+});
+
 // DELETE /api/properties/:id
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
