@@ -55,7 +55,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen relative flex flex-col justify-center p-6 overflow-x-hidden">
+    <div className="min-h-screen relative flex flex-col justify-start pt-12 md:pt-20 px-6 pb-6 overflow-x-hidden">
       {/* Dynamic Background Image */}
       <img 
         src={mediaUrl(bannerUrl)} 
