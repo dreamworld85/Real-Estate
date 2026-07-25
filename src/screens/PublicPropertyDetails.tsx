@@ -106,7 +106,9 @@ export default function PublicPropertyDetails() {
 *Property Details:*
 - *Price*: ${priceStr}
 - *Location*: ${locationStr}
-- *Listed By*: ${listedByStr}`;
+- *Listed By*: ${listedByStr}
+
+${window.location.origin}/property/${property.id}`;
 
   const waMessage = encodeURIComponent(messageText);
 
