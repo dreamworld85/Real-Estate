@@ -82,10 +82,11 @@ app.get("/api/debug-files", (_req, res) => {
 });
 app.get("/api/debug-webapp", (_req, res) => {
   try {
-    const webappPath = "/home/u859202671/domains/greensparrows.com/public_html/webapp";
-    const exists = fs.existsSync(webappPath);
-    const files = exists ? fs.readdirSync(webappPath) : [];
-    res.json({ webappPath, exists, files });
+    const parentPath = "/home/u859202671/domains/greensparrows.com/public_html";
+    const parentFiles = fs.existsSync(parentPath) ? fs.readdirSync(parentPath) : [];
+    const homePath = "/home/u859202671";
+    const homeFiles = fs.existsSync(homePath) ? fs.readdirSync(homePath) : [];
+    res.json({ parentFiles, homeFiles });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
