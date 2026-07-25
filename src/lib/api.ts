@@ -229,7 +229,12 @@ export const api = {
 };
 
 export function mediaUrl(path: string): string {
-  return path.startsWith("http") ? path : `${API_URL}${path}`;
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  if (path.startsWith("/uploads")) {
+    return `${API_URL}${path}`;
+  }
+  return path;
 }
 
 export function formatArea(areaSqft: number, propertyType: string): string {
