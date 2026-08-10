@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { ApiUser } from "./api";
+import { ApiUser, api } from "./api";
 
 interface AuthContextValue {
   user: ApiUser | null;
@@ -16,6 +16,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const raw = localStorage.getItem("kr_user");
     return raw ? JSON.parse(raw) : null;
   });
+
+  useEffect(() => {
+    if (token) {
+      api.fetchMyProfile()
+        .then((data) => {
+          setUser(data);
+        })
+        .catch((err) => console.error("Failed to sync user profile on mount:", err));
+    }
+  }, [token]);
 
   useEffect(() => {
     if (token) localStorage.setItem("kr_token", token);

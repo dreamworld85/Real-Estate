@@ -1,19 +1,28 @@
 import { useEffect, useState } from "react";
-import { Bell, Search, SlidersHorizontal, ChevronDown, X } from "lucide-react";
-import { api, ApiProperty, mediaUrl } from "@/lib/api";
+import { Bell, Search, SlidersHorizontal, ChevronDown, ChevronRight, X, Leaf, Heart, Star } from "lucide-react";
+import { api, ApiProperty, mediaUrl, ApiNotification } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import BottomNav from "@/components/BottomNav";
 import Select from "@/components/Select";
+import { useAuth } from "@/lib/AuthContext";
+import { useNavigate } from "react-router-dom";
+
+import allIcon from "../../header-icons/All.svg";
+import landIcon from "../../header-icons/land.svg";
+import houseIcon from "../../header-icons/house.svg";
+import villaIcon from "../../header-icons/villa.svg";
+import apartmentsIcon from "../../header-icons/Apartments.svg";
 
 const categories = [
-  { label: "All", icon: "🏡" },
-  { label: "Land", icon: "🌴" },
-  { label: "House", icon: "🏠" },
-  { label: "Villa", icon: "🏘️" },
-  { label: "Apartment", icon: "🏢" },
+  { label: "All", icon: allIcon },
+  { label: "Land", icon: landIcon },
+  { label: "House", icon: houseIcon },
+  { label: "Villa", icon: villaIcon },
+  { label: "Apartment", icon: apartmentsIcon },
 ];
 
 export default function Home() {
+  const { user } = useAuth();
   const [properties, setProperties] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,36 +41,33 @@ export default function Home() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const navigate = useNavigate();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Welcome to Kerala Realty!",
-      message: "Find modern villas, houses, apartments, and lands that match your premium lifestyle.",
-      time: "Just now",
-      read: false,
-    },
-    {
-      id: 2,
-      title: "Listing Pending Approval",
-      message: "Your property 'Land in Kottayam' was uploaded successfully and is currently under admin verification.",
-      time: "2 hours ago",
-      read: false,
-    },
-    {
-      id: 3,
-      title: "New Enquiry Received",
-      message: "A visitor has inquired about your property listing. Check details under profile enquiries.",
-      time: "Yesterday",
-      read: true,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<ApiNotification[]>([]);
 
-  const hasUnread = notifications.some((n) => !n.read);
+  async function loadNotifications() {
+    try {
+      const data = await api.fetchNotifications();
+      setNotifications(data);
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    }
+  }
 
-  const handleOpenNotifications = () => {
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const hasUnread = notifications.some((n) => n.is_read === 0);
+
+  const handleOpenNotifications = async () => {
     setIsNotificationsOpen(true);
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await api.markNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Filter Drawer Temp State
@@ -109,60 +115,104 @@ export default function Home() {
     );
   });
 
+  const displayLocation = appliedDistrict 
+    ? `${appliedDistrict}, Kerala` 
+    : user?.location 
+    ? `${user.location}, Kerala` 
+    : "Wayanad, Kerala";
+
   return (
     <div className="min-h-screen pb-28">
-      <header className="px-4 pt-5 pb-3 flex items-center justify-between">
-        <button className="flex items-center gap-1 text-ink font-display font-bold">
-          Wayanad, Kerala <ChevronDown size={16} />
-        </button>
-        <button 
-          onClick={handleOpenNotifications}
-          aria-label="Notifications" 
-          className="relative p-1 hover:bg-slate-100 rounded-full transition-colors active:scale-95"
-        >
-          <Bell size={22} className="text-ink" />
-          {hasUnread && (
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border border-cream" />
-          )}
-        </button>
+      <header className="sticky top-0 z-20 bg-cream/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-charcoal/5">
+        {/* Brand Logo */}
+        <div className="flex items-center gap-1.5 select-none">
+          <div className="w-8 h-8 rounded-xl bg-forest/8 text-forest flex items-center justify-center">
+            <Leaf size={16} className="fill-forest/10" />
+          </div>
+          <span className="font-display font-black text-lg text-ink tracking-tight">
+            Green<span className="text-forest">Real</span>
+          </span>
+        </div>
+
+        {/* Header Actions */}
+        <div className="flex items-center gap-2.5">
+          <button 
+            onClick={() => setIsFilterOpen(true)}
+            className="flex items-center gap-1 text-[11px] font-bold text-slate bg-slate-100/70 border border-charcoal/5 px-3 py-1.5 rounded-full hover:bg-slate-200/50 transition-colors cursor-pointer select-none active:scale-95"
+          >
+            <span>{appliedDistrict || user?.location || "All Kerala"}</span>
+            <ChevronDown size={11} className="text-slate/50" />
+          </button>
+          
+          <button 
+            onClick={handleOpenNotifications}
+            aria-label="Notifications" 
+            className="relative p-1.5 hover:bg-slate-100 rounded-full transition-colors active:scale-95"
+          >
+            <Bell size={20} className={`text-ink ${hasUnread ? "animate-bell-ring" : ""}`} />
+            {hasUnread && (
+              <>
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-cream z-10" />
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-cream animate-ping" />
+              </>
+            )}
+          </button>
+        </div>
       </header>
 
-      <div className="px-4 mb-5 flex gap-2">
-        <div className="flex-1 flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-charcoal/10">
-          <Search size={18} className="text-slate" />
+      <div className="px-4 mt-3.5 mb-5 flex gap-2">
+        <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl px-4 py-3 border border-charcoal/8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] focus-within:border-forest/40 focus-within:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all">
+          <Search size={18} className="text-slate/75" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search location, property..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/60"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium"
           />
         </div>
         <button 
           onClick={() => setIsFilterOpen(true)}
-          className={`rounded-xl px-3.5 border transition-colors ${
+          className={`rounded-2xl px-3.5 border transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] active:scale-95 cursor-pointer flex items-center justify-center ${
             appliedTypes.length > 0 || appliedPurpose || appliedDistrict
-              ? "bg-ink border-ink text-cream"
-              : "bg-white border-charcoal/10 text-ink"
+              ? "bg-forest border-forest text-cream"
+              : "bg-white border-charcoal/8 text-charcoal hover:bg-slate-50"
           }`}
           aria-label="Filter properties"
+          title="Filter properties"
         >
           <SlidersHorizontal size={18} />
         </button>
+        <button 
+          onClick={() => navigate("/saved")}
+          className="rounded-2xl px-3.5 border border-charcoal/8 bg-white text-charcoal hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] active:scale-95 cursor-pointer flex items-center justify-center group"
+          aria-label="Saved properties"
+          title="Saved properties"
+        >
+          <Heart size={18} className="text-slate/75 group-hover:text-rose-500 transition-colors" />
+        </button>
       </div>
 
-      <div className="px-4 mb-6 flex gap-3 overflow-x-auto no-scrollbar">
+      <div className="px-4 mb-6 flex gap-3 overflow-x-auto no-scrollbar py-0.5">
         {categories.map((cat) => (
           <button
             key={cat.label}
             onClick={() => setActiveCategory(cat.label)}
-            className={`flex flex-col items-center gap-1.5 min-w-[64px] py-2.5 rounded-2xl ${
+            className={`flex flex-col items-center gap-1.5 min-w-[68px] py-3 px-2 rounded-2xl transition-all duration-300 active:scale-95 cursor-pointer ${
               activeCategory === cat.label
-                ? "bg-ink text-cream"
-                : "bg-white text-charcoal border border-charcoal/8"
+                ? "bg-forest text-cream shadow-md shadow-forest/10 scale-105"
+                : "bg-white text-charcoal/90 border border-charcoal/5 shadow-sm hover:bg-slate-50"
             }`}
           >
-            <span className="text-lg leading-none">{cat.icon}</span>
-            <span className="text-xs font-medium">{cat.label}</span>
+            <div className="w-7 h-7 flex items-center justify-center">
+              <img
+                src={cat.icon}
+                alt={`${cat.label} icon`}
+                className={`w-5 h-5 object-contain transition-all duration-300 ${
+                  activeCategory === cat.label ? "brightness-0 invert" : "opacity-80"
+                }`}
+              />
+            </div>
+            <span className="text-[11px] font-bold tracking-tight">{cat.label}</span>
           </button>
         ))}
       </div>
@@ -207,28 +257,43 @@ export default function Home() {
 
       {!loading && !error && filteredProperties.length > 0 && (
         <>
-          <section className="mb-6">
-            <div className="flex items-center justify-between px-4 mb-3">
-              <h2 className="font-display font-bold text-ink">Featured Properties</h2>
-              <button className="text-sm font-semibold text-forest">View All</button>
-            </div>
-            <div className="px-4 flex gap-4 overflow-x-auto no-scrollbar">
-              {filteredProperties.slice(0, 5).map((p) => (
-                <div key={p.id} className="min-w-[260px]">
-                  <PropertyCard property={p} />
+          {filteredProperties.some(p => p.isFeatured) && (
+            <section className="mb-6 animate-fade-in">
+              <div className="flex items-center justify-between px-4 mb-3">
+                <div className="flex items-center gap-1.5">
+                  <Star size={14} className="fill-gold text-gold" />
+                  <h2 className="font-display font-extrabold text-[15px] tracking-wide text-ink">Featured Listings</h2>
                 </div>
-              ))}
-            </div>
-          </section>
+                <button 
+                  onClick={() => navigate("/search")}
+                  className="text-xs font-bold text-forest hover:text-emerald-700 transition-colors flex items-center gap-0.5 cursor-pointer"
+                >
+                  View All <ChevronRight size={13} className="text-forest/65" />
+                </button>
+              </div>
+              <div className="px-4 flex gap-4 overflow-x-auto no-scrollbar">
+                {filteredProperties.filter((p) => p.isFeatured).slice(0, 8).map((p) => (
+                  <div key={p.id} className="min-w-[260px]">
+                    <PropertyCard property={p} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-          <section className="px-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display font-bold text-ink">Recently Added</h2>
-              <button className="text-sm font-semibold text-forest">View All</button>
+          <section className="px-4 pb-12">
+            <div className="flex items-center justify-between mb-3.5">
+              <h2 className="font-display font-extrabold text-[15px] tracking-wide text-ink">Recently Added</h2>
+              <button 
+                onClick={() => navigate("/search")}
+                className="text-xs font-bold text-forest hover:text-emerald-700 transition-colors flex items-center gap-0.5 cursor-pointer"
+              >
+                View All <ChevronRight size={13} className="text-forest/65" />
+              </button>
             </div>
-            <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3.5">
               {filteredProperties.map((p) => (
-                <PropertyCard key={p.id} property={p} />
+                <PropertyCard key={p.id} property={p} compact={true} />
               ))}
             </div>
           </section>
@@ -391,27 +456,45 @@ export default function Home() {
             
             <div className="overflow-y-auto flex flex-col gap-3 pb-2 no-scrollbar">
               {notifications.length > 0 ? (
-                notifications.map((notif) => (
-                  <div 
-                    key={notif.id} 
-                    className="flex gap-3 items-start p-3 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-charcoal/5 transition-colors"
-                  >
-                    <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 mt-0.5">
-                      <Bell size={15} />
+                notifications.map((notif) => {
+                  const isLike = notif.type === "like";
+                  return (
+                    <div 
+                      key={notif.id} 
+                      onClick={() => {
+                        setIsNotificationsOpen(false);
+                        if (notif.sender_id) {
+                          navigate(`/agency/${notif.sender_id}`);
+                        }
+                      }}
+                      className={`flex gap-3 items-start p-3 bg-slate-50/50 hover:bg-slate-100 rounded-2xl border transition-colors cursor-pointer ${
+                        notif.is_read === 0 ? "border-emerald-500/20 bg-emerald-50/10" : "border-charcoal/5"
+                      }`}
+                    >
+                      <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
+                        isLike ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
+                      }`}>
+                        {isLike ? <Heart size={15} fill="currentColor" /> : <Bell size={15} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-ink flex items-center justify-between">
+                          <span>{isLike ? "New Property Like" : "Notification"}</span>
+                          {notif.is_read === 0 && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          )}
+                        </p>
+                        <p className="text-[11px] text-slate mt-0.5 leading-relaxed font-semibold">
+                          {notif.message}
+                        </p>
+                        <span className="text-[9px] text-slate/50 mt-1.5 block font-bold">
+                          {new Date(notif.created_at).toLocaleString("en-IN", {
+                            day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+                          })}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-ink truncate">
-                        {notif.title}
-                      </p>
-                      <p className="text-[11px] text-slate mt-0.5 leading-relaxed">
-                        {notif.message}
-                      </p>
-                      <span className="text-[9px] text-slate/50 mt-1.5 block font-semibold">
-                        {notif.time}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-12 flex flex-col items-center justify-center gap-2">
                   <div className="p-3 rounded-full bg-slate-50 text-slate-400">

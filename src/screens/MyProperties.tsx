@@ -6,6 +6,8 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import StatusBadge from "@/components/StatusBadge";
 import { useAddProperty } from "@/lib/AddPropertyContext";
+import PropertyActivationModal from "@/components/PropertyActivationModal";
+import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
 
 type Tab = "All" | ApiProperty["status"];
 const tabs: Tab[] = ["All", "Active", "Pending", "Inactive", "Draft"];
@@ -26,6 +28,8 @@ export default function MyProperties() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [showActivationChoice, setShowActivationChoice] = useState<ApiProperty | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   function loadProperties() {
     setLoading(true);
@@ -45,8 +49,29 @@ export default function MyProperties() {
       const nextStatus = p.status === "Active" ? "Inactive" : "Active";
       await api.updatePropertyStatus(p.id, nextStatus);
       setProperties((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: nextStatus } : x)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
+    } catch (err: any) {
+      if (err.requiresActivationChoice) {
+        setShowActivationChoice(p);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to update status");
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleActivateFree(p: ApiProperty) {
+    setShowActivationChoice(null);
+    setBusyId(p.id);
+    try {
+      const nextStatus = "Active";
+      await api.updatePropertyStatus(p.id, nextStatus, true);
+      setProperties((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: nextStatus } : x)));
+      setTimeout(() => {
+        alert("Property activated successfully under Admin Number fallback!");
+      }, 100);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : "Failed to activate property");
     } finally {
       setBusyId(null);
     }
@@ -59,6 +84,78 @@ export default function MyProperties() {
       setProperties((prev) => prev.filter((x) => x.id !== p.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete property");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handlePromoteProperty(p: ApiProperty) {
+    const confirmed = window.confirm(
+      `Promote "${p.title}" as a Featured Advertisement?\n\nThis will feature your property listing at the top of the Home feed to boost inquiries. Proceed to secure checkout?`
+    );
+    if (!confirmed) return;
+
+    setBusyId(p.id);
+    try {
+      const scriptLoaded = await new Promise((resolve) => {
+        if ((window as any).Razorpay) {
+          resolve(true);
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+
+      if (!scriptLoaded) {
+        alert("Failed to load payment gateway script. Please check your network connection.");
+        setBusyId(null);
+        return;
+      }
+
+      const order = await (api as any).initiateFeaturedPayment(p.id);
+      
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_placeholder",
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.id,
+        name: "Kerala Realty",
+        description: `Featured Ad: ${p.title}`,
+        handler: async function (response: any) {
+          setBusyId(p.id);
+          try {
+            await (api as any).verifyFeaturedPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              propertyId: p.id
+            });
+            alert("Payment Verified! Property is now Featured.");
+            loadProperties();
+          } catch (err: any) {
+            alert("Verification failed: " + (err.message || err));
+          } finally {
+            setBusyId(null);
+          }
+        },
+        prefill: {
+          name: "",
+          email: "",
+          contact: "",
+        },
+        theme: {
+          color: "#0F3D3E",
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      alert(err.message || "Failed to initiate featured promotion payment.");
     } finally {
       setBusyId(null);
     }
@@ -156,11 +253,49 @@ export default function MyProperties() {
                 <Trash2 size={14} /> Delete
               </button>
             </div>
+            {p.status === "Active" && (
+              <div className="bg-emerald-50/40 px-4 py-2.5 border-t border-charcoal/6 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                  <Star size={13} className={p.isFeatured ? "fill-emerald-600 text-emerald-600 animate-pulse" : "text-emerald-700"} />
+                  {p.isFeatured ? "Featured Ad Active" : "Promote as Advertisement"}
+                </span>
+                {!p.isFeatured && (
+                  <button
+                    disabled={busyId === p.id}
+                    onClick={() => handlePromoteProperty(p)}
+                    className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3 py-1.5 rounded-xl flex items-center gap-1 active:scale-95 transition-all select-none shadow-sm disabled:opacity-50"
+                  >
+                    Promote Ad
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
 
       <BottomNav />
+
+      {showActivationChoice && (
+        <PropertyActivationModal
+          onClose={() => setShowActivationChoice(null)}
+          onUpgrade={() => {
+            setShowActivationChoice(null);
+            setShowPaywall(true);
+          }}
+          onContinueFree={() => handleActivateFree(showActivationChoice)}
+        />
+      )}
+
+      {showPaywall && (
+        <SubscriptionPaywallModal
+          onClose={() => setShowPaywall(false)}
+          onSuccess={() => {
+            setShowPaywall(false);
+            loadProperties();
+          }}
+        />
+      )}
     </div>
   );
 }

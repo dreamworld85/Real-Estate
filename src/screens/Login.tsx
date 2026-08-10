@@ -6,6 +6,20 @@ import Button from "@/components/Button";
 import { api, mediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 
+const countries = [
+  { code: "+91", name: "India", flag: "🇮🇳" },
+  { code: "+971", name: "UAE", flag: "🇦🇪" },
+  { code: "+966", name: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "+968", name: "Oman", flag: "🇴🇲" },
+  { code: "+974", name: "Qatar", flag: "🇶🇦" },
+  { code: "+973", name: "Bahrain", flag: "🇧🇭" },
+  { code: "+965", name: "Kuwait", flag: "🇰🇼" },
+  { code: "+1", name: "USA/Canada", flag: "🇺🇸" },
+  { code: "+44", name: "UK", flag: "🇬🇧" },
+  { code: "+65", name: "Singapore", flag: "🇸🇬" },
+  { code: "+61", name: "Australia", flag: "🇦🇺" },
+];
+
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -17,7 +31,44 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<"Owner" | "Broker" | "Agency" | "User">("User");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [bannerUrl, setBannerUrl] = useState("/kerala_house_login.jpg");
+
+  // Country Code Dropdown State
+  const [countryCode, setCountryCode] = useState("+91");
+  const [countryFlag, setCountryFlag] = useState("🇮🇳");
+  const [countrySearch, setCountrySearch] = useState("");
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+
+  const handlePhoneChange = (val: string) => {
+    let cleaned = val.replace(/[^\d+]/g, "");
+
+    if (cleaned.startsWith("+")) {
+      const sortedCountries = [...countries].sort((a, b) => b.code.length - a.code.length);
+      for (const c of sortedCountries) {
+        if (cleaned.startsWith(c.code)) {
+          setCountryCode(c.code);
+          setCountryFlag(c.flag);
+          cleaned = cleaned.substring(c.code.length);
+          break;
+        }
+      }
+    } else {
+      const sortedCountries = [...countries].sort((a, b) => b.code.length - a.code.length);
+      for (const c of sortedCountries) {
+        const codeWithoutPlus = c.code.substring(1);
+        if (cleaned.startsWith(codeWithoutPlus)) {
+          setCountryCode(c.code);
+          setCountryFlag(c.flag);
+          cleaned = cleaned.substring(codeWithoutPlus.length);
+          break;
+        }
+      }
+    }
+    setPhone(cleaned);
+  };
 
   useEffect(() => {
     api.fetchSetting("login_banner_url")
@@ -34,15 +85,16 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === "login") {
-        const { token, user } = await api.login(identifier, password);
+        const { token, user } = await api.login(identifier.trim(), password);
         login(token, user);
       } else {
-        const isEmail = identifier.includes("@");
+        const fullPhone = phone.trim() ? (countryCode + phone.trim()) : undefined;
         const { token, user } = await api.register({
           name,
-          email: isEmail ? identifier : undefined,
-          phone: isEmail ? undefined : identifier,
+          email: email.trim() || undefined,
+          phone: fullPhone,
           password,
+          role,
         });
         login(token, user);
       }
@@ -55,7 +107,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen relative flex flex-col justify-start pt-12 md:pt-20 px-6 pb-6 overflow-x-hidden">
+    <div className="min-h-screen relative flex flex-col justify-start pt-10 md:pt-16 px-4 pb-4 overflow-x-hidden">
       {/* Dynamic Background Image */}
       <img 
         src={mediaUrl(bannerUrl)} 
@@ -113,17 +165,99 @@ export default function Login() {
               </div>
             )}
             
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-white/80">Email or Mobile Number</label>
-              <input
-                type="text"
-                placeholder="Enter email or mobile number"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                autoComplete="username"
-                className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
-              />
-            </div>
+            {mode === "login" ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-white/80">Email or Mobile Number</label>
+                <input
+                  type="text"
+                  placeholder="Enter email or mobile number"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  autoComplete="username"
+                  className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
+                />
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold text-white/80">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="Enter email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
+                  />
+                </div>
+                 <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold text-white/80">Mobile Number</label>
+                  <div className="flex gap-2 relative">
+                    {/* Country Selector Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                      className="bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white flex items-center gap-1.5 hover:bg-white/15 transition-all select-none whitespace-nowrap min-w-[76px] justify-center cursor-pointer"
+                    >
+                      <span className="text-sm leading-none">{countryFlag}</span>
+                      <span className="font-semibold">{countryCode}</span>
+                    </button>
+
+                    {/* Phone Number Input */}
+                    <input
+                      type="tel"
+                      placeholder="Enter mobile number"
+                      value={phone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      autoComplete="tel"
+                      className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
+                    />
+
+                    {/* Country Selector Dropdown */}
+                    {showCountryDropdown && (
+                      <div className="absolute left-0 top-[46px] w-64 bg-charcoal border border-white/20 rounded-2xl p-2.5 z-50 shadow-2xl flex flex-col gap-2">
+                        {/* Search bar inside dropdown */}
+                        <input
+                          type="text"
+                          placeholder="Search country name or code..."
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          className="w-full bg-white/10 border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder-white/40 focus:outline-none focus:border-gold"
+                        />
+                        {/* List */}
+                        <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto no-scrollbar">
+                          {countries
+                            .filter(
+                              (c) =>
+                                c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                                c.code.includes(countrySearch)
+                            )
+                            .map((c) => (
+                              <button
+                                key={c.code}
+                                type="button"
+                                onClick={() => {
+                                  setCountryCode(c.code);
+                                  setCountryFlag(c.flag);
+                                  setShowCountryDropdown(false);
+                                  setCountrySearch("");
+                                }}
+                                className="w-full text-left flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/10 text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <span>{c.flag}</span>
+                                  <span>{c.name}</span>
+                                </span>
+                                <span className="text-white/60">{c.code}</span>
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold text-white/80">Password</label>
@@ -177,6 +311,11 @@ export default function Login() {
             onClick={() => {
               setError(null);
               setMode((m) => (m === "login" ? "register" : "login"));
+              setName("");
+              setIdentifier("");
+              setEmail("");
+              setPhone("");
+              setPassword("");
             }}
             className="w-full py-3 border border-white/20 hover:bg-white/5 text-white rounded-xl text-xs font-bold font-display transition-all active:scale-[0.98]"
           >

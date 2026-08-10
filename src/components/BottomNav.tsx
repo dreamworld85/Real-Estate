@@ -1,11 +1,11 @@
-import { Home, Search, PlusCircle, Heart, User } from "lucide-react";
+import { Home, Search, PlusCircle, MessageSquare, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const items = [
   { icon: Home, label: "Home", path: "/home" },
   { icon: Search, label: "Search", path: "/search" },
   { icon: PlusCircle, label: "Add", path: "/add-property" },
-  { icon: Heart, label: "Saved", path: "/saved" },
+  { icon: MessageSquare, label: "Enquiries", path: "/visitors-enquiries" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
@@ -14,10 +14,14 @@ export default function BottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 mx-auto max-w-[420px] bg-white shadow-nav border-t border-charcoal/5 px-2 pb-safe">
+    <nav className="bottom-nav-container fixed bottom-0 left-0 right-0 mx-auto max-w-[420px] bg-white shadow-nav border-t border-charcoal/5 px-2 pb-safe z-30">
       <div className="flex items-center justify-between px-2 py-2">
         {items.map(({ icon: Icon, label, path }) => {
-          const active = location.pathname === path;
+          const active =
+            location.pathname === path ||
+            (path === "/visitors-enquiries" &&
+              (location.pathname === "/visitors-enquiries" ||
+                location.pathname === "/enquiries"));
           return (
             <button
               key={path}

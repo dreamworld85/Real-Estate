@@ -63,3 +63,20 @@ textarea:focus-visible {
 .animate-slide-down {
   animation: slideDown 0.2s ease-out forwards;
 }
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0); }
+  10%, 30%, 50%, 70%, 90% { transform: rotate(10deg); }
+  20%, 40%, 60%, 80% { transform: rotate(-10deg); }
+}
+
+.animate-bell-ring {
+  animation: bellRing 2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+@media (max-width: 960px) and (orientation: landscape) {
+  .app-container, .bottom-nav-container {
+    max-width: 100% !important;
+  }
+}

@@ -27,6 +27,11 @@ export interface NewPropertyForm {
   brokerName: string;
   agencyName: string;
   agencyLogo: File | null;
+  agencyAddress?: string;
+  agencyDistrict?: string;
+  useAdminContact?: boolean;
+  isBrokerPersonalProperty?: boolean;
+  isPriceNegotiable?: boolean;
 }
 
 const initialForm: NewPropertyForm = {
@@ -55,6 +60,11 @@ const initialForm: NewPropertyForm = {
   brokerName: "",
   agencyName: "",
   agencyLogo: null,
+  agencyAddress: "",
+  agencyDistrict: "",
+  useAdminContact: false,
+  isBrokerPersonalProperty: false,
+  isPriceNegotiable: false,
 };
 
 interface AddPropertyContextValue {
@@ -64,6 +74,8 @@ interface AddPropertyContextValue {
   isEditing: boolean;
   editingId: number | null;
   startEditing: (property: any) => void;
+  lastSubmittedStatus: { status: string; isOverLimit: boolean } | null;
+  setLastSubmittedStatus: (status: { status: string; isOverLimit: boolean } | null) => void;
 }
 
 const AddPropertyContext = createContext<AddPropertyContextValue | null>(null);
@@ -71,6 +83,7 @@ const AddPropertyContext = createContext<AddPropertyContextValue | null>(null);
 export function AddPropertyProvider({ children }: { children: ReactNode }) {
   const [form, setForm] = useState<NewPropertyForm>(initialForm);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [lastSubmittedStatus, setLastSubmittedStatus] = useState<{ status: string; isOverLimit: boolean } | null>(null);
 
   function update(patch: Partial<NewPropertyForm>) {
     setForm((prev) => ({ ...prev, ...patch }));
@@ -79,6 +92,7 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
   function reset() {
     setForm(initialForm);
     setEditingId(null);
+    setLastSubmittedStatus(null);
   }
 
   function startEditing(property: any) {
@@ -109,6 +123,8 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
       brokerName: property.brokerName || "",
       agencyName: property.agencyName || "",
       agencyLogo: null,
+      useAdminContact: !!property.useAdminContact,
+      isBrokerPersonalProperty: !!property.isBrokerPersonalProperty,
     });
   }
 
@@ -120,7 +136,9 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
         reset, 
         isEditing: editingId !== null, 
         editingId, 
-        startEditing 
+        startEditing,
+        lastSubmittedStatus,
+        setLastSubmittedStatus
       }}
     >
       {children}

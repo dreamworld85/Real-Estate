@@ -71,7 +71,7 @@ export default function Users() {
       </div>
 
       {/* Users List Container */}
-      <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
           <p className="text-xs text-slate py-6 text-center">Loading accounts directory...</p>
         ) : error ? (
@@ -90,15 +90,29 @@ export default function Users() {
                   <User size={18} />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                   <div className="flex items-center gap-2">
                     <p className="text-xs font-bold text-ink truncate">{user.name}</p>
+                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                      user.role === "Agency"
+                        ? "bg-purple-50 text-purple-600 border border-purple-100"
+                        : user.role === "Broker"
+                        ? "bg-teal-50 text-teal-600 border border-teal-100"
+                        : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                    }`}>
+                      {user.role || "Owner"}
+                    </span>
                     {user.is_disabled === 1 && (
                       <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
                         Suspended
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-slate mt-0.5">{user.phone || user.email || "No contact info"}</p>
+                  <p className="text-[10px] text-slate mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    {user.phone && <span>Mobile: {user.phone}</span>}
+                    {user.phone && user.email && <span className="text-slate/40 select-none">•</span>}
+                    {user.email && <span>Email: {user.email}</span>}
+                    {!user.phone && !user.email && <span>No contact info</span>}
+                  </p>
                 </div>
               </div>
               <ChevronRight size={16} className="text-slate/40 shrink-0" />

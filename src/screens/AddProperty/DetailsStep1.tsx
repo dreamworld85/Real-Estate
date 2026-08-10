@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, AlertCircle } from "lucide-react";
+import { ChevronLeft, AlertCircle, Home, Building, HelpCircle, Check } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
+import { useAuth } from "@/lib/AuthContext";
+import { ListingRole } from "@/lib/types";
 import BottomNav from "@/components/BottomNav";
 import StepProgress from "@/components/StepProgress";
 
@@ -42,8 +44,22 @@ const commercialTypesForRent = [
 export default function DetailsStep1() {
   const navigate = useNavigate();
   const { form, update } = useAddProperty();
+  const { user } = useAuth();
 
   const [attemptedNext, setAttemptedNext] = useState(false);
+
+  useEffect(() => {
+    if (user && !form.role) {
+      const activeRole: ListingRole = (user.role && user.role !== "User" ? user.role : "Owner") as ListingRole;
+      update({
+        role: activeRole,
+        ownerName: user.role === "Owner" ? user.name : "",
+        brokerName: user.role === "Broker" ? user.name : "",
+        agencyName: user.role === "Agency" ? user.name : "",
+        contactPhone: user.phone || "",
+      });
+    }
+  }, [user, form.role, update]);
 
   const isRent = form.purpose === "For Rent";
   const activeTypes = form.propertyCategory === "Commercial"
@@ -86,39 +102,38 @@ export default function DetailsStep1() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 pb-28">
       {/* Header Section */}
-      <div className="flex justify-between items-center px-6 pt-6 pb-2">
+      <div className="flex justify-between items-center px-6 pt-5 pb-1">
         <button 
-          onClick={() => navigate("/add-property")} 
-          className="text-ink p-1 -ml-1 hover:bg-charcoal/5 rounded-full transition-colors"
+          onClick={() => navigate("/add-property/role")} 
+          className="text-ink p-1.5 -ml-1.5 hover:bg-charcoal/5 rounded-full transition-all duration-200 cursor-pointer active:scale-95"
           aria-label="Back"
         >
-          <Menu size={24} />
+          <ChevronLeft size={22} />
         </button>
       </div>
 
       <StepProgress step={1} />
 
       <div className="px-6 pb-4">
-        <h1 className="font-display font-extrabold text-2xl text-ink leading-tight">
+        <h1 className="font-display font-extrabold text-xl text-ink leading-tight">
           Add Basic Details
         </h1>
-        <p className="text-[10px] font-bold text-slate tracking-widest uppercase mt-1">
-          STEP 1 OF 4
+        <p className="text-[9px] font-bold text-slate/75 tracking-wider uppercase mt-0.5">
+          Step 1 of 4 • Listing Parameters
         </p>
       </div>
 
-      <div className="px-6 flex flex-col gap-6 flex-1">
-        {/* Field 1 - Transaction Type */}
-        <div className="flex flex-col gap-2.5">
+      <div className="px-6 flex flex-col gap-4 flex-1">
+        {/* CARD 1: Transaction Purpose */}
+        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <label className="font-display font-bold text-[15px] text-ink">
-              You're looking to?
-            </label>
+            <span className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">Transaction Type</span>
             {attemptedNext && !form.purpose && (
               <span className="text-[10px] text-rose-500 font-bold">Required</span>
             )}
           </div>
-          <div className={`flex flex-wrap gap-2.5 p-1 rounded-2xl transition-all ${attemptedNext && !form.purpose ? "border border-rose-500 bg-rose-50/5 shadow-sm shadow-rose-100" : ""}`}>
+          
+          <div className="grid grid-cols-2 gap-2.5">
             {[
               { label: "Sell", value: "For Sale" },
               { label: "Rent / Lease", value: "For Rent" },
@@ -129,67 +144,82 @@ export default function DetailsStep1() {
                   key={opt.value}
                   type="button"
                   onClick={() => handlePurposeChange(opt.value)}
-                  className={`px-5 py-2.5 rounded-full border text-sm font-medium transition-all ${
+                  className={`flex items-center justify-between py-2.5 px-3 rounded-xl border transition-all duration-150 cursor-pointer select-none active:scale-[0.98] ${
                     active
-                      ? "bg-sky-50/50 border-sky-500 text-sky-700 font-semibold shadow-sm"
-                      : "bg-white border-charcoal/10 text-charcoal hover:bg-slate-50"
+                      ? "border-emerald-600 bg-emerald-50/20 ring-1 ring-emerald-600/30"
+                      : "border-charcoal/10 bg-slate-50/40 hover:border-charcoal/20"
                   }`}
                 >
-                  {opt.label}
+                  <span className={`text-xs font-bold font-display ${active ? "text-emerald-700" : "text-ink"}`}>
+                    {opt.label}
+                  </span>
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                    active ? "border-emerald-600 bg-emerald-600 text-white" : "border-charcoal/30 bg-white"
+                  }`}>
+                    {active && <Check size={8} strokeWidth={4} />}
+                  </div>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Field 2 - Property Category */}
-        <div className="flex flex-col gap-2.5">
+        {/* CARD 2: Property Category */}
+        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <label className="font-display font-bold text-[15px] text-ink">
-              What kind of property?
-            </label>
+            <span className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">Property Category</span>
             {attemptedNext && !form.propertyCategory && (
               <span className="text-[10px] text-rose-500 font-bold">Required</span>
             )}
           </div>
-          <div className={`flex flex-wrap gap-2.5 p-1 rounded-2xl transition-all ${attemptedNext && !form.propertyCategory ? "border border-rose-500 bg-rose-50/5 shadow-sm shadow-rose-100" : ""}`}>
-            {["Residential", "Commercial"].map((cat) => {
-              const active = form.propertyCategory === cat;
+
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { label: "Residential", value: "Residential", icon: Home },
+              { label: "Commercial", value: "Commercial", icon: Building },
+            ].map((opt) => {
+              const active = form.propertyCategory === opt.value;
+              const Icon = opt.icon;
               return (
                 <button
-                  key={cat}
+                  key={opt.value}
                   type="button"
-                  onClick={() => handleCategoryChange(cat)}
-                  className={`px-5 py-2.5 rounded-full border text-sm font-medium transition-all ${
+                  onClick={() => handleCategoryChange(opt.value)}
+                  className={`flex items-center justify-between py-2.5 px-3 rounded-xl border transition-all duration-150 cursor-pointer select-none active:scale-[0.98] ${
                     active
-                      ? "bg-sky-50/50 border-sky-500 text-sky-700 font-semibold shadow-sm"
-                      : "bg-white border-charcoal/10 text-charcoal hover:bg-slate-50"
+                      ? "border-emerald-600 bg-emerald-50/20 ring-1 ring-emerald-600/30"
+                      : "border-charcoal/10 bg-slate-50/40 hover:border-charcoal/20"
                   }`}
                 >
-                  {cat}
+                  <div className="flex items-center gap-2">
+                    <span className={`p-1 rounded bg-white border border-charcoal/5 ${active ? "text-emerald-700" : "text-charcoal"}`}>
+                      <Icon size={12} />
+                    </span>
+                    <span className={`text-xs font-bold font-display ${active ? "text-emerald-700" : "text-ink"}`}>
+                      {opt.label}
+                    </span>
+                  </div>
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                    active ? "border-emerald-600 bg-emerald-600 text-white" : "border-charcoal/30 bg-white"
+                  }`}>
+                    {active && <Check size={8} strokeWidth={4} />}
+                  </div>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Field 3 - Specific Property Type */}
-        <div className="flex flex-col gap-2.5">
+        {/* CARD 3: Property Type Grid */}
+        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <label className="font-display font-bold text-[15px] text-ink">
-              Select Property Type
-            </label>
-            {attemptedNext && !form.propertyType ? (
+            <span className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">Select Property Type</span>
+            {attemptedNext && !form.propertyType && (
               <span className="text-[10px] text-rose-500 font-bold">Required</span>
-            ) : (
-              !form.propertyType && (
-                <span className="flex items-center gap-1 text-[11px] text-amber-600 mt-1 font-medium">
-                  <AlertCircle size={12} /> Please select the type of property you wish to advertise
-                </span>
-              )
             )}
           </div>
-          <div className={`flex flex-wrap gap-2.5 p-1 rounded-2xl transition-all ${attemptedNext && !form.propertyType ? "border border-rose-500 bg-rose-50/5 shadow-sm shadow-rose-100" : ""}`}>
+
+          <div className={`grid grid-cols-2 gap-2 p-0.5 rounded-xl transition-all ${attemptedNext && !form.propertyType ? "border border-rose-500 bg-rose-50/5 shadow-sm shadow-rose-100" : ""}`}>
             {activeTypes.map((type) => {
               const active = form.propertyType === type;
               return (
@@ -197,10 +227,10 @@ export default function DetailsStep1() {
                   key={type}
                   type="button"
                   onClick={() => update({ propertyType: type })}
-                  className={`px-4 py-2.5 rounded-full border text-xs font-medium transition-all ${
+                  className={`flex items-center justify-center min-h-[40px] p-2.5 rounded-xl border text-[11px] font-bold text-center leading-tight transition-all duration-150 cursor-pointer active:scale-[0.98] shadow-sm select-none ${
                     active
-                      ? "bg-sky-50/50 border-sky-500 text-sky-700 font-semibold shadow-sm"
-                      : "bg-white border-charcoal/8 text-charcoal hover:bg-slate-50"
+                      ? "bg-emerald-600 border-emerald-600 text-white shadow-emerald-100/50"
+                      : "bg-slate-50 border-charcoal/8 text-charcoal hover:bg-slate-100/80"
                   }`}
                 >
                   {type}
@@ -209,17 +239,15 @@ export default function DetailsStep1() {
             })}
           </div>
         </div>
-
-
       </div>
 
       {/* Footer next button container */}
-      <div className="px-6 pb-8 pt-6">
+      <div className="px-6 pb-6 pt-5">
         <button
           onClick={handleNext}
-          className="w-full py-4 rounded-xl font-display font-semibold text-[15px] transition-all shadow-md bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.99]"
+          className="w-full py-3.5 rounded-xl font-display font-semibold text-[14px] transition-all duration-200 shadow-md bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.99] cursor-pointer shadow-emerald-100"
         >
-          Next
+          Continue
         </button>
       </div>
 

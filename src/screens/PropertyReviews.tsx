@@ -3,10 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ChevronLeft, Star, Send, MessageSquare } from "lucide-react";
 import { api, ApiReview, ApiPropertyDetail } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function PropertyReviews() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const [property, setProperty] = useState<ApiPropertyDetail | null>(null);
   const [reviews, setReviews] = useState<ApiReview[]>([]);
@@ -118,55 +120,67 @@ export default function PropertyReviews() {
             Write a Review
           </span>
 
-          <form onSubmit={handleSubmitReview} className="flex flex-col gap-4">
-            {/* Interactive Stars */}
-            <div className="flex items-center gap-2 py-1">
-              <span className="text-xs text-charcoal font-semibold mr-1">Your Rating:</span>
-              <div className="flex gap-1.5">
-                {[1, 2, 3, 4, 5].map((star) => {
-                  const active = star <= userRating;
-                  return (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setUserRating(star)}
-                      className="hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                    >
-                      <Star
-                        size={22}
-                        className={active ? "fill-gold text-gold" : "text-slate-200"}
-                      />
-                    </button>
-                  );
-                })}
+          {user ? (
+            <form onSubmit={handleSubmitReview} className="flex flex-col gap-4">
+              {/* Interactive Stars */}
+              <div className="flex items-center gap-2 py-1">
+                <span className="text-xs text-charcoal font-semibold mr-1">Your Rating:</span>
+                <div className="flex gap-1.5">
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const active = star <= userRating;
+                    return (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setUserRating(star)}
+                        className="hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                      >
+                        <Star
+                          size={22}
+                          className={active ? "fill-gold text-gold" : "text-slate-200"}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              <textarea
+                rows={3}
+                value={userComment}
+                onChange={(e) => setUserComment(e.target.value)}
+                placeholder="Share your experience with this property..."
+                required
+                className="w-full rounded-xl border border-charcoal/10 bg-slate-50 px-4 py-3 text-xs text-charcoal placeholder:text-slate/40 focus:border-emerald-600/50 outline-none resize-none h-20"
+              />
+
+              {error && <p className="text-xs text-rose-500 font-semibold">{error}</p>}
+              {success && (
+                <p className="text-xs text-emerald-600 font-semibold bg-emerald-50 py-1.5 px-3 rounded-lg">
+                  Review submitted successfully!
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3.5 rounded-xl font-display font-semibold text-xs transition-all shadow-md bg-ink hover:bg-black text-cream active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                <Send size={13} />
+                <span>{submitting ? "Submitting Review…" : "Submit Review"}</span>
+              </button>
+            </form>
+          ) : (
+            <div className="py-4 text-center flex flex-col items-center gap-3">
+              <p className="text-xs text-slate font-medium">Please sign in to submit a review for this property.</p>
+              <button
+                onClick={() => navigate("/login", { state: { from: `/property/${id}/reviews` } })}
+                className="px-4 py-2 bg-ink hover:bg-black text-cream text-xs font-bold rounded-xl uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+              >
+                Sign In
+              </button>
             </div>
-
-            <textarea
-              rows={3}
-              value={userComment}
-              onChange={(e) => setUserComment(e.target.value)}
-              placeholder="Share your experience with this property..."
-              required
-              className="w-full rounded-xl border border-charcoal/10 bg-slate-50 px-4 py-3 text-xs text-charcoal placeholder:text-slate/40 focus:border-emerald-600/50 outline-none resize-none h-20"
-            />
-
-            {error && <p className="text-xs text-rose-500 font-semibold">{error}</p>}
-            {success && (
-              <p className="text-xs text-emerald-600 font-semibold bg-emerald-50 py-1.5 px-3 rounded-lg">
-                Review submitted successfully!
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3.5 rounded-xl font-display font-semibold text-xs transition-all shadow-md bg-ink hover:bg-black text-cream active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-            >
-              <Send size={13} />
-              <span>{submitting ? "Submitting Review…" : "Submit Review"}</span>
-            </button>
-          </form>
+          )}
         </div>
 
         {/* Reviews List */}

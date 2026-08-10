@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw, Heart } from "lucide-react";
 import { api, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import BottomNav from "@/components/BottomNav";
@@ -13,6 +14,7 @@ const districts = [
 ];
 
 export default function Search() {
+  const navigate = useNavigate();
   const [district, setDistrict] = useState("");
   const [propertyType, setPropertyType] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -34,6 +36,7 @@ export default function Search() {
     if (district) params.district = district;
     if (propertyType) params.propertyType = propertyType;
     if (purpose) params.purpose = purpose;
+    if (query) params.search = query;
 
     api.fetchProperties(params)
       .then((data) => { if (!cancelled) setRawResults(data); })
@@ -41,7 +44,7 @@ export default function Search() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [district, propertyType, purpose]);
+  }, [district, propertyType, purpose, query]);
 
   // Local filter by search query
   const results = rawResults.filter((p) => {
@@ -50,7 +53,10 @@ export default function Search() {
     return (
       p.title.toLowerCase().includes(q) ||
       p.address.toLowerCase().includes(q) ||
-      p.district.toLowerCase().includes(q)
+      p.district.toLowerCase().includes(q) ||
+      (p.ownerName && p.ownerName.toLowerCase().includes(q)) ||
+      (p.contactNumber && p.contactNumber.toLowerCase().includes(q)) ||
+      (p.whatsappNumber && p.whatsappNumber.toLowerCase().includes(q))
     );
   });
 
@@ -79,15 +85,25 @@ export default function Search() {
           )}
         </div>
 
-        {/* Search Input Bar */}
-        <div className="flex items-center gap-2.5 bg-white rounded-2xl px-4 py-3 border border-charcoal/10 shadow-sm focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all mb-4">
-          <SearchIcon size={18} className="text-slate" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search address, title, district..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium"
-          />
+        {/* Search Input Bar + Saved */}
+        <div className="flex gap-2 mb-4">
+          <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl px-4 py-3 border border-charcoal/10 shadow-sm focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+            <SearchIcon size={18} className="text-slate" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search address, title, district..."
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium"
+            />
+          </div>
+          <button
+            onClick={() => navigate("/saved")}
+            className="rounded-2xl px-3.5 border border-charcoal/10 bg-white text-charcoal hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center group"
+            aria-label="Saved properties"
+            title="Saved properties"
+          >
+            <Heart size={18} className="text-slate/75 group-hover:text-rose-500 transition-colors" />
+          </button>
         </div>
 
         {/* 3-Column Pill Dropdowns */}

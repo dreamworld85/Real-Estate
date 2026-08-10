@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
+import { useAuth } from "@/lib/AuthContext";
 import { api } from "@/lib/api";
 import Header from "@/components/Header";
 import StepProgress from "@/components/StepProgress";
@@ -19,7 +20,8 @@ function formatPrice(price: string): string {
 
 export default function ReviewStep4() {
   const navigate = useNavigate();
-  const { form, isEditing, editingId, reset } = useAddProperty();
+  const { form, isEditing, editingId, reset, setLastSubmittedStatus } = useAddProperty();
+  const { token, login } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +31,7 @@ export default function ReviewStep4() {
   const rows: [string, string][] = [
     ["Property Type", form.propertyType || "—"],
     ["Purpose", form.purpose || "—"],
-    ["Price", formatPrice(form.price)],
+    ["Price", formatPrice(form.price) + (form.isPriceNegotiable ? " (Negotiable)" : "")],
     ["Area", form.areaSqft ? `${form.areaSqft} ${isLand ? form.areaUnit : "sq.ft"}` : "—"],
     ["Location", `${form.address || "—"}, ${form.district || "—"}`],
     ...(!isLand
@@ -43,7 +45,10 @@ export default function ReviewStep4() {
     ["Facing", form.facing || "—"],
     ["Listing Role", form.role ? `${form.role} Property` : "—"],
     ...(form.role === "Owner" ? ([["Owner Name", form.ownerName || "—"]] as [string, string][]) : []),
-    ...(form.role === "Broker" ? ([["Broker Name", form.brokerName || "—"]] as [string, string][]) : []),
+    ...(form.role === "Broker" ? ([
+      ["Broker Name", form.brokerName || "—"],
+      ["Personal Property", form.isBrokerPersonalProperty ? "Yes" : "No"]
+    ] as [string, string][]) : []),
     ...(form.role === "Agency" ? ([["Agency Name", form.agencyName || "—"]] as [string, string][]) : []),
     ["Contact Number", form.contactPhone || "—"],
     ["WhatsApp Number", form.whatsappNumber || "—"],
@@ -77,6 +82,9 @@ export default function ReviewStep4() {
       if (form.description) fd.append("description", form.description);
       if (form.role) fd.append("listingRole", form.role);
       if (form.youtubeUrl) fd.append("youtubeUrl", form.youtubeUrl);
+      if (form.isPriceNegotiable !== undefined) {
+        fd.append("isPriceNegotiable", String(form.isPriceNegotiable));
+      }
       
       // Role & contact details
       if (form.contactPhone) fd.append("contactNumber", form.contactPhone);
@@ -85,6 +93,9 @@ export default function ReviewStep4() {
         fd.append("ownerName", form.ownerName);
       } else if (form.role === "Broker") {
         fd.append("brokerName", form.brokerName);
+        if (form.isBrokerPersonalProperty !== undefined) {
+          fd.append("isBrokerPersonalProperty", String(form.isBrokerPersonalProperty));
+        }
       } else if (form.role === "Agency") {
         fd.append("agencyName", form.agencyName);
         if (form.agencyLogo) {
@@ -95,12 +106,22 @@ export default function ReviewStep4() {
       form.images.forEach((img) => fd.append("media", img));
       if (form.video) fd.append("media", form.video);
 
+      let responseStatus = null;
       if (isEditing && editingId) {
         await api.updateProperty(editingId, fd);
       } else {
-        await api.createProperty(fd);
+        const res = await api.createProperty(fd);
+        responseStatus = res;
+        if (res && res.user && token) {
+          login(token, res.user);
+        }
       }
-      reset();
+      if (responseStatus) {
+        setLastSubmittedStatus({
+          status: responseStatus.status,
+          isOverLimit: !!responseStatus.isOverLimit
+        });
+      }
       navigate("/add-property/success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit property");
@@ -110,16 +131,16 @@ export default function ReviewStep4() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col pb-28">
+    <div className="min-h-screen flex flex-col pb-28 bg-slate-50">
       <Header title={isEditing ? "Edit Property" : "Add Property"} showBack />
       <StepProgress step={4} />
 
-      <div className="px-4 flex flex-col gap-5 flex-1">
-        <h2 className="font-display font-bold text-lg text-ink -mt-1">
+      <div className="px-6 flex flex-col gap-4 flex-1">
+        <h2 className="font-display font-extrabold text-xl text-black -mt-1">
           {isEditing ? "Review Your Changes" : "Review Your Property"}
         </h2>
 
-        <div className="relative rounded-2xl overflow-hidden bg-slate-100 border border-charcoal/8 h-44 flex items-center justify-center shadow-sm">
+        <div className="relative rounded-2xl overflow-hidden bg-slate-100 border border-charcoal/8 h-36 flex items-center justify-center shadow-sm">
           {form.images.length > 0 ? (
             <>
               <img
@@ -133,55 +154,55 @@ export default function ReviewStep4() {
               </div>
             </>
           ) : (
-            <span className="text-sm text-slate font-medium">No photos added</span>
+            <span className="text-xs text-slate font-semibold">No photos added</span>
           )}
         </div>
 
         <div className="flex items-center gap-3">
           {form.role && <RoleBadge role={form.role} />}
-          {form.role === "Agency" && form.agencyLogo && (
+          {form.role?.toLowerCase() === "agency" && form.agencyLogo && (
             <div className="flex items-center gap-1.5 bg-white border border-charcoal/8 rounded-full px-2.5 py-1 shadow-sm">
               <img
                 src={URL.createObjectURL(form.agencyLogo)}
                 alt="Logo Preview"
                 className="w-4 h-4 object-cover rounded-full"
               />
-              <span className="text-[10px] font-bold text-slate uppercase">Logo Uploaded</span>
+              <span className="text-[9px] font-bold text-slate uppercase">Logo Uploaded</span>
             </div>
           )}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-card divide-y divide-charcoal/6">
+        <div className="bg-white rounded-2xl border border-charcoal/5 shadow-sm divide-y divide-charcoal/6 overflow-hidden">
           {rows.map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between px-4 py-3 text-sm">
-              <span className="text-slate">{label}</span>
-              <span className="font-medium text-charcoal text-right">{value}</span>
+            <div key={label} className="flex items-center justify-between px-4 py-2.5 text-xs">
+              <span className="text-slate font-medium">{label}</span>
+              <span className="font-bold text-charcoal text-right">{value}</span>
             </div>
           ))}
         </div>
 
         {form.description && (
-          <div className="bg-white rounded-2xl shadow-card p-4">
-            <p className="text-sm font-semibold text-charcoal mb-1">Description</p>
-            <p className="text-sm text-slate leading-relaxed">{form.description}</p>
+          <div className="bg-white border border-charcoal/5 rounded-2xl shadow-sm p-3.5">
+            <p className="text-[11px] font-bold text-charcoal uppercase tracking-wider mb-1">Description</p>
+            <p className="text-xs text-slate leading-relaxed">{form.description}</p>
           </div>
         )}
 
-        {error && <p className="text-sm text-coral">{error}</p>}
+        {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
       </div>
 
-      <div className="px-6 pb-8 pt-6 flex gap-3">
+      <div className="px-6 pb-6 pt-5 flex gap-3">
         <button
           disabled={submitting}
           onClick={() => navigate(-1)}
-          className="flex-1 py-4 rounded-xl font-display font-semibold text-[15px] border border-charcoal/12 bg-white text-charcoal hover:bg-slate-50 transition-all active:scale-[0.99]"
+          className="flex-1 py-3.5 rounded-xl font-display font-semibold text-[14px] border border-charcoal/15 bg-white text-charcoal hover:bg-slate-50 transition-all active:scale-[0.99] cursor-pointer"
         >
           Back
         </button>
         <button
           disabled={submitting}
           onClick={handleSubmit}
-          className={`flex-[2] py-4 rounded-xl font-display font-semibold text-[15px] transition-all shadow-md active:scale-[0.99] bg-emerald-600 text-white ${
+          className={`flex-[2] py-3.5 rounded-xl font-display font-semibold text-[14px] transition-all shadow-md active:scale-[0.99] bg-emerald-600 text-white cursor-pointer ${
             submitting 
               ? "opacity-40 cursor-not-allowed shadow-none" 
               : "hover:bg-emerald-700"

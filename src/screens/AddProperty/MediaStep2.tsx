@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, Plus, UploadCloud, X, Check, Camera, Crop } from "lucide-react";
+import { Menu, Plus, UploadCloud, X, Check, Camera, Crop, ChevronLeft } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import BottomNav from "@/components/BottomNav";
 import StepProgress from "@/components/StepProgress";
@@ -130,42 +130,39 @@ export default function MediaStep2() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 pb-28">
       {/* Header Section */}
-      <div className="flex justify-between items-center px-6 pt-6 pb-2">
+      <div className="flex justify-between items-center px-6 pt-5 pb-1">
         <button 
           onClick={() => navigate("/add-property/details")} 
-          className="text-ink p-1 -ml-1 hover:bg-charcoal/5 rounded-full transition-colors"
+          className="text-ink p-1.5 -ml-1.5 hover:bg-charcoal/5 rounded-full transition-colors cursor-pointer active:scale-95"
           aria-label="Back"
         >
-          <Menu size={24} />
+          <ChevronLeft size={22} />
         </button>
       </div>
 
       <StepProgress step={2} />
 
-      <div className="px-6 pb-4">
-        <h1 className="font-display font-extrabold text-2xl text-ink leading-tight">
+      <div className="px-6 pb-3">
+        <h1 className="font-display font-extrabold text-xl text-ink leading-tight">
           Upload Photos & Videos
         </h1>
-        <p className="text-[10px] font-bold text-slate tracking-widest uppercase mt-1">
-          STEP 2 OF 4
+        <p className="text-[9px] font-bold text-slate/75 tracking-wider uppercase mt-0.5">
+          Step 2 of 4 • Property Media
         </p>
       </div>
 
-      <div className="px-6 flex flex-col gap-6 flex-1">
-        <div className="flex flex-col gap-2.5">
-          <div>
-            <div className="flex justify-between items-center">
-              <label className="font-display font-bold text-[15px] text-ink">
-                Add Photos of your property
-              </label>
-              {attemptedNext && form.images.length === 0 && (
-                <span className="text-[10px] text-rose-500 font-bold">Required (Add at least 1 photo)</span>
-              )}
-            </div>
-            <p className="text-xs text-slate mt-0.5">Upload up to 12 high-quality photos.</p>
+      <div className="px-6 flex flex-col gap-4.5 flex-1">
+        {/* Field 1 - Photos Section */}
+        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-2.5">
+          <div className="flex justify-between items-center">
+            <label className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">
+              Property Photos
+            </label>
+            {attemptedNext && form.images.length === 0 && (
+              <span className="text-[10px] text-rose-500 font-bold">Required</span>
+            )}
           </div>
-
-
+          <p className="text-[10px] text-slate mt-0.5 leading-none">Upload up to 12 property photos.</p>
 
           <input
             ref={photoInputRef}
@@ -185,11 +182,11 @@ export default function MediaStep2() {
             onChange={handlePhotosSelected}
           />
 
-          <div className="grid grid-cols-3 gap-3 mt-3">
+          <div className="grid grid-cols-4 gap-2 mt-2">
             {form.images.map((file, i) => (
               <div
                 key={i}
-                className="relative aspect-square rounded-2xl bg-slate-100 border border-charcoal/8 overflow-hidden shadow-sm"
+                className="relative aspect-square rounded-xl bg-slate-100 border border-charcoal/8 overflow-hidden shadow-sm"
               >
                 <img
                   src={URL.createObjectURL(file)}
@@ -198,10 +195,10 @@ export default function MediaStep2() {
                 />
                 <button
                   onClick={() => removePhoto(i)}
-                  className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 rounded-full p-1 transition-colors"
+                  className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5 transition-colors"
                   aria-label="Remove photo"
                 >
-                  <X size={12} className="text-white" />
+                  <X size={10} className="text-white" />
                 </button>
               </div>
             ))}
@@ -209,15 +206,15 @@ export default function MediaStep2() {
             {form.images.length < 12 && (
               <button
                 onClick={() => setShowSourceSelector(true)}
-                className={`aspect-square rounded-2xl border-2 border-dashed bg-white flex flex-col items-center justify-center gap-1.5 transition-all shadow-sm ${
+                className={`aspect-square rounded-xl border border-dashed flex flex-col items-center justify-center gap-1 transition-all shadow-sm ${
                   attemptedNext && form.images.length === 0
                     ? "border-rose-500 text-rose-500 bg-rose-50/5 shadow-rose-100"
-                    : "border-charcoal/15 text-slate hover:border-sky-500 hover:text-sky-600"
+                    : "border-charcoal/15 text-slate hover:border-emerald-600 hover:text-emerald-700 bg-slate-50/50"
                 }`}
               >
-                <Plus size={20} className={attemptedNext && form.images.length === 0 ? "text-rose-500" : "text-slate/60"} />
-                <span className="text-[11px] font-semibold">
-                  {form.images.length === 0 ? "Add Photo" : "Add More"}
+                <Plus size={16} className={attemptedNext && form.images.length === 0 ? "text-rose-500" : "text-slate/60"} />
+                <span className="text-[9px] font-bold uppercase tracking-wider">
+                  {form.images.length === 0 ? "Add" : "More"}
                 </span>
               </button>
             )}
@@ -225,13 +222,10 @@ export default function MediaStep2() {
         </div>
 
         {/* Field 2 - Videos Section */}
-        <div className="flex flex-col gap-2.5">
-          <div>
-            <label className="font-display font-bold text-[15px] text-ink">
-              Add Video (Optional)
-            </label>
-            <p className="text-xs text-slate mt-0.5">Add a property walkthrough video (max 100MB).</p>
-          </div>
+        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-2.5">
+          <label className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">
+            Walkthrough Video (Optional)
+          </label>
 
           <input
             ref={videoInputRef}
@@ -242,10 +236,10 @@ export default function MediaStep2() {
           />
 
           {form.video ? (
-            <div className="flex items-center justify-between bg-emerald-50/40 rounded-xl border border-emerald-500/20 px-4 py-3.5 shadow-sm">
+            <div className="flex items-center justify-between bg-emerald-50/40 rounded-xl border border-emerald-500/20 px-3.5 py-2.5 shadow-sm">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="bg-emerald-100 rounded-full p-1">
-                  <Check size={14} className="text-emerald-600" />
+                <div className="bg-emerald-100 rounded-full p-0.5">
+                  <Check size={12} className="text-emerald-600" />
                 </div>
                 <span className="text-xs font-semibold text-emerald-800 truncate">
                   {form.video.name}
@@ -257,43 +251,40 @@ export default function MediaStep2() {
                 className="text-slate hover:text-coral transition-colors p-1"
                 aria-label="Remove video"
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             </div>
           ) : (
             <button
               onClick={() => videoInputRef.current?.click()}
-              className="w-full rounded-2xl border-2 border-dashed border-charcoal/15 bg-white py-6 flex flex-col items-center gap-2 hover:border-sky-500 hover:text-sky-600 transition-colors shadow-sm"
+              className="w-full rounded-xl border border-dashed border-charcoal/15 bg-white py-3 flex items-center justify-center gap-2 hover:border-emerald-600 transition-colors shadow-sm cursor-pointer"
             >
-              <UploadCloud size={24} className="text-slate/50" />
-              <span className="text-xs font-semibold text-charcoal">
-                Upload Video
-              </span>
-              <span className="text-[10px] text-slate/60">MP4, Max 100MB</span>
+              <UploadCloud size={16} className="text-slate/60" />
+              <div className="text-left">
+                <span className="text-[11px] font-bold text-charcoal block">Upload Walkthrough Video</span>
+                <span className="text-[9px] text-slate/50 block">MP4 format (Max 100MB)</span>
+              </div>
             </button>
           )}
         </div>
 
         {/* Field 3 - YouTube Link Section */}
-        <div className="flex flex-col gap-2.5">
-          <div>
-            <label className="font-display font-bold text-[15px] text-ink">
-              YouTube Video Link (Optional)
-            </label>
-            <p className="text-xs text-slate mt-0.5">Paste a YouTube video link of your property tour.</p>
-          </div>
+        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-2.5">
+          <label className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">
+            YouTube Video Link (Optional)
+          </label>
           <input
             type="url"
             value={form.youtubeUrl}
             onChange={(e) => update({ youtubeUrl: e.target.value })}
             placeholder="e.g. https://www.youtube.com/watch?v=..."
-            className="w-full bg-white rounded-xl border border-charcoal/15 px-4 py-3 text-sm text-ink placeholder-slate/50 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm transition-all"
+            className="w-full bg-white rounded-xl border border-charcoal/15 px-3 py-2.5 text-xs text-ink placeholder-slate/40 focus:border-emerald-500 focus:outline-none shadow-sm transition-all"
           />
         </div>
       </div>
 
       {/* Footer next button container */}
-      <div className="px-6 pb-8 pt-6">
+      <div className="px-6 pb-6 pt-5">
         <button
           onClick={() => {
             setAttemptedNext(true);
@@ -308,9 +299,9 @@ export default function MediaStep2() {
               }, 100);
             }
           }}
-          className="w-full py-4 rounded-xl font-display font-semibold text-[15px] transition-all shadow-md bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.99]"
+          className="w-full py-3.5 rounded-xl font-display font-semibold text-[14px] transition-all shadow-md bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.99] cursor-pointer"
         >
-          Next
+          Continue
         </button>
       </div>
 

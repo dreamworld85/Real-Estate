@@ -1,0 +1,100 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Preview</title></head><body><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+.pba *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+.pba{background:linear-gradient(180deg,#EAF7EC 0%,#FFFFFF 55%);padding:70px 20px}
+.pba__inner{max-width:1360px;margin:0 auto}
+.pba__head{max-width:760px;margin:0 auto 50px;text-align:center}
+.pba__badge{display:inline-block;background:#DCFCE7;color:#16A34A;font-size:12.5px;font-weight:800;
+  letter-spacing:.3px;padding:7px 18px;border-radius:20px;margin-bottom:18px}
+.pba__head h2{font-size:42px;font-weight:800;color:#0F1E3C;line-height:1.2;margin-bottom:14px}
+.pba__grad{background:linear-gradient(90deg,#14B8A6,#8B5CF6);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
+.pba__head p{font-size:17px;color:#64748B;line-height:1.6}
+.pba__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.pba__card{background:#F8FDF9;border:1px solid #DCEFE0;border-radius:22px;padding:30px;
+  box-shadow:0 15px 35px rgba(15,30,60,.06);display:flex;flex-direction:column}
+.pba__card.market{background:#FFFDF6;border-color:#F1E9C8}
+.pba__card.wms{background:#FBFAFF;border-color:#E9E3F7}
+.pba__top{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.pba__icon{width:56px;height:56px;min-width:56px;border-radius:14px;display:flex;align-items:center;
+  justify-content:center;font-size:22px;background:#DCFCE7;color:#16A34A}
+.pba__card.market .pba__icon{background:#FEF3C7;color:#A16207}
+.pba__card.wms .pba__icon{background:#EDE9FE;color:#7C3AED}
+.pba__pill{flex:1;background:#DCFCE7;color:#16A34A;font-size:13px;font-weight:700;text-align:center;
+  padding:10px 14px;border-radius:20px}
+.pba__card.market .pba__pill{background:#FEF3C7;color:#A16207}
+.pba__card.wms .pba__pill{background:#EDE9FE;color:#7C3AED}
+.pba__card h3{font-size:27px;font-weight:800;color:#0F1E3C;margin-bottom:6px}
+.pba__card h4{font-size:16.5px;font-weight:700;color:#16A34A;margin-bottom:14px}
+.pba__card.wms h4{color:#7C3AED}
+.pba__card p.desc{font-size:14.5px;color:#5B6472;line-height:1.7;margin-bottom:22px}
+.pba__feat{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.pba__feat div{display:flex;align-items:center;gap:10px;background:#F8FAF9;border-radius:12px;
+  padding:13px 14px;font-size:13.5px;font-weight:600;color:#1F2937}
+.pba__feat i{color:#16A34A;font-size:16px}
+.pba__card.market .pba__feat i{color:#A16207}
+.pba__card.wms .pba__feat i{color:#7C3AED}
+.pba__btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#0B0F19;
+  color:#fff;font-size:15px;font-weight:700;padding:16px 20px;border-radius:12px;text-decoration:none;
+  margin-top:auto}
+@media(max-width:980px){.pba__grid{grid-template-columns:1fr}}
+</style>
+<div class="pba">
+  <div class="pba__inner">
+    <div class="pba__head">
+      <span class="pba__badge">&#9733; OUR PRODUCTS</span>
+      <h2>Purpose-Built Apps for <span class="pba__grad">Every Operation</span></h2>
+      <p>Three powerful products &mdash; AI intelligence, omnichannel commerce, and precision warehouse management.</p>
+    </div>
+    <div class="pba__grid">
+      <div class="pba__card ai">
+        <div class="pba__top">
+          <div class="pba__icon"><i class="fa-solid fa-microchip"></i></div>
+          <div class="pba__pill">1.3M+ AI Recommendations</div>
+        </div>
+        <h3>MEC AI</h3>
+        <h4>AI-Powered Commerce Intelligence</h4>
+        <p class="desc">Purpose-built AI embedded across every workflow &mdash; intelligent order routing, demand forecasting, AI repricing, anomaly detection, and natural language operations queries.</p>
+        <div class="pba__feat">
+          <div><i class="fa-solid fa-robot"></i>AI Order Agent</div>
+          <div><i class="fa-solid fa-chart-line"></i>Demand Forecasting</div>
+          <div><i class="fa-solid fa-route"></i>Smart Routing</div>
+          <div><i class="fa-solid fa-triangle-exclamation"></i>Anomaly Detection</div>
+        </div>
+        <a href="#" class="pba__btn">Launch App <i class="fa-solid fa-arrow-up-right"></i></a>
+      </div>
+      <div class="pba__card market">
+        <div class="pba__top">
+          <div class="pba__icon"><i class="fa-solid fa-cart-shopping"></i></div>
+          <div class="pba__pill">500+ Integrations</div>
+        </div>
+        <h3>MEC Marketplace Management</h3>
+        <h4>Order &middot; Inventory &middot; Marketplace</h4>
+        <p class="desc">The all-in-one platform for omnichannel commerce operations &mdash; order management, inventory control, warehouse management, marketplace integrations, AI repricing, and more.</p>
+        <div class="pba__feat">
+          <div><i class="fa-solid fa-clipboard-check"></i>Order Management</div>
+          <div><i class="fa-solid fa-box"></i>Inventory Control</div>
+          <div><i class="fa-solid fa-globe"></i>50+ Marketplaces</div>
+          <div><i class="fa-solid fa-warehouse"></i>Warehouse Mgmt</div>
+        </div>
+        <a href="#" class="pba__btn">Launch App <i class="fa-solid fa-arrow-up-right"></i></a>
+      </div>
+      <div class="pba__card wms">
+        <div class="pba__top">
+          <div class="pba__icon"><i class="fa-solid fa-building"></i></div>
+          <div class="pba__pill">99.9% Error Free</div>
+        </div>
+        <h3>MEC WMS</h3>
+        <h4>Advanced Warehouse Management</h4>
+        <p class="desc">A dedicated cloud-native WMS for precision warehouse operations &mdash; receiving, put-away, pick/pack/ship, cycle counting, labor management, and multi-site visibility.</p>
+        <div class="pba__feat">
+          <div><i class="fa-solid fa-sitemap"></i>Multi-Site WMS</div>
+          <div><i class="fa-solid fa-qrcode"></i>Scan-Based Pick</div>
+          <div><i class="fa-solid fa-rotate-left"></i>Returns Processing</div>
+          <div><i class="fa-solid fa-eye"></i>Real-Time Visibility</div>
+        </div>
+        <a href="#" class="pba__btn">Launch App <i class="fa-solid fa-arrow-up-right"></i></a>
+      </div>
+    </div>
+  </div>
+</div></body></html>

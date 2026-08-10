@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AddPropertyProvider } from "@/lib/AddPropertyContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "@/screens/Login";
@@ -21,6 +21,11 @@ import MoreInfoStep3 from "@/screens/AddProperty/MoreInfoStep3";
 import ReviewStep4 from "@/screens/AddProperty/ReviewStep4";
 import Success from "@/screens/AddProperty/Success";
 import ComingSoon from "@/screens/ComingSoon";
+import PrivacyPolicy from "@/screens/Legal/PrivacyPolicy";
+import TermsConditions from "@/screens/Legal/TermsConditions";
+import RefundPolicy from "@/screens/Legal/RefundPolicy";
+import ContactUs from "@/screens/Legal/ContactUs";
+import SubscriptionDetails from "@/screens/SubscriptionDetails";
 
 // Admin Screens
 import AdminLayout from "@/screens/Admin/AdminLayout";
@@ -35,10 +40,15 @@ import AdminAnalytics from "@/screens/Admin/Analytics";
 import AdminActivityLogs from "@/screens/Admin/ActivityLogs";
 import AdminSettings from "@/screens/Admin/Settings";
 import AdminUserReviews from "@/screens/Admin/UserReviews";
+import RoleUpgrades from "@/screens/Admin/RoleUpgrades";
+import Subscriptions from "@/screens/Admin/Subscriptions";
 
 export default function App() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
   return (
-    <div className="max-w-[420px] mx-auto bg-cream min-h-screen relative">
+    <div className={isAdminRoute ? "min-h-screen w-full bg-slate-50 relative" : "app-container max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md"}>
       <AddPropertyProvider>
         <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
@@ -50,6 +60,8 @@ export default function App() {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
         <Route path="/visitors-enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
+        <Route path="/enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
+        <Route path="/subscription" element={<ProtectedRoute><SubscriptionDetails /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><ComingSoon title="Settings" /></ProtectedRoute>} />
 
         <Route path="/my-properties" element={<ProtectedRoute><MyProperties /></ProtectedRoute>} />
@@ -60,6 +72,12 @@ export default function App() {
         <Route path="/property/:id/report" element={<ProtectedRoute><ReportProperty /></ProtectedRoute>} />
         <Route path="/property/:id/reviews" element={<ProtectedRoute><PropertyReviews /></ProtectedRoute>} />
         <Route path="/agency/:id" element={<AgencyProfile />} />
+        
+        {/* Legal & Compliance Routes */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsConditions />} />
+        <Route path="/refund" element={<RefundPolicy />} />
+        <Route path="/contact-us" element={<ContactUs />} />
 
         {/* Add Property wizard — shares form state via AddPropertyProvider */}
         <Route
@@ -67,7 +85,8 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Routes>
-                <Route index element={<ChooseRole />} />
+                <Route index element={<Navigate to="role" replace />} />
+                <Route path="role" element={<ChooseRole />} />
                 <Route path="details" element={<DetailsStep1 />} />
                 <Route path="media" element={<MediaStep2 />} />
                 <Route path="more-info" element={<MoreInfoStep3 />} />
@@ -91,6 +110,8 @@ export default function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="logs" element={<AdminActivityLogs />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="role-upgrades" element={<RoleUpgrades />} />
+          <Route path="subscriptions" element={<Subscriptions />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

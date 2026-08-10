@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, MapPin, X, Star, Maximize, BedDouble, Bath, Compass } from "lucide-react";
+import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye } from "lucide-react";
 import { api, ApiPropertyDetail, mediaUrl, formatArea } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import RoleBadge from "@/components/RoleBadge";
 import BottomNav from "@/components/BottomNav";
+import PropertyViewersModal from "@/components/PropertyViewersModal";
+import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -28,13 +30,17 @@ function getYoutubeEmbedUrl(url: string | null | undefined): string | null {
 export default function PublicPropertyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, user, login } = useAuth();
   const [property, setProperty] = useState<ApiPropertyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showViewersModal, setShowViewersModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const isOwner = user && property && user.id === property.ownerId;
+  const hasAccess = !!property?.contactAccess;
 
   useEffect(() => {
     if (!id) return;
@@ -83,6 +89,29 @@ export default function PublicPropertyDetails() {
       await api.sendEnquiry(property.id, `Clicked ${type} contact button`);
     } catch (err) {
       console.error("Failed to log contact click:", err);
+    }
+  };
+
+  const handleContactClick = async (e: React.MouseEvent, type: "Call" | "WhatsApp") => {
+    e.preventDefault();
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    if (!property) return;
+    
+    try {
+      // Record click inquiry on backend dynamically (verifies 20 click limit)
+      await api.recordClickInquiry(property.id);
+
+      const targetUrl = type === "Call"
+        ? `tel:${property.contactNumber}`
+        : `https://wa.me/91${property.whatsappNumber}?text=${waMessage}`;
+      
+      window.open(targetUrl, "_blank");
+      logClickEnquiry(type);
+    } catch (err: any) {
+      setShowPaywall(true);
     }
   };
 
@@ -195,21 +224,52 @@ View Details: ${window.location.origin}/property/${property.id}`;
         <div className="bg-white rounded-2xl border border-charcoal/5 p-4 shadow-sm flex flex-col gap-3">
           <div className="flex justify-between items-start gap-3">
             <div>
-              <h1 className="font-display font-extrabold text-2xl text-ink leading-none">
-                {formatPrice(property.price)}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-display font-extrabold text-2xl text-ink leading-none">
+                  {formatPrice(property.price)}
+                </h1>
+                {property.isPriceNegotiable && (
+                  <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-500/10 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    Negotiable
+                  </span>
+                )}
+              </div>
               <p className="text-sm font-bold text-charcoal mt-1.5">
                 {property.propertyType} in {property.district}
               </p>
               <p className="flex items-center gap-1 text-[11px] text-slate mt-1">
                 <MapPin size={12} className="text-slate/60" /> {property.address}
               </p>
+              {isOwner ? (
+                <button 
+                  onClick={() => setShowViewersModal(true)}
+                  className="flex items-center gap-1 text-[10px] text-indigo-600 bg-indigo-50 hover:bg-indigo-100/85 px-2 py-0.5 rounded-full font-bold select-none cursor-pointer mt-1.5 transition-colors"
+                >
+                  <Eye size={14} className="text-indigo-500" />
+                  <span>{property.views || 0} views (Click to see who viewed)</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1 text-[10px] text-slate/75 mt-1.5 pl-0.5">
+                  <Eye size={14} className="text-slate/60" />
+                  <span>{property.views || 0} views</span>
+                </div>
+              )}
             </div>
             
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               {property.listingRole && (
                 <button 
-                  onClick={() => setShowContactModal(true)}
+                  onClick={() => {
+                    if (!token) {
+                      navigate("/login");
+                      return;
+                    }
+                    if (!hasAccess) {
+                      setShowPaywall(true);
+                    } else {
+                      setShowContactModal(true);
+                    }
+                  }}
                   className="hover:opacity-95 active:scale-95 transition-all select-none cursor-pointer"
                   title="View contact details"
                 >
@@ -307,26 +367,43 @@ View Details: ${window.location.origin}/property/${property.id}`;
         {/* Listed by / Contact details box */}
         <div className="bg-white rounded-2xl border border-charcoal/5 p-4 shadow-sm flex flex-col gap-3">
           <button 
-            onClick={() => setShowContactModal(true)}
+            onClick={() => {
+              if (!token) {
+                navigate("/login");
+                return;
+              }
+              if (!hasAccess) {
+                setShowPaywall(true);
+              } else {
+                setShowContactModal(true);
+              }
+            }}
             className="w-full bg-slate-50/50 hover:bg-slate-100/60 rounded-xl border border-charcoal/5 p-3 text-left active:scale-[0.99] transition-all cursor-pointer flex justify-between items-center"
           >
             <div>
               <p className="text-[9px] font-bold text-slate/70 tracking-wider uppercase leading-none">Listed by</p>
-              <div className="flex items-center gap-2 mt-1.5">
+              <div className="flex items-start gap-2 mt-1.5">
                 {property.listingRole === "Agency" && property.agencyLogoUrl && (
                   <img 
                     src={mediaUrl(property.agencyLogoUrl)} 
                     alt="Logo" 
-                    className="w-5.5 h-5.5 rounded-full object-cover border border-charcoal/8"
+                    className="w-10 h-10 rounded-full object-cover border border-charcoal/8 shrink-0 mt-0.5"
                   />
                 )}
-                <span className="font-display font-bold text-ink text-xs hover:underline truncate max-w-[150px]">
-                  {property.listingRole === "Agency"
-                    ? (property.agencyName || "Agency")
-                    : property.listingRole === "Broker"
-                    ? (property.brokerName || "Broker")
-                    : (property.ownerName || "Owner")}
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-display font-bold text-ink text-xs hover:underline truncate max-w-[170px]">
+                    {property.listingRole === "Agency"
+                      ? (property.agencyName || "Agency")
+                      : property.listingRole === "Broker"
+                      ? (property.brokerName || "Broker")
+                      : (property.ownerName || "Owner")}
+                  </span>
+                  {property.createdAt && (
+                    <span className="text-[9px] text-slate/50 font-bold mt-0.5">
+                      Listed Date: {new Date(property.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Contact</span>
@@ -335,17 +412,17 @@ View Details: ${window.location.origin}/property/${property.id}`;
           {/* Primary Contact CTAs */}
           <div className="grid grid-cols-2 gap-2.5 mt-1">
             <a
-              href={property.contactNumber || property.ownerPhone ? `tel:${property.contactNumber || property.ownerPhone}` : undefined}
-              onClick={() => logClickEnquiry("Call")}
+              href={hasAccess && (property.contactNumber || property.ownerPhone) ? `tel:${property.contactNumber || property.ownerPhone}` : undefined}
+              onClick={(e) => handleContactClick(e, "Call")}
               className="flex items-center justify-center gap-1.5 rounded-xl py-3 bg-ink text-cream font-display font-bold text-xs hover:bg-black transition-all active:scale-[0.98]"
             >
               <Phone size={14} /> Call
             </a>
             <a
-              href={property.whatsappNumber || property.ownerPhone ? `https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${waMessage}` : undefined}
-              target="_blank"
+              href={hasAccess && (property.whatsappNumber || property.ownerPhone) ? `https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${waMessage}` : undefined}
+              target={hasAccess ? "_blank" : undefined}
               rel="noreferrer"
-              onClick={() => logClickEnquiry("WhatsApp")}
+              onClick={(e) => handleContactClick(e, "WhatsApp")}
               className="flex items-center justify-center gap-1.5 rounded-xl py-3 border border-forest text-forest font-display font-bold text-xs hover:bg-forest/5 transition-all active:scale-[0.98]"
             >
               <MessageCircle size={14} /> WhatsApp
@@ -432,25 +509,25 @@ View Details: ${window.location.origin}/property/${property.id}`;
             <div className="w-full flex flex-col gap-2.5 mt-1 border-t border-slate-100 pt-4">
               {(property.contactNumber || property.ownerPhone) && (
                 <a
-                  href={`tel:${property.contactNumber || property.ownerPhone}`}
-                  onClick={() => logClickEnquiry("Call")}
+                  href={hasAccess ? `tel:${property.contactNumber || property.ownerPhone}` : undefined}
+                  onClick={(e) => handleContactClick(e, "Call")}
                   className="w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-cream text-xs font-bold font-display flex items-center justify-center gap-2.5 shadow-md transition-all active:scale-[0.98]"
                 >
                   <Phone size={14} />
-                  <span>Call: {property.contactNumber || property.ownerPhone}</span>
+                  <span>Call: {hasAccess ? (property.contactNumber || property.ownerPhone) : "+91 XXXXX XXXXX"}{hasAccess && property.useAdminContact && " (admin's)"}</span>
                 </a>
               )}
               
               {(property.whatsappNumber || property.ownerPhone) && (
                 <a
-                  href={`https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${waMessage}`}
-                  target="_blank"
+                  href={hasAccess ? `https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${waMessage}` : undefined}
+                  target={hasAccess ? "_blank" : undefined}
                   rel="noreferrer"
-                  onClick={() => logClickEnquiry("WhatsApp")}
+                  onClick={(e) => handleContactClick(e, "WhatsApp")}
                   className="w-full py-3 px-4 rounded-xl border border-forest hover:bg-forest/5 text-forest text-xs font-bold font-display flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]"
                 >
                   <MessageCircle size={14} className="fill-forest/5" />
-                  <span>WhatsApp: {property.whatsappNumber || property.ownerPhone}</span>
+                  <span>WhatsApp: {hasAccess ? (property.whatsappNumber || property.ownerPhone) : "+91 XXXXX XXXXX"}{hasAccess && property.useAdminContact && " (admin's)"}</span>
                 </a>
               )}
             </div>
@@ -458,6 +535,33 @@ View Details: ${window.location.origin}/property/${property.id}`;
         </div>
       )}
 
+      {showViewersModal && property && (
+        <PropertyViewersModal 
+          propertyId={property.id}
+          propertyTitle={property.title}
+          onClose={() => setShowViewersModal(false)}
+        />
+      )}
+      {showPaywall && (
+        <SubscriptionPaywallModal 
+          onClose={() => setShowPaywall(false)}
+          onSuccess={() => {
+            setShowPaywall(false);
+            if (user) {
+              login(localStorage.getItem("kr_token") || "", {
+                ...user,
+                subscriptionStatus: "active"
+              });
+            }
+            // Refresh property detail to unlock contact options
+            if (id) {
+              api.fetchProperty(id)
+                .then((data) => setProperty(data))
+                .catch((err) => console.error(err));
+            }
+          }}
+        />
+      )}
       <BottomNav />
     </div>
   );

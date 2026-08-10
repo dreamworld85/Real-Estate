@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { upload } from "../middleware/upload.js";
+import fs from "fs";
+import path from "path";
+import { spawn } from "child_process";
 
 const router = Router();
 
@@ -39,6 +42,16 @@ router.get("/settings/:key", async (req, res) => {
   }
 });
 
+// GET /api/admin/subscription-plans (Public subscription plans reader)
+router.get("/subscription-plans", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM subscription_plans");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Apply admin protection check to all subsequent routes
 router.use(checkAdminSession);
 
@@ -60,6 +73,34 @@ router.put("/settings/:key", upload.single("banner"), async (req, res) => {
       "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = ?",
       [key, value, value]
     );
+
+    // Dynamic Recalculation of User Trials
+    if (
+      key === "default_trial_days" || 
+      key === "default_trial_days_broker" || 
+      key === "default_trial_days_agency" ||
+      key === "default_trial_days_user"
+    ) {
+      const days = parseInt(value, 10);
+      if (!isNaN(days) && days >= 0) {
+        let role = "owner";
+        if (key === "default_trial_days_broker") role = "broker";
+        else if (key === "default_trial_days_agency") role = "agency";
+        else if (key === "default_trial_days_user") role = "user";
+
+        // Recalculate trial_ends_at for this role's users who don't have custom overrides
+        await pool.query(
+          "UPDATE users SET trial_ends_at = DATE_ADD(created_at, INTERVAL ? DAY) WHERE role = ? AND custom_trial_expiry IS NULL",
+          [days, role]
+        );
+        
+        const logAction = `Global trial settings updated for ${role} to ${days} days. User trial windows recalculated.`;
+        await pool.query(
+          "INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'System')",
+          [logAction]
+        );
+      }
+    }
 
     res.json({ message: "Setting updated successfully.", key, value });
   } catch (err) {
@@ -100,7 +141,7 @@ router.get("/stats", async (req, res) => {
 router.get("/users", async (req, res) => {
   try {
     const { search = "", role = "All" } = req.query;
-    let query = "SELECT id, name, email, phone, is_disabled, created_at FROM users WHERE 1=1";
+    let query = "SELECT id, name, email, phone, role, is_disabled, created_at FROM users WHERE 1=1";
     const params = [];
 
     if (search) {
@@ -110,8 +151,7 @@ router.get("/users", async (req, res) => {
     }
 
     if (role !== "All") {
-      // Find users with specific listings matching role
-      query += " AND id IN (SELECT DISTINCT owner_id FROM properties WHERE listing_role = ?)";
+      query += " AND role = ?";
       params.push(role);
     }
 
@@ -128,7 +168,7 @@ router.get("/users", async (req, res) => {
 router.get("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const [[user]] = await pool.query("SELECT id, name, email, phone, is_disabled, created_at FROM users WHERE id = ?", [id]);
+    const [[user]] = await pool.query("SELECT id, name, email, phone, role, is_disabled, custom_trial_expiry, trial_ends_at, is_free_subscription_granted, created_at FROM users WHERE id = ?", [id]);
     if (!user) return res.status(404).json({ message: "User not found." });
 
     const [[{ count: listings }]] = await pool.query("SELECT COUNT(*) as count FROM properties WHERE owner_id = ? AND status = 'Active'", [id]);
@@ -141,6 +181,14 @@ router.get("/users/:id", async (req, res) => {
       [id]
     );
 
+    const [mediaRows] = await pool.query(
+      `SELECT m.url, m.property_id, p.title AS property_title 
+       FROM property_media m
+       JOIN properties p ON p.id = m.property_id
+       WHERE p.owner_id = ? AND m.media_type = 'image'`,
+      [id]
+    );
+
     res.json({
       ...user,
       listings,
@@ -148,6 +196,7 @@ router.get("/users/:id", async (req, res) => {
       saved,
       reviews,
       properties: userProperties,
+      uploadedPhotos: mediaRows,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -171,18 +220,109 @@ router.put("/users/:id/status", async (req, res) => {
   }
 });
 
-// DELETE /api/admin/users/:id
-router.delete("/users/:id", async (req, res) => {
+// PUT /api/admin/users/:id/subscription-override
+router.put("/users/:id/subscription-override", async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query("DELETE FROM users WHERE id = ?", [id]);
+    const { custom_trial_expiry, is_free_subscription_granted } = req.body;
 
-    // Log activity
-    await pool.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, 'User completely deleted by Admin', 'Users')");
+    const trialExpiryVal = custom_trial_expiry ? new Date(custom_trial_expiry) : null;
 
-    res.json({ success: true });
+    await pool.query(
+      "UPDATE users SET custom_trial_expiry = ?, is_free_subscription_granted = ? WHERE id = ?",
+      [trialExpiryVal, is_free_subscription_granted ? 1 : 0, id]
+    );
+
+    const action = `User ID #${id} subscription overrides updated by Admin (Free Grant: ${is_free_subscription_granted ? 'Yes' : 'No'}, Trial Expiry: ${custom_trial_expiry || 'None'})`;
+    await pool.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')", [action]);
+
+    res.json({ success: true, message: "Subscription overrides updated successfully." });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/users/:id
+router.delete("/users/:id", async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    await conn.beginTransaction();
+
+    // 1. Fetch user avatar & logo
+    const [[user]] = await conn.query("SELECT avatar_url, agency_logo_url FROM users WHERE id = ?", [id]);
+    
+    // 2. Fetch properties owned by this user
+    const [properties] = await conn.query("SELECT id, agency_logo_url FROM properties WHERE owner_id = ?", [id]);
+    
+    // 3. Fetch media files associated with these properties
+    const propIds = properties.map(p => p.id);
+    let mediaFiles = [];
+    if (propIds.length > 0) {
+      [mediaFiles] = await conn.query(
+        `SELECT url FROM property_media WHERE property_id IN (${propIds.map(() => "?").join(",")})`,
+        propIds
+      );
+    }
+
+    // Collect all media paths to delete
+    const pathsToDelete = [];
+    if (user) {
+      if (user.avatar_url) pathsToDelete.push(user.avatar_url);
+      if (user.agency_logo_url) pathsToDelete.push(user.agency_logo_url);
+    }
+    for (const p of properties) {
+      if (p.agency_logo_url) pathsToDelete.push(p.agency_logo_url);
+    }
+    for (const m of mediaFiles) {
+      if (m.url) pathsToDelete.push(m.url);
+    }
+
+    // 4. Perform permanent deletion in database tables
+    await conn.query("DELETE FROM notifications WHERE user_id = ? OR sender_id = ?", [id, id]);
+    await conn.query("DELETE FROM activity_logs WHERE user_id = ?", [id]);
+    await conn.query("DELETE FROM role_switch_requests WHERE user_id = ?", [id]);
+    await conn.query("DELETE FROM enquiries WHERE visitor_id = ?", [id]);
+    await conn.query("DELETE FROM saved_properties WHERE user_id = ?", [id]);
+    await conn.query("DELETE FROM contact_clicks WHERE user_id = ?", [id]);
+    await conn.query("DELETE FROM property_reviews WHERE user_id = ?", [id]);
+
+    if (propIds.length > 0) {
+      await conn.query(`DELETE FROM properties WHERE owner_id = ?`, [id]);
+    }
+
+    await conn.query("DELETE FROM users WHERE id = ?", [id]);
+
+    // Log admin activity
+    const actionMsg = `User ID #${id} completely deleted by Admin`;
+    await conn.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')", [actionMsg]);
+
+    await conn.commit();
+
+    // 5. Delete physical files from disk
+    const serverUploadsDir = path.join(process.cwd(), "uploads");
+    for (const relativePath of pathsToDelete) {
+      if (typeof relativePath === "string" && relativePath.startsWith("/uploads/")) {
+        const filename = relativePath.substring("/uploads/".length);
+        const fullPath = path.join(serverUploadsDir, filename);
+        try {
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+            console.log("Successfully deleted physical file:", fullPath);
+          }
+        } catch (err) {
+          console.error("Failed to delete physical file:", fullPath, err);
+        }
+      }
+    }
+
+    res.json({ success: true, message: "User and all associated data permanently deleted." });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 
@@ -248,17 +388,56 @@ router.put("/properties/:id/status", async (req, res) => {
 
 // DELETE /api/admin/properties/:id
 router.delete("/properties/:id", async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    await pool.query("DELETE FROM properties WHERE id = ?", [id]);
+    await conn.beginTransaction();
+
+    // 1. Fetch property uploader agency logo and media urls
+    const [[property]] = await conn.query("SELECT agency_logo_url FROM properties WHERE id = ?", [id]);
+    const [mediaFiles] = await conn.query("SELECT url FROM property_media WHERE property_id = ?", [id]);
+
+    const pathsToDelete = [];
+    if (property && property.agency_logo_url) {
+      pathsToDelete.push(property.agency_logo_url);
+    }
+    for (const m of mediaFiles) {
+      if (m.url) pathsToDelete.push(m.url);
+    }
+
+    // 2. Perform hard delete from DB
+    await conn.query("DELETE FROM properties WHERE id = ?", [id]);
 
     // Log activity
     const action = `Property ID #${id} deleted by Admin`;
-    await pool.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Properties')", [action]);
+    await conn.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Properties')", [action]);
+
+    await conn.commit();
+
+    // 3. Delete physical files from disk
+    const serverUploadsDir = path.join(process.cwd(), "uploads");
+    for (const relativePath of pathsToDelete) {
+      if (typeof relativePath === "string" && relativePath.startsWith("/uploads/")) {
+        const filename = relativePath.substring("/uploads/".length);
+        const fullPath = path.join(serverUploadsDir, filename);
+        try {
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+            console.log("Successfully deleted physical file:", fullPath);
+          }
+        } catch (err) {
+          console.error("Failed to delete physical file:", fullPath, err);
+        }
+      }
+    }
 
     res.json({ success: true });
   } catch (err) {
+    await conn.rollback();
+    console.error(err);
     res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 
@@ -408,6 +587,289 @@ router.delete("/reviews/:id", async (req, res) => {
     res.json({ message: "Review deleted successfully." });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/subscription-plans (Admin updates plan pricing)
+router.put("/subscription-plans", async (req, res) => {
+  try {
+    const { plans } = req.body;
+    if (!Array.isArray(plans)) {
+      return res.status(400).json({ message: "Invalid payload format. Expected array of plans." });
+    }
+
+    for (const plan of plans) {
+      const featuresJson = Array.isArray(plan.features) 
+        ? JSON.stringify(plan.features) 
+        : (plan.features || null);
+
+      await pool.query(
+        `INSERT INTO subscription_plans (role, duration_months, price, description, discount, features)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE price = VALUES(price), description = VALUES(description), discount = VALUES(discount), features = VALUES(features)`,
+        [plan.role, plan.duration_months || 1, plan.price, plan.description || "", plan.discount || 0.00, featuresJson]
+      );
+    }
+
+    // Log activity
+    await pool.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, 'Subscription plans pricing updated by Admin', 'System')");
+
+    res.json({ success: true, message: "Subscription plans updated successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/role-switches (Admin reviews upgrade requests)
+// GET /api/admin/notifications
+router.get("/notifications", async (req, res) => {
+  try {
+    // 1. Fetch recent user registrations (last 5)
+    const [users] = await pool.query(
+      "SELECT id, name, email, phone, created_at FROM users ORDER BY created_at DESC LIMIT 5"
+    );
+    const userNotifications = users.map(u => ({
+      id: `user-${u.id}`,
+      type: "Registration",
+      title: "New User Registration",
+      message: `${u.name} registered as a buyer/user.`,
+      time: u.created_at,
+      link: `/admin/users/${u.id}`
+    }));
+
+    // 2. Fetch properties activated under Admin contact (last 5)
+    const [properties] = await pool.query(
+      `SELECT p.id, p.title, p.created_at, u.name AS owner_name 
+       FROM properties p 
+       JOIN users u ON p.owner_id = u.id 
+       WHERE p.use_admin_contact = 1 AND p.status = 'Active' 
+       ORDER BY p.created_at DESC LIMIT 5`
+    );
+    const propertyNotifications = properties.map(p => ({
+      id: `prop-${p.id}`,
+      type: "Activation",
+      title: "Admin Contact Activation",
+      message: `Property "${p.title}" activated under Admin contact fallback by ${p.owner_name}.`,
+      time: p.created_at,
+      link: `/admin/properties/${p.id}`
+    }));
+
+    // 3. Fetch pending role switch requests
+    const [roleSwitches] = await pool.query(
+      `SELECT r.id, r.requested_role, r.created_at, u.name AS user_name 
+       FROM role_switch_requests r 
+       JOIN users u ON r.user_id = u.id 
+       WHERE r.status = 'Pending' 
+       ORDER BY r.created_at DESC LIMIT 5`
+    );
+    const switchNotifications = roleSwitches.map(r => ({
+      id: `switch-${r.id}`,
+      type: "RoleUpgrade",
+      title: "Pending Role Switch",
+      message: `${r.user_name} requested role switch to ${r.requested_role}.`,
+      time: r.created_at,
+      link: `/admin/role-upgrades`
+    }));
+
+    // 4. Fetch recent profile self-deletions from activity_logs (last 5)
+    const [deletions] = await pool.query(
+      `SELECT id, action, created_at FROM activity_logs 
+       WHERE user_id IS NULL AND action LIKE '%self-deleted their account%' 
+       ORDER BY created_at DESC LIMIT 5`
+    );
+    const deletionNotifications = deletions.map(d => ({
+      id: `deletion-${d.id}`,
+      type: "Deletion",
+      title: "Account Self-Deletion",
+      message: d.action,
+      time: d.created_at,
+      link: null
+    }));
+
+    // Combine and sort by time desc
+    const allNotifications = [
+      ...userNotifications,
+      ...propertyNotifications,
+      ...switchNotifications,
+      ...deletionNotifications
+    ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    res.json(allNotifications.slice(0, 10)); // return top 10 notifications
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch admin notifications" });
+  }
+});
+
+router.get("/role-switches", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT rs.id, rs.requested_role, rs.status, rs.created_at,
+             u.id as user_id, u.name as user_name, u.email as user_email, u.phone as user_phone
+      FROM role_switch_requests rs
+      JOIN users u ON rs.user_id = u.id
+      ORDER BY rs.created_at DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/role-switches/:id/approve
+router.put("/role-switches/:id/approve", async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    await conn.beginTransaction();
+
+    const [requestRows] = await conn.query(
+      "SELECT user_id, requested_role FROM role_switch_requests WHERE id = ?",
+      [id]
+    );
+    if (requestRows.length === 0) {
+      return res.status(404).json({ message: "Request not found." });
+    }
+    const { user_id, requested_role } = requestRows[0];
+
+    // Fetch global default trial days setting value based on role
+    const finalRole = String(requested_role || "").toLowerCase();
+    const settingKey = finalRole === "agency" ? "default_trial_days_agency" : (finalRole === "broker" ? "default_trial_days_broker" : "default_trial_days");
+    const [[daysRow]] = await conn.query("SELECT `value` FROM settings WHERE `key` = ?", [settingKey]);
+    const defaultDays = daysRow ? parseInt(daysRow.value, 10) : (finalRole === "agency" ? 3 : 5);
+
+    // Update user role and initialize trial
+    await conn.query("UPDATE users SET role = ?, trial_ends_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ? DAY) WHERE id = ?", [finalRole, defaultDays, user_id]);
+    
+    // Update request status
+    await conn.query("UPDATE role_switch_requests SET status = 'Approved' WHERE id = ?", [id]);
+
+    // Send user-facing notification
+    const notificationMessage = `Your role switch request has been approved! Your account role is now upgraded to ${requested_role}.`;
+    await conn.query(
+      "INSERT INTO notifications (user_id, sender_id, type, message) VALUES (?, null, 'RoleUpgrade', ?)",
+      [user_id, notificationMessage]
+    );
+
+    // Log activity
+    const action = `Role switch request approved for user ID #${user_id}. New Role: ${requested_role}`;
+    await conn.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')", [action]);
+
+    await conn.commit();
+    res.json({ success: true });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// PUT /api/admin/role-switches/:id/reject
+router.put("/role-switches/:id/reject", async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    await conn.beginTransaction();
+
+    const [requestRows] = await conn.query(
+      "SELECT user_id, requested_role FROM role_switch_requests WHERE id = ?",
+      [id]
+    );
+    if (requestRows.length > 0) {
+      const { user_id, requested_role } = requestRows[0];
+      await conn.query("UPDATE role_switch_requests SET status = 'Rejected' WHERE id = ?", [id]);
+      
+      const notificationMessage = `Your role switch request to ${requested_role} was declined by the administrator.`;
+      await conn.query(
+        "INSERT INTO notifications (user_id, sender_id, type, message) VALUES (?, null, 'RoleUpgrade', ?)",
+        [user_id, notificationMessage]
+      );
+    }
+
+    await conn.commit();
+    res.json({ success: true });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// GET /api/admin/subscription-stats
+router.get("/subscription-stats", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT role, COUNT(*) as active_subscribers 
+      FROM users 
+      WHERE subscription_status = 'active' 
+      GROUP BY role
+    `);
+    const stats = { user: 0, owner: 0, broker: 0, agency: 0 };
+    rows.forEach(r => {
+      const roleKey = String(r.role || "").toLowerCase();
+      if (stats[roleKey] !== undefined) {
+        stats[roleKey] = r.active_subscribers;
+      }
+    });
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/database/export
+router.get("/database/export", checkAdminSession, (req, res) => {
+  try {
+    const host = process.env.DB_HOST || "localhost";
+    const port = process.env.DB_PORT || "3306";
+    const user = process.env.DB_USER || "root";
+    const password = process.env.DB_PASSWORD || "";
+    const database = process.env.DB_NAME || "realastate_sparrow";
+
+    const xamppDumpPath = "C:\\xampp\\mysql\\bin\\mysqldump.exe";
+    const dumpTool = fs.existsSync(xamppDumpPath) ? xamppDumpPath : "mysqldump";
+
+    const args = [
+      `-h`, host,
+      `--port=${port}`,
+      `-u`, user,
+    ];
+    if (password) {
+      args.push(`-p${password}`);
+    }
+    args.push(database);
+
+    console.log(`Starting database export using ${dumpTool} for ${database}...`);
+
+    const dumpProcess = spawn(dumpTool, args);
+
+    res.setHeader("Content-Disposition", `attachment; filename="${database}_backup_${Date.now()}.sql"`);
+    res.setHeader("Content-Type", "application/sql");
+
+    dumpProcess.stdout.pipe(res);
+
+    let errorOutput = "";
+    dumpProcess.stderr.on("data", (data) => {
+      errorOutput += data.toString();
+    });
+
+    dumpProcess.on("close", (code) => {
+      if (code !== 0) {
+        console.error(`Database export failed with code ${code}: ${errorOutput}`);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Failed to generate database dump: " + errorOutput });
+        }
+      } else {
+        console.log("Database export completed successfully.");
+      }
+    });
+  } catch (err) {
+    console.error("Database export error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 

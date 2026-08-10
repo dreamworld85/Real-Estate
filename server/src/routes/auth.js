@@ -17,16 +17,22 @@ function toPublicUser(row) {
     phone: row.phone,
     location: row.location,
     avatarUrl: row.avatar_url,
+    trialEndsAt: row.trial_ends_at,
+    subscriptionStatus: row.subscription_status,
+    razorpaySubscriptionId: row.razorpay_subscription_id,
+    role: row.role,
   };
 }
 
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, role } = req.body;
     if (!name || !password || (!email && !phone)) {
       return res.status(400).json({ error: "Name, password, and email or phone are required" });
     }
+
+    const userRole = "user";
 
     const [existing] = await pool.query(
       "SELECT id FROM users WHERE email = ? OR phone = ?",
@@ -36,10 +42,21 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ error: "An account with this email or phone already exists" });
     }
 
+    let trialEnds = null;
+    if (userRole === "Broker" || userRole === "Agency" || userRole === "Owner") {
+      const settingKey = userRole === "Agency" ? "default_trial_days_agency" : (userRole === "Broker" ? "default_trial_days_broker" : "default_trial_days");
+      const [[daysRow]] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [settingKey]);
+      const defaultDays = daysRow ? parseInt(daysRow.value, 10) : (userRole === "Agency" ? 3 : 5);
+
+      const date = new Date();
+      date.setDate(date.getDate() + defaultDays);
+      trialEnds = date;
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      "INSERT INTO users (name, email, phone, password_hash) VALUES (?, ?, ?, ?)",
-      [name, email || null, phone || null, passwordHash]
+      "INSERT INTO users (name, email, phone, password_hash, role, trial_ends_at) VALUES (?, ?, ?, ?, ?, ?)",
+      [name, email || null, phone || null, passwordHash, userRole, trialEnds]
     );
 
     const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
@@ -60,9 +77,10 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Identifier and password are required" });
     }
 
+    const trimmed = identifier.trim();
     const [rows] = await pool.query(
       "SELECT * FROM users WHERE email = ? OR phone = ?",
-      [identifier, identifier]
+      [trimmed, trimmed]
     );
     if (rows.length === 0) {
       return res.status(401).json({ error: "Invalid credentials" });

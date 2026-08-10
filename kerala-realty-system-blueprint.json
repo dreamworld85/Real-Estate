@@ -1,0 +1,168 @@
+{
+  "blueprintName": "Kerala Realty System Blueprint",
+  "version": "1.0.0",
+  "projectMetadata": {
+    "appName": "Kerala Realty",
+    "architecture": "Client-Server (Single Page Application)",
+    "techStack": {
+      "frontend": "React, React Router DOM, Tailwind CSS, Lucide Icons, Fetch API",
+      "backend": "Node.js, Express, Nodemon, JWT, Multer",
+      "database": "MySQL",
+      "paymentGateway": "Razorpay"
+    }
+  },
+  "databaseSchema": {
+    "users": {
+      "description": "Stores user accounts and their current active subscription status and role.",
+      "fields": {
+        "id": "INT AUTO_INCREMENT PRIMARY KEY",
+        "name": "VARCHAR(255) NOT NULL",
+        "email": "VARCHAR(255) UNIQUE NULL",
+        "phone": "VARCHAR(50) UNIQUE NULL",
+        "whatsapp_number": "VARCHAR(50) NULL",
+        "password": "VARCHAR(255) NOT NULL",
+        "role": "ENUM('owner','broker','agency','user','Admin') DEFAULT 'user'",
+        "trial_ends_at": "DATETIME NULL",
+        "subscription_status": "VARCHAR(50) NULL",
+        "subscription_expires_at": "DATETIME NULL",
+        "subscription_duration_months": "INT NULL",
+        "razorpay_subscription_id": "VARCHAR(255) NULL",
+        "is_free_subscription_granted": "TINYINT(1) DEFAULT 0",
+        "is_disabled": "TINYINT(1) DEFAULT 0",
+        "last_login": "TIMESTAMP NULL",
+        "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      }
+    },
+    "properties": {
+      "description": "Stores property listings submitted by owners, brokers, and agencies.",
+      "fields": {
+        "id": "INT AUTO_INCREMENT PRIMARY KEY",
+        "owner_id": "INT NOT NULL (FK users.id)",
+        "title": "VARCHAR(255) NOT NULL",
+        "property_type": "VARCHAR(100) NOT NULL",
+        "purpose": "VARCHAR(50) NOT NULL",
+        "price": "DECIMAL(15,2) NOT NULL",
+        "area_sqft": "INT NOT NULL",
+        "address": "TEXT NOT NULL",
+        "district": "VARCHAR(100) NOT NULL",
+        "bedrooms": "INT DEFAULT 0",
+        "bathrooms": "INT DEFAULT 0",
+        "furnishing": "VARCHAR(100) NULL",
+        "facing": "VARCHAR(100) NULL",
+        "property_age": "VARCHAR(100) NULL",
+        "description": "TEXT NULL",
+        "listing_role": "VARCHAR(50) NOT NULL",
+        "status": "ENUM('Draft','Pending','Active','Inactive','Rejected') DEFAULT 'Pending'",
+        "views": "INT DEFAULT 0",
+        "youtube_url": "VARCHAR(255) NULL",
+        "contact_number": "VARCHAR(50) NULL",
+        "whatsapp_number": "VARCHAR(50) NULL",
+        "use_admin_contact": "TINYINT(1) DEFAULT 0",
+        "is_featured": "TINYINT(1) DEFAULT 0",
+        "is_price_negotiable": "TINYINT(1) DEFAULT 0",
+        "is_broker_personal_property": "TINYINT(1) DEFAULT 0",
+        "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      }
+    },
+    "subscription_plans": {
+      "description": "Stores the dynamic plans catalog offered to each role.",
+      "fields": {
+        "role": "VARCHAR(50) NOT NULL",
+        "duration_months": "INT NOT NULL",
+        "price": "DECIMAL(10,2) NOT NULL",
+        "discount": "DECIMAL(10,2) DEFAULT 0.00",
+        "description": "VARCHAR(255) NULL",
+        "features": "TEXT NULL",
+        "PRIMARY KEY": "(role, duration_months)"
+      }
+    },
+    "property_views": {
+      "description": "Tracks uniqueness of page views per property.",
+      "fields": {
+        "id": "INT AUTO_INCREMENT PRIMARY KEY",
+        "property_id": "INT NOT NULL (FK properties.id)",
+        "visitor_id": "INT NULL (FK users.id)",
+        "ip_address": "VARCHAR(100) NULL",
+        "user_agent": "VARCHAR(500) NULL",
+        "viewed_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      }
+    },
+    "contact_clicks": {
+      "description": "Tracks unique seller contact unveils by buyers.",
+      "fields": {
+        "id": "INT AUTO_INCREMENT PRIMARY KEY",
+        "user_id": "INT NOT NULL (FK users.id)",
+        "property_id": "INT NOT NULL (FK properties.id)",
+        "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "UNIQUE KEY": "(user_id, property_id)"
+      }
+    }
+  },
+  "frontendUserPages": {
+    "home": {
+      "features": [
+        "Welcome banner with customizable URL from settings",
+        "Filter pills for All, Land, House, Villa, Apartment categories",
+        "Search bar with text query matching location & title",
+        "Grid of featured and regular listings as Property Cards",
+        "Bottom Navigation for Home, Search, Add Property, Enquiries, Profile"
+      ]
+    },
+    "search": {
+      "features": [
+        "Dynamic query-based lookup including seller name, email, contact numbers, address, and location",
+        "Filters for Property Type, Purpose (For Sale / For Rent), and District",
+        "Sleek cards listing price, title, location, views (with Eye icon), and posted date"
+      ]
+    },
+    "propertyDetails": {
+      "features": [
+        "Dynamic banner image/video slider carousel",
+        "Dynamic Role Badge fetched synchronously from users.role",
+        "Views counter rendered next to small Eye icon",
+        "Primary action CTAs: Call and WhatsApp buttons",
+        "Automatic contact number fallback to Admin contact if owner has no active plan"
+      ]
+    },
+    "addPropertyWizard": {
+      "steps": [
+        "Step 1: Category (Commercial, Residential, Land), Purpose (Sale, Rent, Lease), Location details",
+        "Step 2: Media Uploader (Compact image thumbnails grid, horizontal video button)",
+        "Step 3: Details & Contact (Furnishing, Age dropdowns, WhatsApp, owner role choice: Owner, Broker, Agency which locks their profile role, personal broker checkbox)",
+        "Step 4: Review (Price, specifications summary with validation to confirm and publish)"
+      ]
+    },
+    "subscriptionCheckout": {
+      "features": [
+        "Role-specific pricing plans cards (1 Month, 6 Months, 1 Year durations)",
+        "Razorpay checkout integration on click of Buy Now button"
+      ]
+    }
+  },
+  "adminPanelPages": {
+    "pricingSettings": {
+      "layout": "2-column grid displaying pricing, discounts, duration, and feature lists for Owner, Broker, and Agency tiers",
+      "controls": "Allows adding, deleting, and modifying plans dynamically in the database"
+    },
+    "trialAndRoleUpgrades": {
+      "controls": "Admin approves pending role upgrade requests and extends or expires trial days dynamically"
+    },
+    "userAndPropertyManagement": {
+      "controls": [
+        "Ability to block, activate, or verify user profiles",
+        "View and moderate all property listings",
+        "Define fallback contact number settings"
+      ]
+    }
+  },
+  "businessLogicAndWorkflows": {
+    "onboarding": "New users sign up with a default role of 'user' (buyer) and are never prompted to pay until they perform seller actions.",
+    "freeInquiryThreshold": "Buyers can unlock details for up to 20 unique properties. Once exceeded, a checkout page unlocks to purchase a Buyer subscription.",
+    "roleTransitionLock": "When a buyer uploads their first property, they must pick a seller role (Owner, Broker, or Agency). This role is permanently locked into their user profile.",
+    "postingLimits": {
+      "Owner": "2 free listings initially, then up to 5 listings/month under a paid subscription.",
+      "BrokerAndAgency": "Up to 15-20 listings/month limit depending on plan settings."
+    },
+    "viewTracking": "Visits are tracked synchronously. Cooldown prevents counting duplicates from the same visitor ID or IP + User Agent within 24 hours. Owner visits are skipped."
+  }
+}

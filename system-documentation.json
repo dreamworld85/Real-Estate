@@ -1,0 +1,47 @@
+{
+  "appName": "Kerala Realty",
+  "techStack": {
+    "frontend": "React, Tailwind CSS, Lucide Icons",
+    "backend": "Node.js, Express",
+    "database": "MySQL"
+  },
+  "overview": {
+    "targetAudience": "Kerala-based property buyers, owners, brokers, and agencies",
+    "uiDesign": "Senior-friendly, optimized for single-screen views, compact layout design"
+  },
+  "userRolesAndWorkflows": {
+    "defaultRole": "user (buyer)",
+    "freeInquiryLimit": 20,
+    "roleTransition": "Permanent role lock (Owner, Broker, or Agency) upon first property creation step based on uploader contact info",
+    "adminRoleApproval": "Role switches and upgrades require explicit administrator approval via the admin console"
+  },
+  "postingLimitsAndSubscriptions": {
+    "limits": {
+      "Owner": "2 free listings initially, then up to 5 properties/month under paid plans",
+      "Broker": "15 to 20 property postings per month limit",
+      "Agency": "15 to 20 property postings per month limit"
+    },
+    "subscriptionPlans": {
+      "durations": [
+        "1 Month",
+        "6 Months",
+        "1 Year"
+      ],
+      "dynamicManagement": "Admin manages package features, pricing tiers, and discounts dynamically"
+    }
+  },
+  "viewTrackingSystem": {
+    "incrementLogic": "Real-time, synchronous increment (+1) per property detail page load",
+    "cooldownFilter": {
+      "authenticatedUser": "24-hour uniqueness cooldown scoped to visitor_id (prevents duplicate counting)",
+      "anonymousVisitor": "24-hour uniqueness cooldown scoped to IP Address + User Agent combination",
+      "ownerExclusion": "Owner visits to their own property pages are excluded from view stats"
+    },
+    "uiDisplay": "Eye icon (Lucide-react Eye) with view count rendered next to property cards and detail headers"
+  },
+  "adminControls": {
+    "pricingSettings": "Toggled via general settings panel (e.g., featured listings price)",
+    "freeTierTrialConfig": "Default trial days configured per user role (e.g., 5-30 days)",
+    "fallbackContact": "Option to fallback to admin contact number for listings uploaded under unpaid/inactive subscriptions"
+  }
+}

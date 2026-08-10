@@ -22,7 +22,11 @@ export interface AdminUser {
   name: string;
   email: string | null;
   phone: string | null;
+  role?: string | null;
   is_disabled: number;
+  custom_trial_expiry?: string | null;
+  trial_ends_at?: string | null;
+  is_free_subscription_granted?: number;
   created_at: string;
   listings?: number;
   enquiries?: number;
@@ -30,6 +34,7 @@ export interface AdminUser {
   messages?: number;
   reviews?: number;
   properties?: any[];
+  uploadedPhotos?: any[];
 }
 
 export interface AdminProperty {
@@ -207,5 +212,34 @@ export const adminApi = {
       headers: getAdminHeaders(),
     });
     if (!res.ok) throw new Error("Failed to delete review.");
+  },
+
+  async updateUserSubscriptionOverride(
+    userId: number | string,
+    customTrialExpiry: string | null,
+    isFreeSubscriptionGranted: boolean
+  ): Promise<void> {
+    const res = await fetch(`${API_URL}/api/admin/users/${userId}/subscription-override`, {
+      method: "PUT",
+      headers: getAdminHeaders(),
+      body: JSON.stringify({
+        custom_trial_expiry: customTrialExpiry,
+        is_free_subscription_granted: isFreeSubscriptionGranted,
+      }),
+    });
+    if (!res.ok) throw new Error("Failed to update user subscription overrides.");
+  },
+
+  async getNotifications(): Promise<{
+    id: string;
+    type: "Registration" | "Activation" | "RoleUpgrade";
+    title: string;
+    message: string;
+    time: string;
+    link: string;
+  }[]> {
+    const res = await fetch(`${API_URL}/api/admin/notifications`, { headers: getAdminHeaders() });
+    if (!res.ok) throw new Error("Failed to load notifications.");
+    return res.json();
   },
 };

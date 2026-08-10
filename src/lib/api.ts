@@ -6,8 +6,19 @@ export interface ApiUser {
   name: string;
   email: string | null;
   phone: string | null;
+  whatsappNumber?: string | null;
   location: string | null;
   avatarUrl: string | null;
+  trialEndsAt?: string | null;
+  subscriptionStatus?: "trial" | "active" | "expired" | "canceled" | null;
+  razorpaySubscriptionId?: string | null;
+  role?: "Owner" | "Broker" | "Agency" | "User" | null;
+  hasAccess?: boolean;
+  hasTrial?: boolean;
+  remainingDays?: number;
+  inquiryCount?: number;
+  propertiesCount?: number;
+  createdAt?: string | null;
 }
 
 export interface ApiProperty {
@@ -34,8 +45,14 @@ export interface ApiProperty {
   youtubeUrl?: string | null;
   createdAt: string;
   isSaved?: boolean;
+  isFeatured?: boolean;
+  isPriceNegotiable?: boolean;
+  useAdminContact?: boolean;
   avgRating?: number;
   ratingCount?: number;
+  ownerName?: string;
+  contactNumber?: string | null;
+  whatsappNumber?: string | null;
 }
 
 export interface ApiPropertyDetail extends ApiProperty {
@@ -49,6 +66,7 @@ export interface ApiPropertyDetail extends ApiProperty {
   brokerName?: string | null;
   agencyName?: string | null;
   agencyLogoUrl?: string | null;
+  contactAccess?: boolean;
 }
 
 export interface ApiPublicProfile extends ApiUser {
@@ -71,27 +89,45 @@ export interface ApiDashboardStats {
   recentVisitors: {
     visitorName: string;
     visitorLocation: string | null;
+    visitorPhone?: string | null;
+    visitorEmail?: string | null;
     propertyTitle: string;
     enquiredAt: string;
+    isLocked?: boolean;
   }[];
+  isTrialExpired?: boolean;
+  hasTrial?: boolean;
+  remainingDays?: number;
+  role?: string;
+  isSubscribed?: boolean;
 }
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("kr_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const adminToken = localStorage.getItem("kerala_realty_admin_token");
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (adminToken && window.location.pathname.startsWith("/admin")) {
+    headers["x-admin-auth"] = adminToken;
+  }
+  return headers;
 }
 
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Request failed with status ${res.status}`);
+    const err = new Error(body.error || `Request failed with status ${res.status}`);
+    Object.assign(err, body);
+    throw err;
   }
   if (res.status === 204) return undefined as T;
   return res.json();
 }
 
 export const api = {
-  async register(input: { name: string; email?: string; phone?: string; password: string }) {
+  async register(input: { name: string; email?: string; phone?: string; password: string; role?: string }) {
     const res = await fetch(`${API_URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -117,6 +153,18 @@ export const api = {
     return handle<ApiProperty[]>(res);
   },
 
+  async fetchFeaturedStatus() {
+    const res = await fetch(`${API_URL}/api/properties/featured-status`, { headers: authHeaders() });
+    return handle<{
+      isSubscribed: boolean;
+      featuredCount: number;
+      freeFeaturedLimit: number;
+      featuredPrice: number;
+      featuredText: string;
+      isEligibleForFree: boolean;
+    }>(res);
+  },
+
   async fetchMyProperties() {
     const res = await fetch(`${API_URL}/api/properties/mine`, { headers: authHeaders() });
     return handle<ApiProperty[]>(res);
@@ -125,6 +173,19 @@ export const api = {
   async fetchProperty(id: number | string) {
     const res = await fetch(`${API_URL}/api/properties/${id}`, { headers: authHeaders() });
     return handle<ApiPropertyDetail>(res);
+  },
+
+  async fetchPropertyViewers(id: number | string) {
+    const res = await fetch(`${API_URL}/api/properties/${id}/viewers`, { headers: authHeaders() });
+    return handle<{
+      id: number;
+      viewed_at: string;
+      visitor_id: number | null;
+      visitor_name: string | null;
+      visitor_email: string | null;
+      visitor_phone: string | null;
+      visitor_avatar: string | null;
+    }[]>(res);
   },
 
   async toggleSaveProperty(id: number) {
@@ -149,9 +210,17 @@ export const api = {
     return handle<{ ok: boolean }>(res);
   },
 
+  async recordClickInquiry(propertyId: number) {
+    const res = await fetch(`${API_URL}/api/properties/${propertyId}/click-inquiry`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    return handle<{ success: boolean; remainingClicks?: number }>(res);
+  },
+
   async fetchMyProfile() {
     const res = await fetch(`${API_URL}/api/users/me`, { headers: authHeaders() });
-    return handle<ApiUser>(res);
+    return handle<ApiUser & { hasTrial: boolean; remainingDays: number; isSubscribed: boolean; inquiryCount: number; propertiesCount: number }>(res);
   },
 
   async updateMyProfile(input: Partial<Pick<ApiUser, "name" | "phone" | "email" | "location">>) {
@@ -161,6 +230,17 @@ export const api = {
       body: JSON.stringify(input),
     });
     return handle<ApiUser>(res);
+  },
+
+  async setupRole(formData: FormData) {
+    const res = await fetch(`${API_URL}/api/users/setup-role`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("kr_token")}`
+      },
+      body: formData,
+    });
+    return handle<{ success: boolean; message: string; user: ApiUser }>(res);
   },
 
   async fetchMyStats() {
@@ -179,7 +259,7 @@ export const api = {
       headers: authHeaders(), // don't set Content-Type — browser sets multipart boundary
       body: formData,
     });
-    return handle<{ id: number; status: string }>(res);
+    return handle<{ id: number; status: string; isOverLimit?: boolean; user?: ApiUser }>(res);
   },
 
   async updateProperty(id: number | string, formData: FormData) {
@@ -191,13 +271,21 @@ export const api = {
     return handle<{ success: boolean; message: string }>(res);
   },
 
-  async updatePropertyStatus(id: number, status: "Active" | "Inactive" | "Draft") {
+  async updatePropertyStatus(id: number, status: "Active" | "Inactive" | "Draft", useAdminContact?: boolean) {
     const res = await fetch(`${API_URL}/api/properties/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, useAdminContact }),
     });
-    return handle<{ id: number; status: string }>(res);
+    return handle<{ id: number; status: string; useAdminContact?: boolean }>(res);
+  },
+
+  async restorePropertyContact(id: number | string) {
+    const res = await fetch(`${API_URL}/api/properties/${id}/restore-contact`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    return handle<{ success: boolean; message: string }>(res);
   },
 
   async deleteProperty(id: number) {
@@ -231,9 +319,156 @@ export const api = {
     return handle<{ message: string }>(res);
   },
 
+  async initiateSubscription(durationMonths: number) {
+    const res = await fetch(`${API_URL}/api/payments/create-subscription`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ durationMonths }),
+    });
+    return handle<{ id: string; amount: number; currency: string }>(res);
+  },
+
+  async verifySubscription(paymentData: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    durationMonths: number;
+  }) {
+    const res = await fetch(`${API_URL}/api/payments/verify-subscription`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(paymentData),
+    });
+    return handle<{ success: boolean }>(res);
+  },
+
+  async initiateFeaturedPayment(propertyId: number) {
+    const res = await fetch(`${API_URL}/api/payments/create-featured-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ propertyId }),
+    });
+    return handle<{ id: string; amount: number; currency: string; propertyId: number }>(res);
+  },
+
+  async verifyFeaturedPayment(paymentData: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    propertyId: number;
+  }) {
+    const res = await fetch(`${API_URL}/api/payments/verify-featured-payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(paymentData),
+    });
+    return handle<{ success: boolean }>(res);
+  },
+
+  async featureProperty(id: number) {
+    const res = await fetch(`${API_URL}/api/properties/${id}/feature`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    return handle<{ success: boolean; message: string }>(res);
+  },
+
   async fetchSetting(key: string): Promise<{ key: string; value: string }> {
     const res = await fetch(`${API_URL}/api/admin/settings/${key}`);
     return handle<{ key: string; value: string }>(res);
+  },
+
+  async requestRoleSwitch(requestedRole: string) {
+    const res = await fetch(`${API_URL}/api/users/me/role-switch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ requestedRole }),
+    });
+    return handle<{ message: string }>(res);
+  },
+
+  async fetchRoleSwitchStatus() {
+    const res = await fetch(`${API_URL}/api/users/me/role-switch`, {
+      headers: authHeaders(),
+    });
+    return handle<{ status: "Pending" | "Approved" | "Rejected"; created_at: string } | null>(res);
+  },
+
+  async fetchSubscriptionPlans() {
+    const res = await fetch(`${API_URL}/api/admin/subscription-plans`);
+    return handle<{ role: "user" | "owner" | "broker" | "agency"; price: string; discount: string; description: string; duration_months: number; features?: string }[]>(res);
+  },
+
+  async adminUpdateSubscriptionPlans(plans: { role: string; price: number; description?: string; discount?: number; duration_months?: number; features?: string[] | string }[]) {
+    const res = await fetch(`${API_URL}/api/admin/subscription-plans`, {
+      method: "PUT",
+      headers: { 
+        "Content-Type": "application/json",
+        "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || ""
+      },
+      body: JSON.stringify({ plans }),
+    });
+    return handle<{ success: boolean }>(res);
+  },
+
+  async adminFetchRoleSwitches() {
+    const res = await fetch(`${API_URL}/api/admin/role-switches`, {
+      headers: { "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "" },
+    });
+    return handle<{
+      id: number;
+      requested_role: string;
+      status: "Pending" | "Approved" | "Rejected";
+      created_at: string;
+      user_id: number;
+      user_name: string;
+      user_email: string;
+      user_phone: string;
+    }[]>(res);
+  },
+
+  async adminApproveRoleSwitch(id: number) {
+    const res = await fetch(`${API_URL}/api/admin/role-switches/${id}/approve`, {
+      method: "PUT",
+      headers: { "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "" },
+    });
+    return handle<{ success: boolean }>(res);
+  },
+
+  async adminRejectRoleSwitch(id: number) {
+    const res = await fetch(`${API_URL}/api/admin/role-switches/${id}/reject`, {
+      method: "PUT",
+      headers: { "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "" },
+    });
+    return handle<{ success: boolean }>(res);
+  },
+
+  async adminFetchSubscriptionStats() {
+    const res = await fetch(`${API_URL}/api/admin/subscription-stats`, {
+      headers: { "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "" },
+    });
+    return handle<{ User: number; Owner: number; Broker: number; Agency: number }>(res);
+  },
+
+  async fetchNotifications() {
+    const res = await fetch(`${API_URL}/api/users/me/notifications`, { headers: authHeaders() });
+    return handle<ApiNotification[]>(res);
+  },
+
+  async markNotificationsRead() {
+    const res = await fetch(`${API_URL}/api/users/me/notifications/read-all`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    return handle<{ success: boolean }>(res);
+  },
+
+  async deleteAccount() {
+    const res = await fetch(`${API_URL}/api/users/me`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    return handle<{ success: boolean; message: string }>(res);
   },
 };
 
@@ -257,4 +492,18 @@ export function formatArea(areaSqft: number, propertyType: string): string {
     return `${Number(cents.toFixed(1))} Cents`;
   }
   return `${areaSqft.toLocaleString("en-IN")} sq.ft`;
+}
+
+export interface ApiNotification {
+  id: number;
+  user_id: number;
+  sender_id: number | null;
+  type: string;
+  message: string;
+  property_id: number | null;
+  is_read: number;
+  created_at: string;
+  sender_name?: string | null;
+  sender_role?: string | null;
+  sender_avatar?: string | null;
 }
