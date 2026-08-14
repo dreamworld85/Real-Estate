@@ -381,6 +381,16 @@ router.get("/:id", optionalAuth, async (req, res) => {
       }
     }
 
+    // Mask details if user is not logged in at all (Guest Preview)
+    let isMasked = false;
+    if (!req.userId) {
+      isMasked = true;
+      publicProp.address = "Exact location hidden. Log in to view.";
+      publicProp.brokerName = null;
+      publicProp.agencyName = null;
+      rows[0].owner_name = "Owner details hidden";
+    }
+
     res.json({
       ...publicProp,
       ownerName: rows[0].owner_name,
@@ -391,6 +401,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
       avgRating: Number(ratingRow.avgRating) || 0,
       ratingCount: Number(ratingRow.ratingCount) || 0,
       contactAccess,
+      isMasked,
     });
   } catch (err) {
     console.error(err);

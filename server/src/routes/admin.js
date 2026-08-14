@@ -52,8 +52,182 @@ router.get("/subscription-plans", async (req, res) => {
   }
 });
 
+// GET /api/landing/content (Public route for fetching Landing page content)
+router.get("/landing/content", async (req, res) => {
+  try {
+    const [settingsRows] = await pool.query("SELECT `key`, `value` FROM settings WHERE `key` LIKE 'landing_%'");
+    const [featuresRows] = await pool.query("SELECT * FROM landing_features ORDER BY id ASC");
+    
+    const content = {};
+    settingsRows.forEach(row => {
+      content[row.key] = row.value;
+    });
+    
+    res.json({
+      settings: content,
+      features: featuresRows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/app-download-settings (Public)
+router.get("/app-download-settings", async (req, res) => {
+  try {
+    const [[settings]] = await pool.query("SELECT * FROM app_download_page_settings LIMIT 1");
+    if (!settings) {
+      return res.status(404).json({ message: "App download settings not found." });
+    }
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/mobile-share-settings (Public)
+router.get("/mobile-share-settings", async (req, res) => {
+  try {
+    const [[settings]] = await pool.query("SELECT * FROM mobile_share_page_settings LIMIT 1");
+    if (!settings) {
+      return res.status(404).json({ message: "Settings not found." });
+    }
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Apply admin protection check to all subsequent routes
 router.use(checkAdminSession);
+
+// PUT /api/admin/app-download-settings (Admin Protected)
+router.put("/app-download-settings", upload.single("logo"), async (req, res) => {
+  try {
+    const { 
+      main_title, 
+      subtitle, 
+      google_play_url, 
+      app_store_url, 
+      safe_secure_title, 
+      safe_secure_desc, 
+      trusted_users_title, 
+      trusted_users_desc, 
+      footer_brand, 
+      footer_tagline 
+    } = req.body;
+
+    let logoUrl = req.body.brand_logo_url; // fallback to existing logo URL
+
+    if (req.file) {
+      logoUrl = `/uploads/${req.file.filename}`;
+    }
+
+    // Get the first record ID or create if missing
+    const [rows] = await pool.query("SELECT id FROM app_download_page_settings LIMIT 1");
+    if (rows.length === 0) {
+      await pool.query(
+        `INSERT INTO app_download_page_settings (
+          brand_logo_url, main_title, subtitle, google_play_url, app_store_url,
+          safe_secure_title, safe_secure_desc, trusted_users_title, trusted_users_desc,
+          footer_brand, footer_tagline
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          logoUrl || "", main_title || "", subtitle || "", google_play_url || "", app_store_url || "",
+          safe_secure_title || "", safe_secure_desc || "", trusted_users_title || "", trusted_users_desc || "",
+          footer_brand || "", footer_tagline || ""
+        ]
+      );
+    } else {
+      const settingId = rows[0].id;
+      await pool.query(
+        `UPDATE app_download_page_settings SET
+          brand_logo_url = ?, main_title = ?, subtitle = ?, google_play_url = ?, app_store_url = ?,
+          safe_secure_title = ?, safe_secure_desc = ?, trusted_users_title = ?, trusted_users_desc = ?,
+          footer_brand = ?, footer_tagline = ?
+        WHERE id = ?`,
+        [
+          logoUrl, main_title, subtitle, google_play_url, app_store_url,
+          safe_secure_title, safe_secure_desc, trusted_users_title, trusted_users_desc,
+          footer_brand, footer_tagline,
+          settingId
+        ]
+      );
+    }
+
+    res.json({ message: "App download settings updated successfully.", brand_logo_url: logoUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/mobile-share-settings (Admin Protected)
+router.put("/mobile-share-settings", upload.fields([
+  { name: "logo", maxCount: 1 },
+  { name: "illustration", maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { 
+      brand_name, 
+      tagline, 
+      description_quote, 
+      button_text, 
+      google_play_url, 
+      app_store_url, 
+      trust_text 
+    } = req.body;
+
+    let logoUrl = req.body.brand_logo_url;
+    let illustrationUrl = req.body.illustration_url;
+
+    if (req.files) {
+      if (req.files.logo && req.files.logo[0]) {
+        logoUrl = `/uploads/${req.files.logo[0].filename}`;
+      }
+      if (req.files.illustration && req.files.illustration[0]) {
+        illustrationUrl = `/uploads/${req.files.illustration[0].filename}`;
+      }
+    }
+
+    const [rows] = await pool.query("SELECT id FROM mobile_share_page_settings LIMIT 1");
+    if (rows.length === 0) {
+      await pool.query(
+        `INSERT INTO mobile_share_page_settings (
+          brand_name, brand_logo_url, tagline, illustration_url, 
+          description_quote, button_text, google_play_url, app_store_url, trust_text
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          brand_name || "", logoUrl || "", tagline || "", illustrationUrl || "",
+          description_quote || "", button_text || "", google_play_url || "", app_store_url || "", trust_text || ""
+        ]
+      );
+    } else {
+      const settingId = rows[0].id;
+      await pool.query(
+        `UPDATE mobile_share_page_settings SET
+          brand_name = ?, brand_logo_url = ?, tagline = ?, illustration_url = ?, 
+          description_quote = ?, button_text = ?, google_play_url = ?, app_store_url = ?, trust_text = ?
+        WHERE id = ?`,
+        [
+          brand_name, logoUrl, tagline, illustrationUrl,
+          description_quote, button_text, google_play_url, app_store_url, trust_text,
+          settingId
+        ]
+      );
+    }
+
+    res.json({ 
+      message: "Mobile share settings updated successfully.", 
+      brand_logo_url: logoUrl,
+      illustration_url: illustrationUrl
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 
 // PUT /api/admin/settings/:key (Admin settings updater)
 router.put("/settings/:key", upload.single("banner"), async (req, res) => {
@@ -61,7 +235,14 @@ router.put("/settings/:key", upload.single("banner"), async (req, res) => {
     const { key } = req.params;
     let value = req.body.value;
 
-    if ((key === "welcome_banner_url" || key === "login_banner_url") && req.file) {
+    const isImageKey = [
+      "welcome_banner_url",
+      "login_banner_url",
+      "landing_hero_image",
+      "landing_app_qr_image"
+    ].includes(key);
+
+    if (isImageKey && req.file) {
       value = `/uploads/${req.file.filename}`;
     }
 
@@ -103,6 +284,52 @@ router.put("/settings/:key", upload.single("banner"), async (req, res) => {
     }
 
     res.json({ message: "Setting updated successfully.", key, value });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/landing/features (Create new feature card)
+router.post("/landing/features", async (req, res) => {
+  try {
+    const { title, description, icon } = req.body;
+    if (!title || !description || !icon) {
+      return res.status(400).json({ message: "Title, description, and icon are required." });
+    }
+    const [result] = await pool.query(
+      "INSERT INTO landing_features (title, description, icon) VALUES (?, ?, ?)",
+      [title, description, icon]
+    );
+    res.json({ id: result.insertId, title, description, icon });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/landing/features/:id (Update feature card)
+router.put("/landing/features/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, icon } = req.body;
+    if (!title || !description || !icon) {
+      return res.status(400).json({ message: "Title, description, and icon are required." });
+    }
+    await pool.query(
+      "UPDATE landing_features SET title = ?, description = ?, icon = ? WHERE id = ?",
+      [title, description, icon, id]
+    );
+    res.json({ id: Number(id), title, description, icon });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/landing/features/:id (Delete feature card)
+router.delete("/landing/features/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM landing_features WHERE id = ?", [id]);
+    res.json({ success: true, message: "Feature deleted successfully." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

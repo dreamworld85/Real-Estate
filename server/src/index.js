@@ -72,6 +72,146 @@ async function checkDbMigration() {
       )
     `);
 
+    // Seed default landing page settings if they don't exist
+    const defaultSettings = [
+      { key: "landing_hero_title", value: "Find Your Perfect Kerala Nest & Escape" },
+      { key: "landing_hero_description", value: "Explore curated houses, villas, apartments, and land plots across the lush greenery of Kerala. Connect directly with owners, brokers, and certified agencies." },
+      { key: "landing_hero_image", value: "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=1000&q=80" },
+      { key: "landing_app_title", value: "Download Our Mobile App For Real-Time Notifications" },
+      { key: "landing_app_description", value: "Visiting our mobile app gives you access to maps, instant push notifications for matching properties, real-time agent chats, and location-aware search features. Scan the QR code or click the download button below to load the mobile-optimized experience directly on your smartphone." },
+      { key: "landing_app_download_url", value: "http://localhost:5173/login" },
+      { key: "landing_app_qr_image", value: "" }
+    ];
+
+    for (const setting of defaultSettings) {
+      await pool.query(
+        "INSERT IGNORE INTO settings (`key`, `value`) VALUES (?, ?)",
+        [setting.key, setting.value]
+      );
+    }
+
+    // Verify app_download_page_settings table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_download_page_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        brand_logo_url VARCHAR(255) NULL,
+        main_title VARCHAR(255) NOT NULL,
+        subtitle VARCHAR(500) NOT NULL,
+        google_play_url VARCHAR(255) NOT NULL,
+        app_store_url VARCHAR(255) NOT NULL,
+        safe_secure_title VARCHAR(255) NOT NULL,
+        safe_secure_desc VARCHAR(255) NOT NULL,
+        trusted_users_title VARCHAR(255) NOT NULL,
+        trusted_users_desc VARCHAR(255) NOT NULL,
+        footer_brand VARCHAR(255) NOT NULL,
+        footer_tagline VARCHAR(255) NOT NULL
+      )
+    `);
+
+    const [downloadSettingsCount] = await pool.query("SELECT COUNT(*) as count FROM app_download_page_settings");
+    if (downloadSettingsCount[0].count === 0) {
+      await pool.query(`
+        INSERT INTO app_download_page_settings (
+          brand_logo_url, 
+          main_title, 
+          subtitle, 
+          google_play_url, 
+          app_store_url, 
+          safe_secure_title, 
+          safe_secure_desc, 
+          trusted_users_title, 
+          trusted_users_desc, 
+          footer_brand, 
+          footer_tagline
+        ) VALUES (
+          '', 
+          'You\\'ve received a property on Kerala Realty', 
+          'To view this property and more details, download the Kerala Realty app.', 
+          'https://play.google.com/store', 
+          'https://www.apple.com/app-store', 
+          'Safe & Secure', 
+          'We don\\'t share any personal information.', 
+          'Trusted by thousands', 
+          'Trusted by thousands of users across Kerala.', 
+          'Kerala Realty', 
+          'Your trusted property partner in Kerala'
+        )
+      `);
+      console.log("Seeded default app download page settings successfully.");
+    }
+
+    // Verify mobile_share_page_settings table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mobile_share_page_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        brand_name VARCHAR(150) NOT NULL,
+        brand_logo_url VARCHAR(255) NULL,
+        tagline VARCHAR(255) NOT NULL,
+        illustration_url VARCHAR(255) NULL,
+        description_quote VARCHAR(500) NOT NULL,
+        button_text VARCHAR(150) NOT NULL,
+        google_play_url VARCHAR(255) NOT NULL,
+        app_store_url VARCHAR(255) NOT NULL,
+        trust_text VARCHAR(255) NOT NULL
+      )
+    `);
+
+    const [mobileShareSettingsCount] = await pool.query("SELECT COUNT(*) as count FROM mobile_share_page_settings");
+    if (mobileShareSettingsCount[0].count === 0) {
+      await pool.query(`
+        INSERT INTO mobile_share_page_settings (
+          brand_name,
+          brand_logo_url,
+          tagline,
+          illustration_url,
+          description_quote,
+          button_text,
+          google_play_url,
+          app_store_url,
+          trust_text
+        ) VALUES (
+          'Kerala Realty',
+          '',
+          'Your trusted property partner in Kerala',
+          '',
+          'The best way to buy, sell and rent properties in Kerala.',
+          'Download the App to continue',
+          'https://play.google.com/store',
+          'https://www.apple.com/app-store',
+          'Secure. Trusted. Reliable.'
+        )
+      `);
+      console.log("Seeded default mobile share page settings successfully.");
+    }
+
+    // Verify landing_features table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS landing_features (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(150) NOT NULL,
+        description TEXT NOT NULL,
+        icon VARCHAR(80) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Seed default landing features if empty
+    const [featuresCount] = await pool.query("SELECT COUNT(*) as count FROM landing_features");
+    if (featuresCount[0].count === 0) {
+      const defaultFeatures = [
+        { title: "Verified Listings", description: "Every property on our platform goes through mandatory moderation and title review checks, ensuring high-quality leads and scam-free deals.", icon: "CheckCircle2" },
+        { title: "District & Local Maps", description: "Easily filter properties by district, location, area size, and exact budget. Make informed choices with local community map references.", icon: "Map" },
+        { title: "Direct Inquiry Channels", description: "Direct phone and WhatsApp integrations let you contact owners or certified agents instantly, cutting out unnecessary delay or middleman margins.", icon: "Shield" }
+      ];
+      for (const feat of defaultFeatures) {
+        await pool.query(
+          "INSERT INTO landing_features (title, description, icon) VALUES (?, ?, ?)",
+          [feat.title, feat.description, feat.icon]
+        );
+      }
+      console.log("Seeded default landing page features successfully.");
+    }
+
     // Verify property_reviews table exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS property_reviews (
@@ -561,7 +701,7 @@ if (process.cwd().includes("api.greensparrows.com")) {
 const app = express();
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",");
 
-app.use(cors({ origin: allowedOrigins }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 const uploadsDir = process.env.UPLOADS_DIR 

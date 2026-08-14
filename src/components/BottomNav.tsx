@@ -26,7 +26,7 @@ export default function BottomNav() {
             <button
               key={path}
               onClick={() => navigate(path)}
-              className="relative flex flex-col items-center gap-1 px-3 py-1.5 group"
+              className="relative flex flex-col items-center gap-1 px-1.5 py-1.5 group"
             >
               <Icon
                 size={22}

@@ -18,14 +18,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    if (token) {
-      api.fetchMyProfile()
-        .then((data) => {
-          setUser(data);
-        })
-        .catch((err) => console.error("Failed to sync user profile on mount:", err));
-    }
-  }, [token]);
+    // Session validation on app mount using /api/auth/me
+    api.validateSession()
+      .then((data) => {
+        if (data && data.user) {
+          setUser(data.user);
+        }
+      })
+      .catch((err) => {
+        console.warn("Session verification failed, logging out stale session:", err);
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem("kr_token");
+        localStorage.removeItem("kr_user");
+      });
+  }, []);
 
   useEffect(() => {
     if (token) localStorage.setItem("kr_token", token);
@@ -43,8 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout() {
+    // Clear backend HTTP-only session cookie
+    api.logout().catch((err) => console.error("Failed to clear backend session cookie:", err));
     setToken(null);
     setUser(null);
+    localStorage.removeItem("kr_token");
+    localStorage.removeItem("kr_user");
   }
 
   return (

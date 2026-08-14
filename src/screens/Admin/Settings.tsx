@@ -18,7 +18,7 @@ import { api, mediaUrl } from "@/lib/api";
 
 export default function Settings() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<"menu" | "site" | "payment" | "trials" | "profile" | "database">("menu");
+  const [activeTab, setActiveTab] = useState<"menu" | "site" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial">("menu");
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -52,6 +52,230 @@ export default function Settings() {
   const [contactAddress, setContactAddress] = useState("");
   const [featuredPrice, setFeaturedPrice] = useState(299);
   const [featuredText, setFeaturedText] = useState("");
+
+  const [landingHeroTitle, setLandingHeroTitle] = useState("");
+  const [interstitialSettings, setInterstitialSettings] = useState<any>(null);
+  const [interstitialFile, setInterstitialFile] = useState<File | null>(null);
+  const [interstitialPreview, setInterstitialPreview] = useState<string | null>(null);
+  const [illustrationFile, setIllustrationFile] = useState<File | null>(null);
+  const [illustrationPreview, setIllustrationPreview] = useState<string | null>(null);
+  const [landingHeroDescription, setLandingHeroDescription] = useState("");
+  const [landingHeroImage, setLandingHeroImage] = useState("");
+  const [landingAppTitle, setLandingAppTitle] = useState("");
+  const [landingAppDescription, setLandingAppDescription] = useState("");
+  const [landingAppDownloadUrl, setLandingAppDownloadUrl] = useState("");
+  const [landingAppQrImage, setLandingAppQrImage] = useState("");
+  const [landingFeatures, setLandingFeatures] = useState<{ id: number; title: string; description: string; icon: string }[]>([]);
+  const [editingFeature, setEditingFeature] = useState<{ id?: number; title: string; description: string; icon: string } | null>(null);
+  const [loadingLanding, setLoadingLanding] = useState(false);
+  const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [heroPreview, setHeroPreview] = useState<string | null>(null);
+  const [qrFile, setQrFile] = useState<File | null>(null);
+  const [qrPreview, setQrPreview] = useState<string | null>(null);
+
+  const loadLandingContent = async () => {
+    setLoadingLanding(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/landing/content`);
+      if (res.ok) {
+        const data = await res.json();
+        setLandingHeroTitle(data.settings.landing_hero_title || "");
+        setLandingHeroDescription(data.settings.landing_hero_description || "");
+        setLandingHeroImage(data.settings.landing_hero_image || "");
+        setLandingAppTitle(data.settings.landing_app_title || "");
+        setLandingAppDescription(data.settings.landing_app_description || "");
+        setLandingAppDownloadUrl(data.settings.landing_app_download_url || "");
+        setLandingAppQrImage(data.settings.landing_app_qr_image || "");
+        setLandingFeatures(data.features || []);
+      }
+    } catch (err) {
+      console.error("Error loading landing settings:", err);
+    } finally {
+      setLoadingLanding(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "landing") {
+      loadLandingContent();
+    }
+  }, [activeTab]);
+
+  const loadInterstitialSettings = async () => {
+    try {
+      const res = await api.fetchMobileShareSettings();
+      setInterstitialSettings(res);
+    } catch (err) {
+      console.error("Error loading interstitial settings:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "interstitial") {
+      loadInterstitialSettings();
+    }
+  }, [activeTab]);
+
+  const handleSaveInterstitialSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!interstitialSettings) return;
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      if (interstitialFile) {
+        formData.append("logo", interstitialFile);
+      }
+      if (illustrationFile) {
+        formData.append("illustration", illustrationFile);
+      }
+      formData.append("brand_name", interstitialSettings.brand_name || "");
+      formData.append("brand_logo_url", interstitialSettings.brand_logo_url || "");
+      formData.append("tagline", interstitialSettings.tagline || "");
+      formData.append("illustration_url", interstitialSettings.illustration_url || "");
+      formData.append("description_quote", interstitialSettings.description_quote || "");
+      formData.append("button_text", interstitialSettings.button_text || "");
+      formData.append("google_play_url", interstitialSettings.google_play_url || "");
+      formData.append("app_store_url", interstitialSettings.app_store_url || "");
+      formData.append("trust_text", interstitialSettings.trust_text || "");
+
+      const res = await api.updateMobileShareSettings(formData);
+      alert(res.message);
+      setInterstitialFile(null);
+      setInterstitialPreview(null);
+      setIllustrationFile(null);
+      setIllustrationPreview(null);
+      loadInterstitialSettings();
+    } catch (err: any) {
+      alert(err.message || "Failed to update settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveHeroSettings = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("kerala_realty_admin_token") || "";
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      await fetch(`${apiUrl}/api/admin/settings/landing_hero_title`, {
+        method: "PUT",
+        headers: { "x-admin-auth": token, "Content-Type": "application/json" },
+        body: JSON.stringify({ value: landingHeroTitle })
+      });
+      await fetch(`${apiUrl}/api/admin/settings/landing_hero_description`, {
+        method: "PUT",
+        headers: { "x-admin-auth": token, "Content-Type": "application/json" },
+        body: JSON.stringify({ value: landingHeroDescription })
+      });
+      if (heroFile) {
+        await adminApi.updateSetting("landing_hero_image", heroFile);
+        setHeroFile(null);
+        setHeroPreview(null);
+      }
+      alert("Hero settings saved successfully!");
+      loadLandingContent();
+    } catch (err: any) {
+      alert(err.message || "Failed to save Hero settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAppPromoSettings = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("kerala_realty_admin_token") || "";
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      await fetch(`${apiUrl}/api/admin/settings/landing_app_title`, {
+        method: "PUT",
+        headers: { "x-admin-auth": token, "Content-Type": "application/json" },
+        body: JSON.stringify({ value: landingAppTitle })
+      });
+      await fetch(`${apiUrl}/api/admin/settings/landing_app_description`, {
+        method: "PUT",
+        headers: { "x-admin-auth": token, "Content-Type": "application/json" },
+        body: JSON.stringify({ value: landingAppDescription })
+      });
+      await fetch(`${apiUrl}/api/admin/settings/landing_app_download_url`, {
+        method: "PUT",
+        headers: { "x-admin-auth": token, "Content-Type": "application/json" },
+        body: JSON.stringify({ value: landingAppDownloadUrl })
+      });
+      if (qrFile) {
+        await adminApi.updateSetting("landing_app_qr_image", qrFile);
+        setQrFile(null);
+        setQrPreview(null);
+      }
+      alert("App promo settings saved successfully!");
+      loadLandingContent();
+    } catch (err: any) {
+      alert(err.message || "Failed to save app promo settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveFeature = async () => {
+    if (!editingFeature?.title || !editingFeature?.description || !editingFeature?.icon) {
+      alert("All fields are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("kerala_realty_admin_token") || "";
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      if (editingFeature.id) {
+        const res = await fetch(`${apiUrl}/api/admin/landing/features/${editingFeature.id}`, {
+          method: "PUT",
+          headers: { "x-admin-auth": token, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: editingFeature.title,
+            description: editingFeature.description,
+            icon: editingFeature.icon
+          })
+        });
+        if (!res.ok) throw new Error("Failed to update feature.");
+      } else {
+        const res = await fetch(`${apiUrl}/api/admin/landing/features`, {
+          method: "POST",
+          headers: { "x-admin-auth": token, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: editingFeature.title,
+            description: editingFeature.description,
+            icon: editingFeature.icon
+          })
+        });
+        if (!res.ok) throw new Error("Failed to create feature.");
+      }
+      alert("Feature card saved successfully!");
+      setEditingFeature(null);
+      loadLandingContent();
+    } catch (err: any) {
+      alert(err.message || "Failed to save feature card");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteFeature = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this feature card?")) return;
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("kerala_realty_admin_token") || "";
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const res = await fetch(`${apiUrl}/api/admin/landing/features/${id}`, {
+        method: "DELETE",
+        headers: { "x-admin-auth": token }
+      });
+      if (!res.ok) throw new Error("Failed to delete feature.");
+      alert("Feature card deleted successfully!");
+      loadLandingContent();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete feature card");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     // Fetch welcome banner setting
@@ -237,6 +461,8 @@ export default function Settings() {
         { key: "sms", label: "SMS Settings", desc: "OTP gateways, verification", icon: MessageSquare, color: "text-purple-600 bg-purple-50" },
         { key: "payment", label: "Payment Settings", desc: "Gateway configurations", icon: CreditCard, color: "text-emerald-600 bg-emerald-50" },
         { key: "database", label: "Database Export", desc: "Download live SQL database dump files", icon: FileText, color: "text-rose-600 bg-rose-50" },
+        { key: "landing", label: "Landing Manager", desc: "Manage desktop landing text, app QR, and feature cards", icon: FileText, color: "text-amber-600 bg-amber-50" },
+        { key: "interstitial", label: "Share Interstitial Settings", desc: "Manage logo, store links, headlines and footers for shared links", icon: Sliders, color: "text-teal-600 bg-teal-50" },
       ],
     },
     {
@@ -558,6 +784,482 @@ export default function Settings() {
     );
   }
 
+  function renderLandingTab() {
+    return (
+      <div className="flex flex-col gap-6 text-left pb-16">
+        <div className="flex items-center gap-2 lg:hidden px-1">
+          <button 
+            onClick={() => setActiveTab("menu")}
+            className="p-1 hover:bg-slate-100 rounded-full transition-all text-slate cursor-pointer"
+            aria-label="Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
+        </div>
+
+        {/* 1. Hero Section Management */}
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
+          <div>
+            <h3 className="font-display font-extrabold text-base text-black">Hero Section Settings</h3>
+            <p className="text-[10px] text-slate mt-0.5">Customize the main hero heading, description copy, and background cover image.</p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-ink">Hero Title</label>
+              <input 
+                type="text" 
+                value={landingHeroTitle} 
+                onChange={(e) => setLandingHeroTitle(e.target.value)}
+                className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-medium"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-ink">Hero Description</label>
+              <textarea 
+                rows={3}
+                value={landingHeroDescription} 
+                onChange={(e) => setLandingHeroDescription(e.target.value)}
+                className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-medium resize-none leading-relaxed"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div>
+                <label className="text-xs font-bold text-ink">Hero Showcase Image</label>
+                <p className="text-[10px] text-slate mt-0.5">Upload a new image file to replace the hero cover.</p>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setHeroFile(file);
+                      setHeroPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full mt-2"
+                />
+              </div>
+              <div className="relative h-28 rounded-2xl overflow-hidden border border-charcoal/10 bg-slate-100 flex items-center justify-center">
+                {heroPreview || landingHeroImage ? (
+                  <img 
+                    src={heroPreview || mediaUrl(landingHeroImage)} 
+                    alt="Hero Preview" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-[10px] text-slate">No Image Uploaded</span>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveHeroSettings}
+              disabled={saving}
+              className="bg-forest hover:bg-emerald-800 text-cream px-5 py-3 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:opacity-50 mt-2 cursor-pointer w-max"
+            >
+              {saving ? "Saving..." : "Save Hero Settings"}
+            </button>
+          </div>
+        </div>
+
+        {/* 2. App Promo Section Management */}
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
+          <div>
+            <h3 className="font-display font-extrabold text-base text-black">Download App Promo Settings</h3>
+            <p className="text-[10px] text-slate mt-0.5">Customize the headings, store URL, and QR code image for app downloads.</p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-ink">Promo Header Title</label>
+              <input 
+                type="text" 
+                value={landingAppTitle} 
+                onChange={(e) => setLandingAppTitle(e.target.value)}
+                className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-medium"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-ink">Promo Description</label>
+              <textarea 
+                rows={3}
+                value={landingAppDescription} 
+                onChange={(e) => setLandingAppDescription(e.target.value)}
+                className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-medium resize-none leading-relaxed"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-ink">App Download / Register Link</label>
+              <input 
+                type="text" 
+                value={landingAppDownloadUrl} 
+                onChange={(e) => setLandingAppDownloadUrl(e.target.value)}
+                className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-medium"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div>
+                <label className="text-xs font-bold text-ink">App Store QR Image</label>
+                <p className="text-[10px] text-slate mt-0.5">Upload a custom QR code (leaves blank to use standard vector SVG QR).</p>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setQrFile(file);
+                      setQrPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full mt-2"
+                />
+              </div>
+              <div className="relative h-28 rounded-2xl overflow-hidden border border-charcoal/10 bg-slate-100 flex items-center justify-center p-2">
+                {qrPreview || landingAppQrImage ? (
+                  <img 
+                    src={qrPreview || mediaUrl(landingAppQrImage)} 
+                    alt="QR Preview" 
+                    className="h-full object-contain"
+                  />
+                ) : (
+                  <span className="text-[10px] text-slate">Using Default Vector SVG QR</span>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveAppPromoSettings}
+              disabled={saving}
+              className="bg-forest hover:bg-emerald-800 text-cream px-5 py-3 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:opacity-50 mt-2 cursor-pointer w-max"
+            >
+              {saving ? "Saving..." : "Save App Promo"}
+            </button>
+          </div>
+        </div>
+
+        {/* 3. Platform Feature Cards Management */}
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-display font-extrabold text-base text-black">Feature Cards Manager</h3>
+              <p className="text-[10px] text-slate mt-0.5">Add, edit, or remove the highlights/features cards from the landing page.</p>
+            </div>
+            <button
+              onClick={() => setEditingFeature({ title: "", description: "", icon: "CheckCircle2" })}
+              className="bg-forest hover:bg-emerald-800 text-cream px-4 py-2 rounded-xl text-xs font-bold font-display shadow-sm flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+            >
+              <Sliders size={12} />
+              <span>Add Card</span>
+            </button>
+          </div>
+
+          {editingFeature && (
+            <div className="p-5 border border-forest/10 bg-emerald-50/10 rounded-2xl flex flex-col gap-4">
+              <div className="flex justify-between items-center border-b border-charcoal/5 pb-2">
+                <span className="text-xs font-bold text-ink font-display">
+                  {editingFeature.id ? "Edit Feature Card" : "New Feature Card"}
+                </span>
+                <button 
+                  onClick={() => setEditingFeature(null)}
+                  className="text-[10px] text-slate hover:text-charcoal font-bold"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Card Title</label>
+                <input 
+                  type="text"
+                  value={editingFeature.title}
+                  onChange={(e) => setEditingFeature({ ...editingFeature, title: e.target.value })}
+                  placeholder="e.g. Verified Listings"
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all w-full font-medium"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Card Description</label>
+                <textarea 
+                  rows={2}
+                  value={editingFeature.description}
+                  onChange={(e) => setEditingFeature({ ...editingFeature, description: e.target.value })}
+                  placeholder="Summarize this platform service..."
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all w-full font-medium resize-none leading-relaxed"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Display Icon</label>
+                <select
+                  value={editingFeature.icon}
+                  onChange={(e) => setEditingFeature({ ...editingFeature, icon: e.target.value })}
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all w-full font-bold"
+                >
+                  <option value="CheckCircle2">CheckCircle (Verified Listings)</option>
+                  <option value="Map">Map (Location & Districts)</option>
+                  <option value="Shield">Shield (Direct Inquiry Trust)</option>
+                  <option value="Star">Star (Premium Badge)</option>
+                  <option value="Building2">Building (Real Estate)</option>
+                  <option value="Smartphone">Smartphone (Mobile App)</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleSaveFeature}
+                disabled={saving}
+                className="bg-forest hover:bg-emerald-800 text-cream px-5 py-2.5 rounded-xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] cursor-pointer w-max"
+              >
+                Save Card Content
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+            {landingFeatures.map((feat) => (
+              <div key={feat.id} className="bg-slate-50/50 border border-charcoal/5 rounded-2xl p-4 flex flex-col justify-between gap-3 text-left">
+                <div className="flex flex-col gap-2">
+                  <div className="text-[10px] font-bold text-gold flex items-center gap-1 uppercase tracking-wider">
+                    <span>Icon: {feat.icon}</span>
+                  </div>
+                  <h4 className="font-display font-extrabold text-sm text-ink leading-tight">{feat.title}</h4>
+                  <p className="text-[10px] text-slate leading-relaxed font-medium line-clamp-3">{feat.description}</p>
+                </div>
+                <div className="flex gap-2.5 border-t border-charcoal/5 pt-3 mt-1">
+                  <button
+                    onClick={() => setEditingFeature(feat)}
+                    className="text-[10px] font-bold text-forest hover:text-emerald-800 transition-colors flex items-center gap-0.5 cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteFeature(feat.id)}
+                    className="text-[10px] font-bold text-rose-600 hover:text-rose-800 transition-colors flex items-center gap-0.5 ml-auto cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderInterstitialTab() {
+    if (!interstitialSettings) {
+      return (
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-10 text-center shadow-sm">
+          <div className="w-8 h-8 border-4 border-forest border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-xs text-slate font-bold">Loading share interstitial settings...</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-4 text-left">
+        <div className="flex items-center gap-2 lg:hidden px-1">
+          <button 
+            onClick={() => {
+              setActiveTab("menu");
+              setInterstitialFile(null);
+              setInterstitialPreview(null);
+            }}
+            className="p-1 hover:bg-slate-100 rounded-full transition-all text-slate cursor-pointer"
+            aria-label="Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
+        </div>
+
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm">
+          <div className="mb-5">
+            <h2 className="font-display font-extrabold text-base text-black">Share Interstitial Settings</h2>
+            <p className="text-[10px] text-slate mt-0.5">Customize the mobile app redirect page displayed when non-logged-in users open property shared links.</p>
+          </div>
+
+          <form onSubmit={handleSaveInterstitialSettings} className="flex flex-col gap-4">
+            
+            {/* Logo Upload */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end border-b border-charcoal/5 pb-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Brand Logo Image</label>
+                <p className="text-[10px] text-slate">Upload a transparent PNG/SVG logo to display at the top of the interstitial redirect screen.</p>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setInterstitialFile(file);
+                      setInterstitialPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full mt-1.5"
+                />
+              </div>
+              <div className="h-24 rounded-2xl border border-charcoal/8 bg-[#FAF8F3] flex items-center justify-center p-4">
+                {interstitialPreview || interstitialSettings.brand_logo_url ? (
+                  <img 
+                    src={interstitialPreview || mediaUrl(interstitialSettings.brand_logo_url)} 
+                    alt="Logo Preview" 
+                    className="h-full object-contain"
+                  />
+                ) : (
+                  <span className="text-[10px] text-slate/60 font-bold">No Custom Logo Uploaded</span>
+                )}
+              </div>
+            </div>
+
+            {/* Brand Name & Tagline */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Brand Name</label>
+                <input 
+                  type="text"
+                  required
+                  value={interstitialSettings.brand_name}
+                  onChange={(e) => setInterstitialSettings({ ...interstitialSettings, brand_name: e.target.value })}
+                  placeholder="e.g. Kerala Realty"
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all font-semibold font-display"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Tagline / Subtitle</label>
+                <input 
+                  type="text"
+                  required
+                  value={interstitialSettings.tagline}
+                  onChange={(e) => setInterstitialSettings({ ...interstitialSettings, tagline: e.target.value })}
+                  placeholder="e.g. Your trusted property partner in Kerala"
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all font-semibold font-display"
+                />
+              </div>
+            </div>
+
+            {/* Illustration Upload */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end border-b border-charcoal/5 pb-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Center Illustration Graphic</label>
+                <p className="text-[10px] text-slate">Upload a custom illustration image to display in the center of the mobile redirect landing screen.</p>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setIllustrationFile(file);
+                      setIllustrationPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full mt-1.5"
+                />
+              </div>
+              <div className="h-24 rounded-2xl border border-charcoal/8 bg-[#FAF8F3] flex items-center justify-center p-4">
+                {illustrationPreview || interstitialSettings.illustration_url ? (
+                  <img 
+                    src={illustrationPreview || mediaUrl(interstitialSettings.illustration_url)} 
+                    alt="Illustration Preview" 
+                    className="h-full object-contain rounded"
+                  />
+                ) : (
+                  <span className="text-[10px] text-slate/60 font-bold">Using Default Vector Icon</span>
+                )}
+              </div>
+            </div>
+
+            {/* Quote Description & Button Text */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Main Description Quote</label>
+                <input 
+                  type="text"
+                  required
+                  value={interstitialSettings.description_quote}
+                  onChange={(e) => setInterstitialSettings({ ...interstitialSettings, description_quote: e.target.value })}
+                  placeholder="e.g. The best way to buy, sell and rent properties in Kerala."
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all font-semibold font-display"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Download CTA Button Text</label>
+                <input 
+                  type="text"
+                  required
+                  value={interstitialSettings.button_text}
+                  onChange={(e) => setInterstitialSettings({ ...interstitialSettings, button_text: e.target.value })}
+                  placeholder="e.g. Download the App to continue"
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all font-semibold font-display"
+                />
+              </div>
+            </div>
+
+            {/* Store Links */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Google Play Store Download URL</label>
+                <input 
+                  type="url"
+                  required
+                  value={interstitialSettings.google_play_url}
+                  onChange={(e) => setInterstitialSettings({ ...interstitialSettings, google_play_url: e.target.value })}
+                  placeholder="https://play.google.com/store/apps/details?id=..."
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all font-medium font-display"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Apple App Store Download URL</label>
+                <input 
+                  type="url"
+                  required
+                  value={interstitialSettings.app_store_url}
+                  onChange={(e) => setInterstitialSettings({ ...interstitialSettings, app_store_url: e.target.value })}
+                  placeholder="https://apps.apple.com/us/app/..."
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all font-medium font-display"
+                />
+              </div>
+            </div>
+
+            {/* Trust Badges: Safe & Secure */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-charcoal/5 pt-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Footer Trust Text</label>
+                <input 
+                  type="text"
+                  required
+                  value={interstitialSettings.trust_text}
+                  onChange={(e) => setInterstitialSettings({ ...interstitialSettings, trust_text: e.target.value })}
+                  placeholder="e.g. Secure. Trusted. Reliable."
+                  className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-white focus:outline-none focus:border-forest/40 transition-all font-semibold font-display"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-forest hover:bg-emerald-800 text-cream px-6 py-3.5 rounded-2xl text-xs font-black tracking-wide font-display shadow-md transition-all active:scale-[0.98] disabled:opacity-50 mt-4 cursor-pointer w-max"
+            >
+              {saving ? "Saving Changes..." : "Save Interstitial Settings"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   function renderDatabaseTab() {
     const handleExport = async () => {
       setSaving(true);
@@ -823,6 +1525,10 @@ export default function Settings() {
                           setActiveTab("payment");
                         } else if (item.key === "database") {
                           setActiveTab("database");
+                        } else if (item.key === "landing") {
+                          setActiveTab("landing");
+                        } else if (item.key === "interstitial") {
+                          setActiveTab("interstitial");
                         } else {
                           alert(`${item.label} configurations loaded successfully.`);
                         }
@@ -868,6 +1574,8 @@ export default function Settings() {
           {activeTab === "profile" && renderProfileTab()}
           {activeTab === "payment" && renderPaymentTab()}
           {activeTab === "database" && renderDatabaseTab()}
+          {activeTab === "landing" && renderLandingTab()}
+          {activeTab === "interstitial" && renderInterstitialTab()}
         </div>
       </div>
     </div>

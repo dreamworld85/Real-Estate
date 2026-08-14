@@ -160,19 +160,19 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="px-4 mt-3.5 mb-5 flex gap-2">
-        <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl px-4 py-3 border border-charcoal/8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] focus-within:border-forest/40 focus-within:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all">
+      <div className="px-4 mt-3.5 mb-5 flex gap-2 w-full items-stretch">
+        <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl px-4 py-3 border border-charcoal/8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] focus-within:border-forest/40 focus-within:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all min-w-0">
           <Search size={18} className="text-slate/75" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search location, property..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium min-w-0"
           />
         </div>
         <button 
           onClick={() => setIsFilterOpen(true)}
-          className={`rounded-2xl px-3.5 border transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] active:scale-95 cursor-pointer flex items-center justify-center ${
+          className={`rounded-2xl px-3.5 border transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] active:scale-95 cursor-pointer flex items-center justify-center shrink-0 ${
             appliedTypes.length > 0 || appliedPurpose || appliedDistrict
               ? "bg-forest border-forest text-cream"
               : "bg-white border-charcoal/8 text-charcoal hover:bg-slate-50"
@@ -184,7 +184,7 @@ export default function Home() {
         </button>
         <button 
           onClick={() => navigate("/saved")}
-          className="rounded-2xl px-3.5 border border-charcoal/8 bg-white text-charcoal hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] active:scale-95 cursor-pointer flex items-center justify-center group"
+          className="rounded-2xl px-3.5 border border-charcoal/8 bg-white text-charcoal hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] active:scale-95 cursor-pointer flex items-center justify-center group shrink-0"
           aria-label="Saved properties"
           title="Saved properties"
         >
@@ -192,27 +192,27 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="px-4 mb-6 flex gap-3 overflow-x-auto no-scrollbar py-0.5">
+      <div className="w-full flex flex-nowrap gap-2 px-3.5 mb-5 py-0.5 justify-between">
         {categories.map((cat) => (
           <button
             key={cat.label}
             onClick={() => setActiveCategory(cat.label)}
-            className={`flex flex-col items-center gap-1.5 min-w-[68px] py-3 px-2 rounded-2xl transition-all duration-300 active:scale-95 cursor-pointer ${
+            className={`flex flex-col items-center gap-1 py-2 px-1 flex-1 max-w-[72px] rounded-xl transition-all duration-300 active:scale-95 cursor-pointer shrink-0 ${
               activeCategory === cat.label
                 ? "bg-forest text-cream shadow-md shadow-forest/10 scale-105"
                 : "bg-white text-charcoal/90 border border-charcoal/5 shadow-sm hover:bg-slate-50"
             }`}
           >
-            <div className="w-7 h-7 flex items-center justify-center">
+            <div className="w-6 h-6 flex items-center justify-center">
               <img
                 src={cat.icon}
                 alt={`${cat.label} icon`}
-                className={`w-5 h-5 object-contain transition-all duration-300 ${
+                className={`w-4 h-4 object-contain transition-all duration-300 ${
                   activeCategory === cat.label ? "brightness-0 invert" : "opacity-80"
                 }`}
               />
             </div>
-            <span className="text-[11px] font-bold tracking-tight">{cat.label}</span>
+            <span className="text-[10px] font-bold tracking-tight">{cat.label}</span>
           </button>
         ))}
       </div>

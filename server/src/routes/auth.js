@@ -2,6 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -23,6 +24,41 @@ function toPublicUser(row) {
     role: row.role,
   };
 }
+
+function setAuthCookie(res, token) {
+  const isProduction = process.env.NODE_ENV === "production" || process.cwd().includes("api.greensparrows.com");
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+  });
+}
+
+// GET /api/auth/me
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [req.userId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ user: toPublicUser(rows[0]) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch session user" });
+  }
+});
+
+// POST /api/auth/logout
+router.post("/logout", (req, res) => {
+  const isProduction = process.env.NODE_ENV === "production" || process.cwd().includes("api.greensparrows.com");
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax"
+  });
+  res.json({ success: true, message: "Logged out successfully" });
+});
 
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
@@ -62,6 +98,7 @@ router.post("/register", async (req, res) => {
     const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [result.insertId]);
     await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [result.insertId]);
     const token = signToken(result.insertId);
+    setAuthCookie(res, token);
     res.status(201).json({ token, user: toPublicUser(rows[0]) });
   } catch (err) {
     console.error(err);
@@ -78,10 +115,31 @@ router.post("/login", async (req, res) => {
     }
 
     const trimmed = identifier.trim();
-    const [rows] = await pool.query(
-      "SELECT * FROM users WHERE email = ? OR phone = ?",
-      [trimmed, trimmed]
-    );
+    let rows = [];
+
+    if (trimmed.includes("@")) {
+      // Robust Case-Insensitive Email match
+      [rows] = await pool.query(
+        "SELECT * FROM users WHERE LOWER(email) = LOWER(?)",
+        [trimmed]
+      );
+    } else {
+      // Robust Phone Number match (handles varying +91 prefixes dynamically)
+      const cleanedInput = trimmed.replace(/\D/g, "");
+      if (cleanedInput.length >= 10) {
+        const last10 = cleanedInput.slice(-10);
+        [rows] = await pool.query(
+          "SELECT * FROM users WHERE phone LIKE ? OR phone = ?",
+          [`%${last10}`, trimmed]
+        );
+      } else {
+        [rows] = await pool.query(
+          "SELECT * FROM users WHERE phone = ?",
+          [trimmed]
+        );
+      }
+    }
+
     if (rows.length === 0) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -93,6 +151,7 @@ router.post("/login", async (req, res) => {
 
     await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [rows[0].id]);
     const token = signToken(rows[0].id);
+    setAuthCookie(res, token);
     res.json({ token, user: toPublicUser(rows[0]) });
   } catch (err) {
     console.error(err);

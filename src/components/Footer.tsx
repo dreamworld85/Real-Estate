@@ -15,11 +15,11 @@ export default function Footer() {
           Find your dream home, villa, land, or commercial space across Kerala's finest locations.
         </p>
         <div className="flex items-center gap-4 text-xs font-semibold text-forest">
-          <Link to="/settings" className="hover:underline">Terms</Link>
+          <Link to="/terms" className="hover:underline">Terms</Link>
           <span className="text-charcoal/10">&bull;</span>
-          <Link to="/settings" className="hover:underline">Privacy</Link>
+          <Link to="/privacy" className="hover:underline">Privacy</Link>
           <span className="text-charcoal/10">&bull;</span>
-          <Link to="/settings" className="hover:underline">Support</Link>
+          <Link to="/contact-us" className="hover:underline">Support</Link>
         </div>
         <p className="text-[11px] text-slate/60 mt-2">
           &copy; {new Date().getFullYear()} Kerala Realty. All rights reserved.

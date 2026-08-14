@@ -128,10 +128,12 @@ export default function PropertyCard({
             <span>{compact ? property.district : `${property.address}, ${property.district}`}</span>
           </p>
           <div className="flex items-center gap-1 shrink-0">
-            <span className="flex items-center gap-1 text-[9px] font-bold text-slate/75 bg-slate-100/70 border border-charcoal/5 px-1.5 py-0.5 rounded-md">
-              <Eye size={10} className="text-slate/60" />
-              <span>{property.views || 0}</span>
-            </span>
+            {!compact && (
+              <span className="flex items-center gap-1 text-[9px] font-bold text-slate/75 bg-slate-100/70 border border-charcoal/5 px-1.5 py-0.5 rounded-md">
+                <Eye size={10} className="text-slate/60" />
+                <span>{property.views || 0}</span>
+              </span>
+            )}
             <span className="shrink-0 text-[10px] text-slate/60 font-semibold bg-slate-100/70 border border-charcoal/5 px-1.5 py-0.5 rounded-md">
               {formatPostedDate(property.createdAt)}
             </span>

@@ -1,6 +1,13 @@
 /// <reference types="vite/client" />
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
+const originalFetch = window.fetch;
+window.fetch = function (input, init) {
+  const options = init || {};
+  options.credentials = "include";
+  return originalFetch(input, options);
+};
+
 export interface ApiUser {
   id: number;
   name: string;
@@ -67,6 +74,7 @@ export interface ApiPropertyDetail extends ApiProperty {
   agencyName?: string | null;
   agencyLogoUrl?: string | null;
   contactAccess?: boolean;
+  isMasked?: boolean;
 }
 
 export interface ApiPublicProfile extends ApiUser {
@@ -221,6 +229,19 @@ export const api = {
   async fetchMyProfile() {
     const res = await fetch(`${API_URL}/api/users/me`, { headers: authHeaders() });
     return handle<ApiUser & { hasTrial: boolean; remainingDays: number; isSubscribed: boolean; inquiryCount: number; propertiesCount: number }>(res);
+  },
+
+  async validateSession() {
+    const res = await fetch(`${API_URL}/api/auth/me`, { headers: authHeaders() });
+    return handle<{ user: ApiUser }>(res);
+  },
+
+  async logout() {
+    const res = await fetch(`${API_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: authHeaders()
+    });
+    return handle<{ success: boolean }>(res);
   },
 
   async updateMyProfile(input: Partial<Pick<ApiUser, "name" | "phone" | "email" | "location">>) {
@@ -470,6 +491,34 @@ export const api = {
     });
     return handle<{ success: boolean; message: string }>(res);
   },
+
+  async fetchAppDownloadSettings() {
+    const res = await fetch(`${API_URL}/api/admin/app-download-settings`);
+    return handle<ApiAppDownloadSettings>(res);
+  },
+
+  async updateAppDownloadSettings(formData: FormData) {
+    const res = await fetch(`${API_URL}/api/admin/app-download-settings`, {
+      method: "PUT",
+      headers: { "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "" },
+      body: formData
+    });
+    return handle<{ message: string; brand_logo_url: string }>(res);
+  },
+
+  async fetchMobileShareSettings() {
+    const res = await fetch(`${API_URL}/api/admin/mobile-share-settings`);
+    return handle<ApiMobileShareSettings>(res);
+  },
+
+  async updateMobileShareSettings(formData: FormData) {
+    const res = await fetch(`${API_URL}/api/admin/mobile-share-settings`, {
+      method: "PUT",
+      headers: { "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || "" },
+      body: formData
+    });
+    return handle<{ message: string; brand_logo_url: string; illustration_url: string }>(res);
+  },
 };
 
 export function mediaUrl(path: string): string {
@@ -507,3 +556,32 @@ export interface ApiNotification {
   sender_role?: string | null;
   sender_avatar?: string | null;
 }
+
+export interface ApiAppDownloadSettings {
+  id?: number;
+  brand_logo_url: string;
+  main_title: string;
+  subtitle: string;
+  google_play_url: string;
+  app_store_url: string;
+  safe_secure_title: string;
+  safe_secure_desc: string;
+  trusted_users_title: string;
+  trusted_users_desc: string;
+  footer_brand: string;
+  footer_tagline: string;
+}
+
+export interface ApiMobileShareSettings {
+  id?: number;
+  brand_name: string;
+  brand_logo_url: string;
+  tagline: string;
+  illustration_url: string;
+  description_quote: string;
+  button_text: string;
+  google_play_url: string;
+  app_store_url: string;
+  trust_text: string;
+}
+

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AddPropertyProvider } from "@/lib/AddPropertyContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/lib/AuthContext";
 import Login from "@/screens/Login";
 import Home from "@/screens/Home";
 import MyProperties from "@/screens/MyProperties";
@@ -26,6 +27,7 @@ import TermsConditions from "@/screens/Legal/TermsConditions";
 import RefundPolicy from "@/screens/Legal/RefundPolicy";
 import ContactUs from "@/screens/Legal/ContactUs";
 import SubscriptionDetails from "@/screens/SubscriptionDetails";
+import Landing from "@/screens/Landing";
 
 // Admin Screens
 import AdminLayout from "@/screens/Admin/AdminLayout";
@@ -45,13 +47,17 @@ import Subscriptions from "@/screens/Admin/Subscriptions";
 
 export default function App() {
   const location = useLocation();
+  const { token } = useAuth();
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isLandingPage = location.pathname === "/";
+  const isPropertyGuestRoute = location.pathname.startsWith("/property/") && !token;
+  const isFullWidth = isAdminRoute || isLandingPage || isPropertyGuestRoute;
 
   return (
-    <div className={isAdminRoute ? "min-h-screen w-full bg-slate-50 relative" : "app-container max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md"}>
+    <div className={isFullWidth ? "min-h-screen w-full bg-[#FAF8F3] relative" : "app-container w-full max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden"}>
       <AddPropertyProvider>
         <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
 
         <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />

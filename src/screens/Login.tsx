@@ -98,7 +98,13 @@ export default function Login() {
         });
         login(token, user);
       }
-      navigate("/home");
+      const pendingLink = localStorage.getItem("pending_deep_link");
+      if (pendingLink) {
+        localStorage.removeItem("pending_deep_link");
+        navigate(pendingLink);
+      } else {
+        navigate("/home");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
