@@ -45,7 +45,7 @@ interface Property {
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1000);
@@ -118,6 +118,10 @@ export default function Landing() {
       .catch((err) => console.error("Error loading landing properties:", err))
       .finally(() => setLoading(false));
   }, [isMobile]);
+
+  if (token && user) {
+    return <Navigate to="/home" replace />;
+  }
 
   if (isMobile) {
     return <Navigate to="/login" replace />;

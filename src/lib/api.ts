@@ -153,6 +153,21 @@ export const api = {
     return handle<{ token: string; user: ApiUser }>(res);
   },
 
+  async validateSession() {
+    const res = await fetch(`${API_URL}/api/auth/me`, {
+      headers: authHeaders(),
+    });
+    return handle<{ user: ApiUser }>(res);
+  },
+
+  async logout() {
+    const res = await fetch(`${API_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    return handle<{ success: boolean; message: string }>(res);
+  },
+
   async fetchProperties(params: Record<string, string> = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`${API_URL}/api/properties${query ? `?${query}` : ""}`, {

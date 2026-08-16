@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    if (!token) return;
     // Session validation on app mount using /api/auth/me
     api.validateSession()
       .then((data) => {
@@ -25,12 +26,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(data.user);
         }
       })
-      .catch((err) => {
-        console.warn("Session verification failed, logging out stale session:", err);
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem("kr_token");
-        localStorage.removeItem("kr_user");
+      .catch((err: any) => {
+        // Only clear token if server explicitly invalidated auth (401/403 or user not found)
+        const isUnauthorized = err?.status === 401 || err?.status === 403 || (err?.error && err.error.includes("User not found"));
+        if (isUnauthorized) {
+          console.warn("Session verification failed, logging out stale session:", err);
+          setToken(null);
+          setUser(null);
+          localStorage.removeItem("kr_token");
+          localStorage.removeItem("kr_user");
+        } else {
+          console.info("Server unreachable or network offline; keeping local session active.", err);
+        }
       });
   }, []);
 

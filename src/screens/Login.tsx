@@ -22,7 +22,13 @@ const countries = [
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, token, user } = useAuth();
+
+  useEffect(() => {
+    if (token && user) {
+      navigate("/home", { replace: true });
+    }
+  }, [token, user, navigate]);
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
