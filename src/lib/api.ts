@@ -153,6 +153,33 @@ export const api = {
     return handle<{ token: string; user: ApiUser }>(res);
   },
 
+  async forgotPassword(email: string) {
+    const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    return handle<{ success: boolean; message: string; email: string }>(res);
+  },
+
+  async verifyOtp(email: string, otp: string) {
+    const res = await fetch(`${API_URL}/api/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, otp }),
+    });
+    return handle<{ valid: boolean; message: string }>(res);
+  },
+
+  async resetPasswordWithOtp(input: { email: string; otp: string; newPassword: string }) {
+    const res = await fetch(`${API_URL}/api/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return handle<{ success: boolean; token: string; user: ApiUser }>(res);
+  },
+
   async fetchProperties(params: Record<string, string> = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`${API_URL}/api/properties${query ? `?${query}` : ""}`, {

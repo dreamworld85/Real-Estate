@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { sendOtpEmail } from "../utils/mailer.js";
 
 const router = Router();
 
@@ -156,6 +157,123 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
+  }
+});
+
+// POST /api/auth/forgot-password { email }
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: "Email address is required" });
+    }
+
+    const trimmed = email.trim().toLowerCase();
+    const [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [trimmed]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "No account registered with this email address" });
+    }
+
+    const user = rows[0];
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+
+    await pool.query(
+      "UPDATE users SET reset_otp = ?, reset_otp_expires_at = ? WHERE id = ?",
+      [otpCode, expiresAt, user.id]
+    );
+
+    await sendOtpEmail(user.email, user.name, otpCode);
+
+    res.json({
+      success: true,
+      message: `OTP sent to your registered email address (${user.email}).`,
+      email: user.email,
+    });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ error: "Failed to send reset OTP. Please try again." });
+  }
+});
+
+// POST /api/auth/verify-otp { email, otp }
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ error: "Email and OTP code are required" });
+    }
+
+    const trimmed = email.trim().toLowerCase();
+    const [rows] = await pool.query(
+      "SELECT id, reset_otp, reset_otp_expires_at FROM users WHERE LOWER(email) = LOWER(?)",
+      [trimmed]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    const user = rows[0];
+    if (!user.reset_otp || user.reset_otp !== otp.trim()) {
+      return res.status(400).json({ error: "Invalid OTP code" });
+    }
+
+    if (new Date(user.reset_otp_expires_at) < new Date()) {
+      return res.status(400).json({ error: "OTP code has expired. Please request a new one." });
+    }
+
+    res.json({ valid: true, message: "OTP code verified successfully" });
+  } catch (err) {
+    console.error("Verify OTP error:", err);
+    res.status(500).json({ error: "Failed to verify OTP" });
+  }
+});
+
+// POST /api/auth/reset-password { email, otp, newPassword }
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: "Email, OTP, and new password are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
+
+    const trimmed = email.trim().toLowerCase();
+    const [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [trimmed]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    const user = rows[0];
+    if (!user.reset_otp || user.reset_otp !== otp.trim()) {
+      return res.status(400).json({ error: "Invalid OTP code" });
+    }
+
+    if (new Date(user.reset_otp_expires_at) < new Date()) {
+      return res.status(400).json({ error: "OTP code has expired. Please request a new one." });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      "UPDATE users SET password_hash = ?, reset_otp = NULL, reset_otp_expires_at = NULL, last_login = CURRENT_TIMESTAMP WHERE id = ?",
+      [newHash, user.id]
+    );
+
+    const token = signToken(user.id);
+    setAuthCookie(res, token);
+    res.json({
+      success: true,
+      message: "Password reset successful",
+      token,
+      user: toPublicUser(user)
+    });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ error: "Failed to reset password" });
   }
 });
 

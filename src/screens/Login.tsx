@@ -30,12 +30,15 @@ export default function Login() {
     }
   }, [token, user, navigate]);
 
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot_email" | "reset_password">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<"Owner" | "Broker" | "Agency" | "User">("User");
   const [email, setEmail] = useState("");
@@ -88,12 +91,13 @@ export default function Login() {
 
   async function handleSubmit() {
     setError(null);
+    setSuccessMsg(null);
     setLoading(true);
     try {
       if (mode === "login") {
         const { token, user } = await api.login(identifier.trim(), password);
         login(token, user);
-      } else {
+      } else if (mode === "register") {
         const fullPhone = phone.trim() ? (countryCode + phone.trim()) : undefined;
         const { token, user } = await api.register({
           name,
@@ -103,7 +107,34 @@ export default function Login() {
           role,
         });
         login(token, user);
+      } else if (mode === "forgot_email") {
+        const targetEmail = email.trim() || identifier.trim();
+        if (!targetEmail) {
+          setError("Please enter your registered email address.");
+          setLoading(false);
+          return;
+        }
+        const res = await api.forgotPassword(targetEmail);
+        setEmail(targetEmail);
+        setSuccessMsg(res.message || "OTP code sent to your registered email address.");
+        setMode("reset_password");
+        setLoading(false);
+        return;
+      } else if (mode === "reset_password") {
+        const targetEmail = email.trim() || identifier.trim();
+        if (!targetEmail || !otp.trim() || !newPassword) {
+          setError("Please enter your email, OTP code, and new password.");
+          setLoading(false);
+          return;
+        }
+        const { token, user } = await api.resetPasswordWithOtp({
+          email: targetEmail,
+          otp: otp.trim(),
+          newPassword,
+        });
+        login(token, user);
       }
+
       const pendingLink = localStorage.getItem("pending_deep_link");
       if (pendingLink) {
         localStorage.removeItem("pending_deep_link");
@@ -149,10 +180,22 @@ export default function Login() {
         <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-white">
           <div className="mb-1">
             <h2 className="font-display font-extrabold text-lg text-white">
-              {mode === "login" ? "Welcome Back" : "Create Account"}
+              {mode === "login"
+                ? "Welcome Back"
+                : mode === "register"
+                ? "Create Account"
+                : mode === "forgot_email"
+                ? "Forgot Password"
+                : "Reset Password with OTP"}
             </h2>
             <p className="text-white/60 text-[10px] mt-0.5">
-              {mode === "login" ? "Login to access your dashboard" : "Get started by registering below"}
+              {mode === "login"
+                ? "Login to access your dashboard"
+                : mode === "register"
+                ? "Get started by registering below"
+                : mode === "forgot_email"
+                ? "We will send an OTP to your registered email"
+                : "Enter the OTP code sent to your email and your new password"}
             </p>
           </div>
 
@@ -177,7 +220,7 @@ export default function Login() {
               </div>
             )}
             
-            {mode === "login" ? (
+            {mode === "login" && (
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-white/80">Email or Mobile Number</label>
                 <input
@@ -189,7 +232,9 @@ export default function Login() {
                   className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
                 />
               </div>
-            ) : (
+            )}
+
+            {mode === "register" && (
               <>
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-white/80">Email Address</label>
@@ -202,10 +247,9 @@ export default function Login() {
                     className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
                   />
                 </div>
-                 <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-white/80">Mobile Number</label>
                   <div className="flex gap-2 relative">
-                    {/* Country Selector Button */}
                     <button
                       type="button"
                       onClick={() => setShowCountryDropdown(!showCountryDropdown)}
@@ -215,7 +259,6 @@ export default function Login() {
                       <span className="font-semibold">{countryCode}</span>
                     </button>
 
-                    {/* Phone Number Input */}
                     <input
                       type="tel"
                       placeholder="Enter mobile number"
@@ -225,10 +268,8 @@ export default function Login() {
                       className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
                     />
 
-                    {/* Country Selector Dropdown */}
                     {showCountryDropdown && (
                       <div className="absolute left-0 top-[46px] w-64 bg-charcoal border border-white/20 rounded-2xl p-2.5 z-50 shadow-2xl flex flex-col gap-2">
-                        {/* Search bar inside dropdown */}
                         <input
                           type="text"
                           placeholder="Search country name or code..."
@@ -236,7 +277,6 @@ export default function Login() {
                           onChange={(e) => setCountrySearch(e.target.value)}
                           className="w-full bg-white/10 border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder-white/40 focus:outline-none focus:border-gold"
                         />
-                        {/* List */}
                         <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto no-scrollbar">
                           {countries
                             .filter(
@@ -271,34 +311,94 @@ export default function Login() {
               </>
             )}
 
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-white/80">Password</label>
-              <div className="relative">
+            {(mode === "forgot_email" || mode === "reset_password") && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-white/80">Registered Email Address</label>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 pr-10 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
               </div>
-            </div>
+            )}
 
+            {mode === "reset_password" && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-white/80">6-Digit OTP Code</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="Enter 6-digit OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 font-mono tracking-widest text-center text-sm focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
+                />
+              </div>
+            )}
+
+            {(mode === "login" || mode === "register") && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-white/80">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 pr-10 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {mode === "reset_password" && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-white/80">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter new password (min 6 chars)"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    autoComplete="new-password"
+                    className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 pr-10 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {successMsg && <p className="text-[11px] text-emerald-400 font-semibold mt-0.5 bg-emerald-950/40 p-2 rounded-lg border border-emerald-500/20">{successMsg}</p>}
             {error && <p className="text-[11px] text-coral font-semibold mt-0.5">{error}</p>}
 
             {mode === "login" && (
               <button
                 type="button"
-                className="text-[10px] font-semibold text-white/80 hover:text-white self-end"
+                onClick={() => {
+                  setError(null);
+                  setSuccessMsg(null);
+                  setMode("forgot_email");
+                }}
+                className="text-[10px] font-semibold text-gold hover:underline self-end cursor-pointer"
               >
                 Forgot Password?
               </button>
@@ -307,9 +407,17 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2.5 py-3 bg-[#c89b3c] hover:bg-[#b08834] text-white rounded-xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full mt-2.5 py-3 bg-[#c89b3c] hover:bg-[#b08834] text-white rounded-xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
-              {loading ? "Please wait…" : mode === "login" ? "Login" : "Create Account"}
+              {loading
+                ? "Please wait…"
+                : mode === "login"
+                ? "Login"
+                : mode === "register"
+                ? "Create Account"
+                : mode === "forgot_email"
+                ? "Send OTP Code"
+                : "Reset Password & Login"}
             </button>
           </form>
 
@@ -322,14 +430,17 @@ export default function Login() {
           <button
             onClick={() => {
               setError(null);
+              setSuccessMsg(null);
               setMode((m) => (m === "login" ? "register" : "login"));
               setName("");
               setIdentifier("");
               setEmail("");
               setPhone("");
               setPassword("");
+              setOtp("");
+              setNewPassword("");
             }}
-            className="w-full py-3 border border-white/20 hover:bg-white/5 text-white rounded-xl text-xs font-bold font-display transition-all active:scale-[0.98]"
+            className="w-full py-3 border border-white/20 hover:bg-white/5 text-white rounded-xl text-xs font-bold font-display transition-all active:scale-[0.98] cursor-pointer"
           >
             {mode === "login" ? "Create New Account" : "Back to Login"}
           </button>

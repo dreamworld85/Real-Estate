@@ -24,6 +24,17 @@ import paymentRoutes from "./routes/payments.js";
 // Auto-migrate database table columns for subscription offers
 async function checkDbMigration() {
   try {
+    const [userCols] = await pool.query("SHOW COLUMNS FROM users");
+    const userColNames = userCols.map(c => c.Field);
+    if (!userColNames.includes("reset_otp")) {
+      console.log("Adding reset_otp column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN reset_otp VARCHAR(10) NULL");
+    }
+    if (!userColNames.includes("reset_otp_expires_at")) {
+      console.log("Adding reset_otp_expires_at column to users...");
+      await pool.query("ALTER TABLE users ADD COLUMN reset_otp_expires_at DATETIME NULL");
+    }
+
     const [cols] = await pool.query("SHOW COLUMNS FROM subscription_plans");
     const colNames = cols.map(c => c.Field);
     if (!colNames.includes("description")) {
@@ -265,30 +276,30 @@ async function checkDbMigration() {
     await pool.query("INSERT IGNORE INTO settings (`key`, `value`) VALUES ('featured_text', 'Pin your listing to the top of home feed and search results to get up to 10x more leads.')");
 
     // Add custom trial and free subscription columns to users table
-    const [userCols] = await pool.query("SHOW COLUMNS FROM users");
-    const userColNames = userCols.map(c => c.Field);
+    const [existingUserCols] = await pool.query("SHOW COLUMNS FROM users");
+    const existingUserColNames = existingUserCols.map(c => c.Field);
     
-    if (!userColNames.includes("role")) {
+    if (!existingUserColNames.includes("role")) {
       console.log("Adding role column to users...");
       await pool.query("ALTER TABLE users ADD COLUMN role VARCHAR(50) NOT NULL DEFAULT 'user'");
     }
 
-    if (!userColNames.includes("trial_ends_at")) {
+    if (!existingUserColNames.includes("trial_ends_at")) {
       console.log("Adding trial_ends_at column to users...");
       await pool.query("ALTER TABLE users ADD COLUMN trial_ends_at DATETIME NULL");
     }
 
-    if (!userColNames.includes("subscription_status")) {
+    if (!existingUserColNames.includes("subscription_status")) {
       console.log("Adding subscription_status column to users...");
       await pool.query("ALTER TABLE users ADD COLUMN subscription_status VARCHAR(50) NULL");
     }
 
-    if (!userColNames.includes("razorpay_subscription_id")) {
+    if (!existingUserColNames.includes("razorpay_subscription_id")) {
       console.log("Adding razorpay_subscription_id column to users...");
       await pool.query("ALTER TABLE users ADD COLUMN razorpay_subscription_id VARCHAR(255) NULL");
     }
 
-    if (!userColNames.includes("is_disabled")) {
+    if (!existingUserColNames.includes("is_disabled")) {
       console.log("Adding is_disabled column to users...");
       await pool.query("ALTER TABLE users ADD COLUMN is_disabled TINYINT(1) NOT NULL DEFAULT 0");
     }
