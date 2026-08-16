@@ -732,6 +732,37 @@ if (fs.existsSync(gitUploadsDir) && gitUploadsDir !== uploadsDir) {
 }
 
 app.use("/uploads", express.static(uploadsDir));
+app.use("/apk", express.static(uploadsDir));
+
+app.get(["/apk", "/apk/"], (_req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Download Sparrows Android APK</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; background: #FAF8F3; color: #22302E; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; text-align: center; }
+          .card { background: #fff; padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); max-width: 400px; width: 100%; box-sizing: border-box; }
+          h1 { color: #0F3D3E; margin-bottom: 8px; font-size: 24px; }
+          p { color: #6B7A78; font-size: 14px; margin-bottom: 24px; }
+          .btn { display: block; width: 100%; padding: 14px 20px; margin: 10px 0; background: #1B5E4F; color: #fff; text-decoration: none; border-radius: 12px; font-weight: 600; box-sizing: border-box; transition: background 0.2s; }
+          .btn:hover { background: #0F3D3E; }
+          .btn-admin { background: #0F3D3E; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>Sparrows Mobile Apps</h1>
+          <p>Download the official Android APK files below:</p>
+          <a href="/apk/sparrows.apk" class="btn" download>📱 Download Sparrows App (User)</a>
+          <a href="/apk/sparrows-admin.apk" class="btn btn-admin" download>🛠️ Download Sparrows Admin App</a>
+        </div>
+      </body>
+    </html>
+  `);
+});
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.get("/api/debug-files", (_req, res) => {
