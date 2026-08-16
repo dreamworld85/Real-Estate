@@ -149,53 +149,56 @@ export default function Login() {
     }
   }
 
-  async function handleGoogleLogin() {
+  const [socialModal, setSocialModal] = useState<"google" | "facebook" | null>(null);
+  const [socialEmail, setSocialEmail] = useState("");
+  const [socialName, setSocialName] = useState("");
+
+  function handleGoogleClick() {
     setError(null);
-    setLoading(true);
-    try {
-      const promptEmail = prompt("Enter your Google Account email for Google Sign-In:");
-      if (!promptEmail) {
-        setLoading(false);
-        return;
-      }
-      const promptName = promptEmail.split("@")[0].replace(/\./g, " ");
-      const formattedName = promptName.charAt(0).toUpperCase() + promptName.slice(1);
-      
-      const { token, user } = await api.loginWithGoogle({
-        email: promptEmail.trim(),
-        name: formattedName,
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(promptEmail)}`,
-      });
-      login(token, user);
-      navigate("/home");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Google login failed");
-    } finally {
-      setLoading(false);
-    }
+    setSocialEmail("");
+    setSocialName("");
+    setSocialModal("google");
   }
 
-  async function handleFacebookLogin() {
+  function handleFacebookClick() {
+    setError(null);
+    setSocialEmail("");
+    setSocialName("");
+    setSocialModal("facebook");
+  }
+
+  async function submitSocialLogin() {
+    if (!socialEmail.trim()) {
+      setError("Please enter your account email address.");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
-      const promptEmail = prompt("Enter your Facebook Account email for Facebook Sign-In:");
-      if (!promptEmail) {
-        setLoading(false);
-        return;
+      const targetEmail = socialEmail.trim();
+      const defaultName = socialName.trim() || targetEmail.split("@")[0].replace(/\./g, " ");
+      const formattedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
+      const avatarSeed = encodeURIComponent(targetEmail);
+
+      if (socialModal === "google") {
+        const { token, user } = await api.loginWithGoogle({
+          email: targetEmail,
+          name: formattedName,
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`,
+        });
+        login(token, user);
+      } else if (socialModal === "facebook") {
+        const { token, user } = await api.loginWithFacebook({
+          email: targetEmail,
+          name: formattedName,
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`,
+        });
+        login(token, user);
       }
-      const promptName = promptEmail.split("@")[0].replace(/\./g, " ");
-      const formattedName = promptName.charAt(0).toUpperCase() + promptName.slice(1);
-      
-      const { token, user } = await api.loginWithFacebook({
-        email: promptEmail.trim(),
-        name: formattedName,
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(promptEmail)}`,
-      });
-      login(token, user);
+      setSocialModal(null);
       navigate("/home");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Facebook login failed");
+      setError(err instanceof Error ? err.message : "Social login failed");
     } finally {
       setLoading(false);
     }
@@ -486,7 +489,7 @@ export default function Login() {
                 {/* Google Button */}
                 <button
                   type="button"
-                  onClick={handleGoogleLogin}
+                  onClick={handleGoogleClick}
                   disabled={loading}
                   className="w-full py-2.5 px-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
                 >
@@ -502,7 +505,7 @@ export default function Login() {
                 {/* Facebook Button */}
                 <button
                   type="button"
-                  onClick={handleFacebookLogin}
+                  onClick={handleFacebookClick}
                   disabled={loading}
                   className="w-full py-2.5 px-3 bg-[#1877F2]/20 hover:bg-[#1877F2]/35 border border-[#1877F2]/40 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
                 >
@@ -540,6 +543,94 @@ export default function Login() {
           </button>
         </div>
       </div>
+
+      {/* Interactive Social Login Modal */}
+      {socialModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+          <div className="bg-charcoal border border-white/20 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                {socialModal === "google" ? (
+                  <svg className="w-6 h-6" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+                    <path fill="#FBBC05" d="M5.6 14.8c-.3-.8-.4-1.8-.4-2.8s.1-2 .4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
+                    <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6 fill-[#1877F2]" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                )}
+                <h3 className="font-display font-extrabold text-base text-white capitalize">
+                  Continue with {socialModal}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSocialModal(null)}
+                className="text-white/50 hover:text-white text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-white/70 text-xs leading-relaxed">
+              Enter your {socialModal === "google" ? "Google Account" : "Facebook Account"} email to log in instantly.
+            </p>
+
+            <form
+              className="flex flex-col gap-3 mt-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitSocialLogin();
+              }}
+            >
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-white/80">Account Email</label>
+                <input
+                  type="email"
+                  required
+                  placeholder={socialModal === "google" ? "you@gmail.com" : "you@facebook.com"}
+                  value={socialEmail}
+                  onChange={(e) => setSocialEmail(e.target.value)}
+                  className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-white/80">Full Name (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  value={socialName}
+                  onChange={(e) => setSocialName(e.target.value)}
+                  className="w-full bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none"
+                />
+              </div>
+
+              {error && <p className="text-[11px] text-coral font-semibold mt-0.5">{error}</p>}
+
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setSocialModal(null)}
+                  className="flex-1 py-2.5 border border-white/20 hover:bg-white/10 text-white rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 py-2.5 bg-[#c89b3c] hover:bg-[#b08834] text-white rounded-xl text-xs font-bold font-display shadow-md disabled:bg-slate/30 cursor-pointer"
+                >
+                  {loading ? "Logging in..." : "Continue"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
