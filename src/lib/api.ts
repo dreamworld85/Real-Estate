@@ -180,6 +180,24 @@ export const api = {
     return handle<{ success: boolean; token: string; user: ApiUser }>(res);
   },
 
+  async loginWithGoogle(data: { credential?: string; token?: string; email?: string; name?: string; avatarUrl?: string }) {
+    const res = await fetch(`${API_URL}/api/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return handle<{ success: boolean; token: string; user: ApiUser }>(res);
+  },
+
+  async loginWithFacebook(data: { accessToken?: string; email?: string; name?: string; avatarUrl?: string }) {
+    const res = await fetch(`${API_URL}/api/auth/facebook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return handle<{ success: boolean; token: string; user: ApiUser }>(res);
+  },
+
   async fetchProperties(params: Record<string, string> = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`${API_URL}/api/properties${query ? `?${query}` : ""}`, {

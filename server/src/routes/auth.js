@@ -277,4 +277,130 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
+// POST /api/auth/google { credential, token, email, name, avatarUrl }
+router.post("/google", async (req, res) => {
+  try {
+    const { credential, token: gToken, email: reqEmail, name: reqName, avatarUrl } = req.body;
+    let email = reqEmail;
+    let name = reqName || "Google User";
+    let picture = avatarUrl || null;
+
+    if (gToken) {
+      try {
+        const userInfoRes = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${gToken}`);
+        if (userInfoRes.ok) {
+          const profile = await userInfoRes.json();
+          email = profile.email || email;
+          name = profile.name || name;
+          picture = profile.picture || picture;
+        }
+      } catch (gErr) {
+        console.warn("[Google Auth] Could not fetch Google userinfo:", gErr.message);
+      }
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: "Email address is required for Google login" });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    let [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [trimmedEmail]);
+
+    let userRow;
+    if (rows.length === 0) {
+      const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
+      const [insertResult] = await pool.query(
+        "INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES (?, ?, ?, 'user', ?)",
+        [name, trimmedEmail, randomPassword, picture]
+      );
+      const [newRows] = await pool.query("SELECT * FROM users WHERE id = ?", [insertResult.insertId]);
+      userRow = newRows[0];
+    } else {
+      userRow = rows[0];
+      if (!userRow.avatar_url && picture) {
+        await pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [picture, userRow.id]);
+        userRow.avatar_url = picture;
+      }
+    }
+
+    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [userRow.id]);
+    const token = signToken(userRow.id);
+    setAuthCookie(res, token);
+
+    res.json({
+      success: true,
+      message: "Successfully authenticated with Google",
+      token,
+      user: toPublicUser(userRow),
+    });
+  } catch (err) {
+    console.error("Google authentication error:", err);
+    res.status(500).json({ error: "Google login failed" });
+  }
+});
+
+// POST /api/auth/facebook { accessToken, email, name, avatarUrl }
+router.post("/facebook", async (req, res) => {
+  try {
+    const { accessToken, email: reqEmail, name: reqName, avatarUrl } = req.body;
+    let email = reqEmail;
+    let name = reqName || "Facebook User";
+    let picture = avatarUrl || null;
+
+    if (accessToken) {
+      try {
+        const fbRes = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${accessToken}`);
+        if (fbRes.ok) {
+          const fbProfile = await fbRes.json();
+          email = fbProfile.email || email;
+          name = fbProfile.name || name;
+          if (fbProfile.picture && fbProfile.picture.data && fbProfile.picture.data.url) {
+            picture = fbProfile.picture.data.url;
+          }
+        }
+      } catch (fbErr) {
+        console.warn("[Facebook Auth] Could not fetch Facebook profile:", fbErr.message);
+      }
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: "Email address is required for Facebook login" });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    let [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [trimmedEmail]);
+
+    let userRow;
+    if (rows.length === 0) {
+      const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
+      const [insertResult] = await pool.query(
+        "INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES (?, ?, ?, 'user', ?)",
+        [name, trimmedEmail, randomPassword, picture]
+      );
+      const [newRows] = await pool.query("SELECT * FROM users WHERE id = ?", [insertResult.insertId]);
+      userRow = newRows[0];
+    } else {
+      userRow = rows[0];
+      if (!userRow.avatar_url && picture) {
+        await pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [picture, userRow.id]);
+        userRow.avatar_url = picture;
+      }
+    }
+
+    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [userRow.id]);
+    const token = signToken(userRow.id);
+    setAuthCookie(res, token);
+
+    res.json({
+      success: true,
+      message: "Successfully authenticated with Facebook",
+      token,
+      user: toPublicUser(userRow),
+    });
+  } catch (err) {
+    console.error("Facebook authentication error:", err);
+    res.status(500).json({ error: "Facebook login failed" });
+  }
+});
+
 export default router;

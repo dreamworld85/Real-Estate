@@ -149,6 +149,58 @@ export default function Login() {
     }
   }
 
+  async function handleGoogleLogin() {
+    setError(null);
+    setLoading(true);
+    try {
+      const promptEmail = prompt("Enter your Google Account email for Google Sign-In:");
+      if (!promptEmail) {
+        setLoading(false);
+        return;
+      }
+      const promptName = promptEmail.split("@")[0].replace(/\./g, " ");
+      const formattedName = promptName.charAt(0).toUpperCase() + promptName.slice(1);
+      
+      const { token, user } = await api.loginWithGoogle({
+        email: promptEmail.trim(),
+        name: formattedName,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(promptEmail)}`,
+      });
+      login(token, user);
+      navigate("/home");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleFacebookLogin() {
+    setError(null);
+    setLoading(true);
+    try {
+      const promptEmail = prompt("Enter your Facebook Account email for Facebook Sign-In:");
+      if (!promptEmail) {
+        setLoading(false);
+        return;
+      }
+      const promptName = promptEmail.split("@")[0].replace(/\./g, " ");
+      const formattedName = promptName.charAt(0).toUpperCase() + promptName.slice(1);
+      
+      const { token, user } = await api.loginWithFacebook({
+        email: promptEmail.trim(),
+        name: formattedName,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(promptEmail)}`,
+      });
+      login(token, user);
+      navigate("/home");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Facebook login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen relative flex flex-col justify-start pt-10 md:pt-16 px-4 pb-4 overflow-x-hidden">
       {/* Dynamic Background Image */}
@@ -421,7 +473,49 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="flex items-center gap-3 my-2">
+          {/* Social Login Section */}
+          {(mode === "login" || mode === "register") && (
+            <div className="flex flex-col gap-2.5 mt-1">
+              <div className="flex items-center gap-3 my-1">
+                <div className="h-px flex-1 bg-white/15" />
+                <span className="text-[9px] text-white/50 uppercase tracking-widest font-semibold">Or continue with</span>
+                <div className="h-px flex-1 bg-white/15" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Google Button */}
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                  className="w-full py-2.5 px-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+                    <path fill="#FBBC05" d="M5.6 14.8c-.3-.8-.4-1.8-.4-2.8s.1-2 .4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
+                    <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/>
+                  </svg>
+                  <span>Google</span>
+                </button>
+
+                {/* Facebook Button */}
+                <button
+                  type="button"
+                  onClick={handleFacebookLogin}
+                  disabled={loading}
+                  className="w-full py-2.5 px-3 bg-[#1877F2]/20 hover:bg-[#1877F2]/35 border border-[#1877F2]/40 rounded-xl text-xs font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <svg className="w-4 h-4 fill-[#1877F2]" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  <span>Facebook</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 my-1">
             <div className="h-px flex-1 bg-white/15" />
             <span className="text-[10px] text-white/50 uppercase tracking-wider">or</span>
             <div className="h-px flex-1 bg-white/15" />
