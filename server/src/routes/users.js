@@ -34,6 +34,9 @@ function toPublicUser(row) {
     role: row.role,
     createdAt: row.created_at,
     subscriptionDurationMonths: row.subscription_duration_months,
+    agencyLogoUrl: row.agency_logo_url,
+    agencyAddress: row.agency_address,
+    agencyDistrict: row.agency_district,
   };
 }
 
@@ -370,6 +373,9 @@ router.post("/setup-role", requireAuth, upload.single("agencyLogo"), async (req,
     });
   } catch (err) {
     console.error(err);
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ error: "This contact number is already registered to another account. Please use a different number." });
+    }
     res.status(500).json({ error: "Failed to setup role" });
   }
 });
@@ -446,18 +452,30 @@ router.delete("/me", requireAuth, async (req, res) => {
     await conn.commit();
 
     // 5. Delete physical files from disk
-    const serverUploadsDir = path.join(process.cwd(), "uploads");
     for (const relativePath of pathsToDelete) {
       if (typeof relativePath === "string" && relativePath.startsWith("/uploads/")) {
         const filename = relativePath.substring("/uploads/".length);
-        const fullPath = path.join(serverUploadsDir, filename);
+        
+        // Path 1: src/uploads
+        const path1 = path.join(path.resolve("src/uploads"), filename);
         try {
-          if (fs.existsSync(fullPath)) {
-            fs.unlinkSync(fullPath);
-            console.log("Successfully deleted physical file:", fullPath);
+          if (fs.existsSync(path1)) {
+            fs.unlinkSync(path1);
+            console.log("Successfully deleted physical file from src/uploads:", path1);
           }
         } catch (err) {
-          console.error("Failed to delete physical file:", fullPath, err);
+          console.error("Failed to delete file from src/uploads:", path1, err);
+        }
+
+        // Path 2: uploads
+        const path2 = path.join(path.resolve("uploads"), filename);
+        try {
+          if (fs.existsSync(path2)) {
+            fs.unlinkSync(path2);
+            console.log("Successfully deleted physical file from uploads:", path2);
+          }
+        } catch (err) {
+          console.error("Failed to delete file from uploads:", path2, err);
         }
       }
     }

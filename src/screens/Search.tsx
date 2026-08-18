@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw, Heart } from "lucide-react";
 import { api, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
@@ -15,6 +15,9 @@ const districts = [
 
 export default function Search() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const showFeaturedOnly = searchParams.get("featured") === "true";
   const [district, setDistrict] = useState("");
   const [propertyType, setPropertyType] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -48,6 +51,18 @@ export default function Search() {
 
   // Local filter by search query
   const results = rawResults.filter((p) => {
+    if (showFeaturedOnly) {
+      if (!p.isFeatured) return false;
+    } else {
+      const isAllowedFeaturedType = 
+        p.propertyType === "House" || 
+        p.propertyType === "Villa" || 
+        p.propertyType === "Apartment";
+      
+      if (p.isFeatured && !isAllowedFeaturedType) {
+        return false;
+      }
+    }
     if (!query) return true;
     const q = query.toLowerCase();
     return (
@@ -105,6 +120,18 @@ export default function Search() {
             <Heart size={18} className="text-slate/75 group-hover:text-rose-500 transition-colors" />
           </button>
         </div>
+
+        {showFeaturedOnly && (
+          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-600/10 px-4 py-2.5 rounded-2xl mb-4 text-xs font-bold text-emerald-800 animate-fade-in">
+            <span>Showing Featured Listings Only</span>
+            <button
+              onClick={() => navigate("/search")}
+              className="text-[10px] font-black uppercase text-emerald-600 hover:text-emerald-700 bg-white px-2 py-1 rounded-lg shadow-sm border border-emerald-600/10 active:scale-95 transition-all cursor-pointer"
+            >
+              Clear Filter
+            </button>
+          </div>
+        )}
 
         {/* 3-Column Pill Dropdowns */}
         <div className="grid grid-cols-3 gap-2.5 mb-2">

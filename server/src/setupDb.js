@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const dbHost = process.env.DB_HOST || "localhost";
 const dbPort = Number(process.env.DB_PORT) || 3306;

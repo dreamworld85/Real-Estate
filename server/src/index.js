@@ -691,7 +691,7 @@ function generateSystemBlueprintFile() {
 }
 generateSystemBlueprintFile();
 
-dotenv.config();
+dotenv.config({ override: true });
 
 // Auto-configure persistent UPLOADS_DIR on Hostinger server
 if (process.cwd().includes("api.greensparrows.com")) {
@@ -705,7 +705,7 @@ if (process.cwd().includes("api.greensparrows.com")) {
     envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
     fs.writeFileSync(envPath, envContent, "utf8");
     // Reload environment variables
-    dotenv.config();
+    dotenv.config({ override: true });
   }
 }
 

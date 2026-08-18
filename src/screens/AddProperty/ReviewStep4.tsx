@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Camera } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import { useAuth } from "@/lib/AuthContext";
-import { api } from "@/lib/api";
+import { api, mediaUrl } from "@/lib/api";
 import Header from "@/components/Header";
 import StepProgress from "@/components/StepProgress";
 import RoleBadge from "@/components/RoleBadge";
@@ -21,7 +21,7 @@ function formatPrice(price: string): string {
 export default function ReviewStep4() {
   const navigate = useNavigate();
   const { form, isEditing, editingId, reset, setLastSubmittedStatus } = useAddProperty();
-  const { token, login } = useAuth();
+  const { token, login, user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,21 +107,23 @@ export default function ReviewStep4() {
       if (form.video) fd.append("media", form.video);
 
       let responseStatus = null;
+      let createdId: number | null = null;
       if (isEditing && editingId) {
         await api.updateProperty(editingId, fd);
+        createdId = editingId;
       } else {
         const res = await api.createProperty(fd);
         responseStatus = res;
+        createdId = res.id;
         if (res && res.user && token) {
           login(token, res.user);
         }
       }
-      if (responseStatus) {
-        setLastSubmittedStatus({
-          status: responseStatus.status,
-          isOverLimit: !!responseStatus.isOverLimit
-        });
-      }
+      setLastSubmittedStatus({
+        status: responseStatus ? responseStatus.status : "Draft",
+        isOverLimit: responseStatus ? !!responseStatus.isOverLimit : false,
+        id: createdId
+      });
       navigate("/add-property/success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit property");
@@ -160,14 +162,16 @@ export default function ReviewStep4() {
 
         <div className="flex items-center gap-3">
           {form.role && <RoleBadge role={form.role} />}
-          {form.role?.toLowerCase() === "agency" && form.agencyLogo && (
+          {form.role?.toLowerCase() === "agency" && (form.agencyLogo || user?.agencyLogoUrl) && (
             <div className="flex items-center gap-1.5 bg-white border border-charcoal/8 rounded-full px-2.5 py-1 shadow-sm">
               <img
-                src={URL.createObjectURL(form.agencyLogo)}
+                src={form.agencyLogo ? URL.createObjectURL(form.agencyLogo) : mediaUrl(user?.agencyLogoUrl || "")}
                 alt="Logo Preview"
                 className="w-4 h-4 object-cover rounded-full"
               />
-              <span className="text-[9px] font-bold text-slate uppercase">Logo Uploaded</span>
+              <span className="text-[9px] font-bold text-slate uppercase">
+                {form.agencyLogo ? "Logo Uploaded" : "Profile Logo"}
+              </span>
             </div>
           )}
         </div>

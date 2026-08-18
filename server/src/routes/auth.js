@@ -23,6 +23,9 @@ function toPublicUser(row) {
     subscriptionStatus: row.subscription_status,
     razorpaySubscriptionId: row.razorpay_subscription_id,
     role: row.role,
+    agencyLogoUrl: row.agency_logo_url,
+    agencyAddress: row.agency_address,
+    agencyDistrict: row.agency_district,
   };
 }
 

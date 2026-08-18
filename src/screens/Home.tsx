@@ -257,7 +257,7 @@ export default function Home() {
 
       {!loading && !error && filteredProperties.length > 0 && (
         <>
-          {filteredProperties.some(p => p.isFeatured) && (
+          {(activeCategory === "All" && filteredProperties.some(p => p.isFeatured)) && (
             <section className="mb-6 animate-fade-in">
               <div className="flex items-center justify-between px-4 mb-3">
                 <div className="flex items-center gap-1.5">
@@ -265,7 +265,7 @@ export default function Home() {
                   <h2 className="font-display font-extrabold text-[15px] tracking-wide text-ink">Featured Listings</h2>
                 </div>
                 <button 
-                  onClick={() => navigate("/search")}
+                  onClick={() => navigate("/search?featured=true")}
                   className="text-xs font-bold text-forest hover:text-emerald-700 transition-colors flex items-center gap-0.5 cursor-pointer"
                 >
                   View All <ChevronRight size={13} className="text-forest/65" />
@@ -292,7 +292,7 @@ export default function Home() {
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3.5">
-              {filteredProperties.map((p) => (
+              {filteredProperties.filter((p) => activeCategory !== "All" ? true : !p.isFeatured).map((p) => (
                 <PropertyCard key={p.id} property={p} compact={true} />
               ))}
             </div>

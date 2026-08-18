@@ -90,6 +90,8 @@ export default function ChooseRole() {
       ownerName: form.ownerName || (initialRole === "Owner" ? user?.name || "" : ""),
       brokerName: form.brokerName || (initialRole === "Broker" ? user?.name || "" : ""),
       agencyName: form.agencyName || (initialRole === "Agency" ? user?.name || "" : ""),
+      agencyAddress: form.agencyAddress || (initialRole === "Agency" ? user?.agencyAddress || "" : ""),
+      agencyDistrict: form.agencyDistrict || (initialRole === "Agency" ? user?.agencyDistrict || "" : ""),
       contactPhone: contact,
       sameAsContact: form.sameAsContact !== undefined ? form.sameAsContact : true,
       whatsappNumber: form.whatsappNumber || contact,
@@ -127,6 +129,7 @@ export default function ChooseRole() {
   const validatePhone = (num: string) => num && num.trim().length >= 8;
 
   const isSetupValid = (() => {
+    if (isRoleAlreadyLocked) return true;
     if (!form.role) return false;
     const hasContact = validatePhone(form.contactPhone) && validatePhone(form.whatsappNumber);
     if (!hasContact) return false;

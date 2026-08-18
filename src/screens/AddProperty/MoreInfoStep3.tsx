@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { mediaUrl } from "@/lib/api";
 import { Crosshair } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -65,8 +66,6 @@ export default function MoreInfoStep3() {
   const navigate = useNavigate();
   const { form, update } = useAddProperty();
   const { user } = useAuth();
-  const logoInputRef = useRef<HTMLInputElement>(null);
-
   const [attemptedNext, setAttemptedNext] = useState(false);
 
   const isLand = form.propertyType === "Land" || form.propertyType === "Plot / Land";
@@ -126,7 +125,7 @@ export default function MoreInfoStep3() {
       return !!form.brokerName?.trim();
     }
     if (normalizedRole === "agency") {
-      return !!form.agencyName?.trim() && (form.agencyLogo || user?.avatarUrl);
+      return true;
     }
     return false;
   })();
@@ -456,69 +455,7 @@ export default function MoreInfoStep3() {
             />
           )}
 
-          {form.role?.toLowerCase() === "agency" && (
-            <div className="flex flex-col gap-3">
-              <Input
-                label="Agency Name"
-                placeholder="Enter agency name"
-                value={form.agencyName}
-                onChange={(e) => update({ agencyName: e.target.value })}
-                error={attemptedNext && !form.agencyName}
-              />
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate">Agency Logo</label>
-                <input
-                  ref={logoInputRef}
-                  type="file"
-                  accept="image/png, image/jpeg, image/jpg"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      if (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/jpg") {
-                        update({ agencyLogo: file });
-                      } else {
-                        alert("Please upload a PNG or JPEG image for the agency logo.");
-                      }
-                    }
-                    e.target.value = "";
-                  }}
-                />
-                {form.agencyLogo ? (
-                  <div className="flex items-center gap-3 bg-white border border-charcoal/10 rounded-xl p-2.5">
-                    <img
-                      src={URL.createObjectURL(form.agencyLogo)}
-                      alt="Agency Logo"
-                      className="w-8 h-8 object-cover rounded border border-charcoal/10"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-charcoal truncate">{form.agencyLogo.name}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => update({ agencyLogo: null })}
-                      className="text-xs font-bold text-rose-500 hover:underline pr-1 cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => logoInputRef.current?.click()}
-                    className="w-full py-2.5 border border-dashed border-charcoal/15 hover:border-black rounded-xl flex flex-col items-center justify-center gap-0.5 transition-colors bg-white shadow-sm cursor-pointer"
-                  >
-                    <span className="text-[11px] font-bold text-charcoal">Upload Logo Image</span>
-                    <span className="text-[9px] text-slate/50">PNG or JPEG format</span>
-                  </button>
-                )}
-                {attemptedNext && !form.agencyLogo && (
-                  <span className="text-[9px] text-rose-500 font-bold mt-0.5">Agency logo is required</span>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Contact Details side-by-side */}
           <div className="grid grid-cols-2 gap-3">

@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 export async function sendOtpEmail(toEmail, otpName, otpCode) {
   const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";

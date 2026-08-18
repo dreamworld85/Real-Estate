@@ -74,8 +74,8 @@ interface AddPropertyContextValue {
   isEditing: boolean;
   editingId: number | null;
   startEditing: (property: any) => void;
-  lastSubmittedStatus: { status: string; isOverLimit: boolean } | null;
-  setLastSubmittedStatus: (status: { status: string; isOverLimit: boolean } | null) => void;
+  lastSubmittedStatus: { status: string; isOverLimit: boolean; id?: number | null } | null;
+  setLastSubmittedStatus: (status: { status: string; isOverLimit: boolean; id?: number | null } | null) => void;
 }
 
 const AddPropertyContext = createContext<AddPropertyContextValue | null>(null);
@@ -83,7 +83,7 @@ const AddPropertyContext = createContext<AddPropertyContextValue | null>(null);
 export function AddPropertyProvider({ children }: { children: ReactNode }) {
   const [form, setForm] = useState<NewPropertyForm>(initialForm);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [lastSubmittedStatus, setLastSubmittedStatus] = useState<{ status: string; isOverLimit: boolean } | null>(null);
+  const [lastSubmittedStatus, setLastSubmittedStatus] = useState<{ status: string; isOverLimit: boolean; id?: number | null } | null>(null);
 
   function update(patch: Partial<NewPropertyForm>) {
     setForm((prev) => ({ ...prev, ...patch }));

@@ -15,7 +15,7 @@ const variantClasses: Record<Variant, string> = {
     "bg-transparent text-ink border border-ink/20 hover:bg-sage",
   ghost: "bg-transparent text-ink hover:bg-sage",
   destructive:
-    "bg-transparent text-coral border border-coral/30 hover:bg-coral/5",
+    "bg-coral text-cream hover:bg-coral/90 active:bg-coral/95 disabled:bg-slate/40",
 };
 
 export default function Button({

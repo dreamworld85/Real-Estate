@@ -102,6 +102,50 @@ router.get("/mobile-share-settings", async (req, res) => {
 // Apply admin protection check to all subsequent routes
 router.use(checkAdminSession);
 
+// GET /api/admin/activity-logs (Admin Protected)
+router.get("/activity-logs", async (req, res) => {
+  try {
+    const [propertyViews] = await pool.query(`
+      SELECT 
+        pv.id,
+        pv.viewed_at,
+        pv.ip_address,
+        pv.user_agent,
+        p.title as property_title,
+        p.id as property_id,
+        u.name as visitor_name,
+        u.email as visitor_email
+      FROM property_views pv
+      JOIN properties p ON pv.property_id = p.id
+      LEFT JOIN users u ON pv.visitor_id = u.id
+      ORDER BY pv.viewed_at DESC
+      LIMIT 200
+    `);
+
+    const [contactClicks] = await pool.query(`
+      SELECT 
+        cc.id,
+        cc.created_at,
+        p.title as property_title,
+        p.id as property_id,
+        u.name as user_name,
+        u.email as user_email
+      FROM contact_clicks cc
+      JOIN properties p ON cc.property_id = p.id
+      JOIN users u ON cc.user_id = u.id
+      ORDER BY cc.created_at DESC
+      LIMIT 200
+    `);
+
+    res.json({
+      propertyViews,
+      contactClicks
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/admin/app-download-settings (Admin Protected)
 router.put("/app-download-settings", upload.single("logo"), async (req, res) => {
   try {
@@ -592,6 +636,7 @@ router.get("/properties", async (req, res) => {
 
     res.json(rows);
   } catch (err) {
+    console.error("ADMIN PROPERTIES ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -642,18 +687,30 @@ router.delete("/properties/:id", async (req, res) => {
     await conn.commit();
 
     // 3. Delete physical files from disk
-    const serverUploadsDir = path.join(process.cwd(), "uploads");
     for (const relativePath of pathsToDelete) {
       if (typeof relativePath === "string" && relativePath.startsWith("/uploads/")) {
         const filename = relativePath.substring("/uploads/".length);
-        const fullPath = path.join(serverUploadsDir, filename);
+        
+        // Path 1: src/uploads
+        const path1 = path.join(path.resolve("src/uploads"), filename);
         try {
-          if (fs.existsSync(fullPath)) {
-            fs.unlinkSync(fullPath);
-            console.log("Successfully deleted physical file:", fullPath);
+          if (fs.existsSync(path1)) {
+            fs.unlinkSync(path1);
+            console.log("Successfully deleted physical file from src/uploads:", path1);
           }
         } catch (err) {
-          console.error("Failed to delete physical file:", fullPath, err);
+          console.error("Failed to delete file from src/uploads:", path1, err);
+        }
+
+        // Path 2: uploads
+        const path2 = path.join(path.resolve("uploads"), filename);
+        try {
+          if (fs.existsSync(path2)) {
+            fs.unlinkSync(path2);
+            console.log("Successfully deleted physical file from uploads:", path2);
+          }
+        } catch (err) {
+          console.error("Failed to delete file from uploads:", path2, err);
         }
       }
     }

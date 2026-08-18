@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Data Centre — Lt company</title>
+  
+  <!-- Font integration -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Premium Reset & Variable Setup */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    :root {
+      --bg-dark: #0a0b0d;
+      --bg-charcoal: #121418;
+      --bg-slate: #1c1f26;
+      --border-color: rgba(255, 255, 255, 0.06);
+      --border-color-hover: rgba(255, 255, 255, 0.12);
+      --text-silver: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent-silver: #cbd5e1;
+      --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-silver);
+      font-family: var(--font-family);
+      overflow-x: hidden;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-slate);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* Container Utility */
+    .container {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* HEADER */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background-color: rgba(10, 11, 13, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      height: 72px;
+      display: flex;
+      align-items: center;
+      transition: background-color 0.3s;
+    }
+
+    .header__inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .header__logo {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      color: var(--text-silver);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .header__logo-mark {
+      width: 10px;
+      height: 10px;
+      background-color: var(--accent-silver);
+      border-radius: 2px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    }
+
+    .header__actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header__btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .header__btn:hover {
+      color: var(--text-silver);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* HERO SECTION with Spotlight Light Projection */
+    .hero {
+      position: relative;
+      padding: 100px 0 80px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    /* Spotlight Projection Shining DOWNWARDS */
+    .hero__light-projection {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 900px;
+      height: 480px;
+      background: radial-gradient(ellipse 60% 80% at 50% 0%, rgba(226, 232, 240, 0.07) 0%, rgba(0, 0, 0, 0) 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .hero__content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero__tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      display: inline-block;
+      border: 1px solid var(--border-color);
+      padding: 4px 12px;
+      border-radius: 100px;
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .hero__title {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      color: var(--text-silver);
+      line-height: 1.15;
+      margin-bottom: 20px;
+    }
+
+    .hero__desc {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 580px;
+      margin: 0 auto 40px;
+      font-weight: 400;
+    }
+
+    /* Downward-Lit Product Showcase */
+    .hero__showcase {
+      margin-top: 20px;
+      position: relative;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background-color: rgba(18, 20, 24, 0.6);
+      padding: 40px;
+      max-width: 960px;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+    }
+
+    /* Realistic downward shadow for showcase */
+    .hero__showcase::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(226, 232, 240, 0.15), transparent);
+    }
+
+    .hero__showcase-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 40px;
+      align-items: center;
+      text-align: left;
+    }
+
+    .hero__showcase-media {
+      background: linear-gradient(135deg, var(--bg-slate) 0%, var(--bg-charcoal) 100%);
+      border-radius: 16px;
+      height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-color);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Blueprint geometric line overlay to represent spatial data */
+    .hero__showcase-media::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        radial-gradient(var(--border-color) 1px, transparent 1px),
+        linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    .hero__showcase-symbol {
+      position: relative;
+      z-index: 2;
+      width: 120px;
+      height: 120px;
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: rotateSlow 20s linear infinite;
+    }
+
+    .hero__showcase-symbol::after {
+      content: '';
+      width: 70px;
+      height: 70px;
+      border: 2px solid var(--text-silver);
+      border-radius: 12px;
+      transform: rotate(45deg);
+      box-shadow: 0 0 20px rgba(255,255,255,0.08);
+    }
+
+    @keyframes rotateSlow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .hero__showcase-details {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .hero__showcase-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .hero__showcase-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 16px;
+    }
+
+    .hero__showcase-spec {
+      background-color: var(--bg-slate);
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .hero__showcase-spec-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .hero__showcase-spec-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-silver);
+      margin-top: 4px;
+    }
+
+    /* FILTER TABS & CATEGORIES */
+    .filter {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--bg-dark);
+      position: sticky;
+      top: 72px;
+      z-index: 40;
+    }
+
+    .filter__inner {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter__tab {
+      background-color: var(--bg-charcoal);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-family: var(--font-family);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+    }
+
+    .filter__tab:hover {
+      color: var(--text-silver);
+      border-color: var(--border-color-hover);
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .filter__tab.active {
+      color: var(--bg-dark);
+      background-color: var(--text-silver);
+      border-color: var(--text-silver);
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+    }
+
+    /* VIDEO SECTION */
+    .video-section {
+      padding: 50px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .video-section__container {
+      width: 100%;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-charcoal);
+      overflow: hidden;
+      aspect-ratio: 16/7;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Video dummy graphic details */
+    .video-section__media-fallback {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(45deg, #121418 0%, #1c1f26 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .video-section__media-lines {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .video-section__play-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: var(--text-silver);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.3s;
+      z-index: 2;
+    }
+
+    .video-section__play-btn:hover {
+      background-color: var(--text-silver);
+      color: var(--bg-dark);
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+    }
+
+    .video-section__play-btn svg {
+      transform: translateX(2px);
+    }
+
+    .video-section__label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      z-index: 2;
+    }
+
+    /* PRODUCTS GRID */
+    .catalog {
+      padding: 60px 0 80px;
+    }
+
+    .catalog__header {
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .catalog__title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .catalog__title::before {
+      content: '';
+      width: 4px;
+      height: 16px;
+      background-color: var(--accent-silver);
+      border-radius: 10px;
+    }
+
+    .catalog__count {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .catalog__grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 1100px) {
+      .catalog__grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .catalog__grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .video-section__container {
+        aspect-ratio: 16/9;
+      }
+      .hero__showcase-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .catalog__grid {
+        grid-template-columns: 1fr;
+      }
+      .hero__title {
+        font-size: 32px;
+      }
+    }
+
+    /* PREMIUM DARK PRODUCT CARD */
+    .product-card {
+      background-color: var(--bg-charcoal);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .product-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-color-hover);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .product-card__media {
+      aspect-ratio: 4/3;
+      background: linear-gradient(135deg, var(--bg-slate) 0%, #181b22 100%);
+      position: relative;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .product-card__media-fallback-lines {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 12px 12px;
+    }
+
+    .product-card__graphic-mesh {
+      width: 60%;
+      height: 60%;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      transform: rotate(-15deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .product-card__graphic-core {
+      width: 50%;
+      height: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      transform: rotate(45deg);
+    }
+
+    .product-card__content {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      gap: 10px;
+    }
+
+    .product-card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .product-card__category {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    .product-card__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-silver);
+      line-height: 1.3;
+      margin-top: 2px;
+    }
+
+    .product-card__price {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-silver);
+    }
+
+    .product-card__location {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .product-card__specs {
+      display: flex;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      border-top: 1px solid var(--border-color);
+      padding-top: 12px;
+      margin-top: auto;
+    }
+
+    .product-card__spec-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Minimalist "Featured" Badge on Card */
+    .product-card__featured-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      background-color: var(--text-silver);
+      color: var(--bg-dark);
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* CONDITIONAL SECTIONS */
+    .featured-section {
+      padding: 0 0 50px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .featured-section.hidden {
+      display: none;
+    }
+
+    /* FOOTER */
+    .footer {
+      background-color: var(--bg-charcoal);
+      border-top: 1px solid var(--border-color);
+      padding: 60px 0;
+      text-align: center;
+    }
+
+    .footer__logo {
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.5px;
+      color: var(--text-silver);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .footer__logo-mark {
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent-silver);
+      border-radius: 1.5px;
+    }
+
+    .footer__copy {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container header__inner">
+      <a href="#" class="header__logo">
+        <div class="header__logo-mark"></div>
+        <span>Lt company</span>
+      </a>
+      <div class="header__actions">
+        <!-- Clean minimal search and user icons -->
+        <button class="header__btn" aria-label="Search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <button class="header__btn" aria-label="Account">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION with Spotlight Light Projection -->
+  <section class="hero">
+    <div class="hero__light-projection"></div>
+    <div class="container hero__content">
+      <span class="hero__tag">LT Architecture Catalog</span>
+      <h1 class="hero__title">Product Data Centre</h1>
+      <p class="hero__desc">
+        Engineered with geometric accuracy. Explore spatial properties, modules, and premium land plots across core districts.
+      </p>
+      
+      <!-- Showcase Area -->
+      <div class="hero__showcase">
+        <div class="hero__showcase-grid">
+          <div class="hero__showcase-media">
+            <div class="product-card__media-fallback-lines"></div>
+            <div class="hero__showcase-symbol"></div>
+          </div>
+          <div class="hero__showcase-details">
+            <div class="hero__showcase-meta">
+              <span style="font-weight: 700; color: var(--text-silver);">MODEL 001</span>
+              <span>•</span>
+              <span>PREMIUM SHOWCASE</span>
+            </div>
+            <h3 class="hero__showcase-title">Spatially Tuned Structures</h3>
+            <p class="hero__desc" style="margin: 0; font-size: 13.5px; line-height: 1.6;">
+              Precision architectural grids displaying physical properties, location indices, and structural coordinates.
+            </p>
+            <div style="display: flex; gap: 12px; margin-top: 10px;">
+              <div class="hero__showcase-spec">
+                <div class="hero__showcase-spec-label">ACCURACY</div>
+                <div class="hero__showcase-spec-value">99.98%</div>
+              </div>
+              <div class="hero__showcase-spec">
+                <div class="hero__showcase-spec-label">GRID SHIELD</div>
+                <div class="hero__showcase-spec-value">SILVER-12</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABS FILTER SECTION -->
+  <section class="filter">
+    <div class="container filter__inner">
+      <button class="filter__tab active" data-category="All">All Items</button>
+      <button class="filter__tab" data-category="Land">Land</button>
+      <button class="filter__tab" data-category="House">House</button>
+      <button class="filter__tab" data-category="Apartment">Apartment</button>
+      <button class="filter__tab" data-category="Villa">Villa</button>
+    </div>
+  </section>
+
+  <!-- FIRST DUMMY PRODUCT VIDEO AREA (Below Category Grid) -->
+  <section class="video-section">
+    <div class="container">
+      <div class="video-section__container">
+        <div class="video-section__media-fallback">
+          <div class="video-section__media-lines"></div>
+          <button class="video-section__play-btn" aria-label="Play Product Video">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5,3 19,12 5,21"></polygon>
+            </svg>
+          </button>
+          <span class="video-section__label">Watch Product Overview Video</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN CATALOG AREA -->
+  <section class="catalog">
+    <div class="container">
+      
+      <!-- 1. CONDITIONAL FEATURED SECTION (Shown only when 'All' is selected) -->
+      <div id="featured-section" class="featured-section">
+        <div class="catalog__header">
+          <h2 class="catalog__title">Featured Listing</h2>
+          <span class="catalog__count" id="featured-count">0 items</span>
+        </div>
+        <div class="catalog__grid" id="featured-grid">
+          <!-- Featured properties rendered via JS -->
+        </div>
+      </div>
+
+      <!-- 2. FULL CATALOG / FILTERED GRID SECTION -->
+      <div style="padding-top: 40px;">
+        <div class="catalog__header">
+          <h2 class="catalog__title" id="catalog-grid-title">All Products</h2>
+          <span class="catalog__count" id="catalog-count">0 items</span>
+        </div>
+        <div class="catalog__grid" id="catalog-grid">
+          <!-- Standard catalog properties rendered via JS -->
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECOND DUMMY VIDEO AREA (After second product grid) -->
+  <section class="video-section" style="border-top: 1px solid var(--border-color); border-bottom: none; background-color: var(--bg-charcoal);">
+    <div class="container">
+      <div class="video-section__container" style="border-color: rgba(255,255,255,0.03);">
+        <div class="video-section__media-fallback" style="background: linear-gradient(135deg, #0a0b0d 0%, #121418 100%);">
+          <div class="video-section__media-lines"></div>
+          <button class="video-section__play-btn" aria-label="Play Structural Demo Video" style="border-color: rgba(255,255,255,0.15);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5,3 19,12 5,21"></polygon>
+            </svg>
+          </button>
+          <span class="video-section__label">Interactive Structural Demonstration</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__logo">
+        <div class="footer__logo-mark"></div>
+        <span>Lt company</span>
+      </div>
+      <p class="footer__copy">© 2026 Lt company. All rights reserved. Precision Spatial Data Systems.</p>
+    </div>
+  </footer>
+
+  <!-- LIGHTWEIGHT JAVASCRIPT FOR CONDITIONAL DISPLAY LOGIC -->
+  <script>
+    // Product Catalog Database
+    const products = [
+      {
+        id: 1,
+        name: "Wayanad Spatial Plot A",
+        category: "Land",
+        price: 4500000,
+        location: "Kalpetta, Wayanad",
+        area: 4500,
+        isFeatured: true,
+        specs: { size: "4,500 sq.ft", unit: "Plot" }
+      },
+      {
+        id: 2,
+        name: "Ernakulam Geometric Villa 03",
+        category: "Villa",
+        price: 18500000,
+        location: "Kochi, Ernakulam",
+        area: 3200,
+        isFeatured: true,
+        specs: { size: "3,200 sq.ft", unit: "4 BHK" }
+      },
+      {
+        id: 3,
+        name: "Kozhikode Linear Villa",
+        category: "Villa",
+        price: 12500000,
+        location: "Kozhikode Town",
+        area: 2800,
+        isFeatured: false,
+        specs: { size: "2,800 sq.ft", unit: "3 BHK" }
+      },
+      {
+        id: 4,
+        name: "Thrissur Modular Apartment",
+        category: "Apartment",
+        price: 6500000,
+        location: "Thrissur Bypass",
+        area: 1650,
+        isFeatured: true,
+        specs: { size: "1,650 sq.ft", unit: "2 BHK" }
+      },
+      {
+        id: 5,
+        name: "Kottayam Lakeside Acreage",
+        category: "Land",
+        price: 8500000,
+        location: "Kumarakom, Kottayam",
+        area: 8700,
+        isFeatured: false,
+        specs: { size: "8,700 sq.ft", unit: "Plot" }
+      },
+      {
+        id: 6,
+        name: "Wayanad Eco-Grid House",
+        category: "House",
+        price: 9500000,
+        location: "Vythiri, Wayanad",
+        area: 2400,
+        isFeatured: true,
+        specs: { size: "2,400 sq.ft", unit: "3 BHK" }
+      },
+      {
+        id: 7,
+        name: "Trivandrum Skyline Suite",
+        category: "Apartment",
+        price: 14000000,
+        location: "Kazhakoottam, Trivandrum",
+        area: 2100,
+        isFeatured: false,
+        specs: { size: "2,100 sq.ft", unit: "3 BHK" }
+      },
+      {
+        id: 8,
+        name: "Idukki Highland Villa",
+        category: "Villa",
+        price: 11000000,
+        location: "Munnar, Idukki",
+        area: 2200,
+        isFeatured: false,
+        specs: { size: "2,200 sq.ft", unit: "2 BHK" }
+      }
+    ];
+
+    // Helper to format currency
+    function formatCurrency(value) {
+      if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)} Cr`;
+      if (value >= 100000) return `₹${(value / 100000).toFixed(1)} L`;
+      return `₹${value.toLocaleString("en-IN")}`;
+    }
+
+    // Card Template Generator
+    function createProductCard(product) {
+      return `
+        <div class="product-card">
+          <div class="product-card__media">
+            <div class="product-card__media-fallback-lines"></div>
+            <div class="product-card__graphic-mesh">
+              <div class="product-card__graphic-core"></div>
+            </div>
+            ${product.isFeatured ? `
+              <div class="product-card__featured-badge">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9"></polygon>
+                </svg>
+                <span>Featured</span>
+              </div>
+            ` : ''}
+          </div>
+          <div class="product-card__content">
+            <div class="product-card__header">
+              <div>
+                <span class="product-card__category">${product.category}</span>
+                <h3 class="product-card__title">${product.name}</h3>
+              </div>
+              <div class="product-card__price">${formatCurrency(product.price)}</div>
+            </div>
+            <div class="product-card__location">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <span>${product.location}</span>
+            </div>
+            <div class="product-card__specs">
+              <div class="product-card__spec-item">
+                <span>📐</span>
+                <span>${product.specs.size}</span>
+              </div>
+              <div class="product-card__spec-item">
+                <span>⚡</span>
+                <span>${product.specs.unit}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // DOM Elements
+    const featuredSection = document.getElementById("featured-section");
+    const featuredGrid = document.getElementById("featured-grid");
+    const featuredCountLabel = document.getElementById("featured-count");
+    const catalogGrid = document.getElementById("catalog-grid");
+    const catalogCountLabel = document.getElementById("catalog-count");
+    const catalogGridTitle = document.getElementById("catalog-grid-title");
+    const filterTabs = document.querySelectorAll(".filter__tab");
+
+    // Rendering Handler with Conditional display logic
+    function renderCatalog(category = "All") {
+      if (category === "All") {
+        // 1. "All" Category Logic: Show Featured Section, then full catalog below.
+        featuredSection.classList.remove("hidden");
+        
+        // Render Featured Listing Section
+        const featuredProducts = products.filter(p => p.isFeatured);
+        featuredGrid.innerHTML = featuredProducts.map(p => createProductCard(p)).join("");
+        featuredCountLabel.textContent = `${featuredProducts.length} items`;
+        
+        // Render Full Catalog Grid Below
+        catalogGrid.innerHTML = products.map(p => createProductCard(p)).join("");
+        catalogCountLabel.textContent = `${products.length} items`;
+        catalogGridTitle.textContent = "All Products";
+      } else {
+        // 2. Sub-Category Logic: HIDE Featured section.
+        featuredSection.classList.add("hidden");
+        
+        // Render category-specific products in the catalog grid
+        const filteredProducts = products.filter(p => p.category === category);
+        catalogGrid.innerHTML = filteredProducts.map(p => createProductCard(p)).join("");
+        catalogCountLabel.textContent = `${filteredProducts.length} items`;
+        catalogGridTitle.textContent = `${category} Products`;
+      }
+    }
+
+    // Setup tab clicks listener
+    filterTabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        // Update active tab styles
+        filterTabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        
+        // Get category and run filter logic
+        const selectedCat = tab.getAttribute("data-category");
+        renderCatalog(selectedCat);
+      });
+    });
+
+    // Initialize Render
+    renderCatalog("All");
+  </script>
+</body>
+</html>

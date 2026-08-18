@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye, Download } from "lucide-react";
+import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye, Download, Play } from "lucide-react";
 import { api, ApiPropertyDetail, mediaUrl, formatArea } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import RoleBadge from "@/components/RoleBadge";
@@ -42,6 +42,18 @@ export default function PublicPropertyDetails() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [bypassInterstitial, setBypassInterstitial] = useState(false);
+  const [showAgencyProfileModal, setShowAgencyProfileModal] = useState(false);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const handleThumbnailClick = (idx: number) => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({
+        left: carouselRef.current.clientWidth * idx,
+        behavior: "smooth"
+      });
+      setActiveIdx(idx);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -171,6 +183,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
       <div className="relative px-4 pt-4">
         <div className="relative aspect-[4/3] rounded-3xl overflow-hidden border border-charcoal/8 bg-slate-100 shadow-md">
           <div 
+            ref={carouselRef}
             onScroll={(e) => {
               const container = e.currentTarget;
               const scrollPos = container.scrollLeft;
@@ -234,10 +247,124 @@ View Details: ${window.location.origin}/property/${property.id}`;
             </div>
           </div>
 
-          {/* Carousel indicators count */}
-          {property.images && property.images.length > 0 && (
-            <div className="absolute bottom-3 right-3 bg-black/60 px-2.5 py-0.5 rounded-full text-white text-[9px] font-bold">
-              {activeIdx + 1} / {property.images.length + (property.videos?.length || 0)}
+          {/* Thumbnails Row */}
+          {property.images && (property.images.length + (property.videos?.length || 0)) > 1 && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-transparent px-2 py-1.5 flex items-center gap-1.5 max-w-[90%] overflow-x-auto no-scrollbar z-20">
+              {(() => {
+                const mediaItems = [
+                  ...(property.images || []).map((img) => ({ type: "image" as const, url: img })),
+                  ...(property.videos || []).map((vid) => ({ type: "video" as const, url: vid }))
+                ];
+
+                if (mediaItems.length <= 5) {
+                  return mediaItems.map((item, idx) => {
+                    const isActive = activeIdx === idx;
+                    return (
+                      <button
+                        key={`thumb-${idx}`}
+                        onClick={() => handleThumbnailClick(idx)}
+                        className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                          isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
+                        }`}
+                      >
+                        {item.type === "image" ? (
+                          <img
+                            src={mediaUrl(item.url)}
+                            alt={`Thumbnail ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full relative bg-slate-900 flex items-center justify-center">
+                            <video
+                              src={mediaUrl(item.url)}
+                              className="w-full h-full object-cover brightness-[0.7]"
+                              muted
+                              playsInline
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                              <Play size={10} className="fill-white text-white stroke-[2.5]" />
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  });
+                } else {
+                  return (
+                    <>
+                      {mediaItems.slice(0, 4).map((item, idx) => {
+                        const isActive = activeIdx === idx;
+                        return (
+                          <button
+                            key={`thumb-${idx}`}
+                            onClick={() => handleThumbnailClick(idx)}
+                            className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                              isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
+                            }`}
+                          >
+                            {item.type === "image" ? (
+                              <img
+                                src={mediaUrl(item.url)}
+                                alt={`Thumbnail ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full relative bg-slate-900 flex items-center justify-center">
+                                <video
+                                  src={mediaUrl(item.url)}
+                                  className="w-full h-full object-cover brightness-[0.7]"
+                                  muted
+                                  playsInline
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                  <Play size={10} className="fill-white text-white stroke-[2.5]" />
+                                </div>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                      {(() => {
+                        const remainingCount = mediaItems.length - 4;
+                        const idx = 4;
+                        const isActive = activeIdx >= idx;
+                        const lastItem = mediaItems[4];
+                        return (
+                          <button
+                            onClick={() => handleThumbnailClick(idx)}
+                            className={`w-9 h-9 rounded-xl overflow-hidden relative flex-shrink-0 transition-all border-2 cursor-pointer ${
+                              isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-85 hover:opacity-100"
+                            }`}
+                          >
+                            {lastItem.type === "image" ? (
+                              <img
+                                src={mediaUrl(lastItem.url)}
+                                alt="More media"
+                                className="w-full h-full object-cover brightness-[0.4]"
+                              />
+                            ) : (
+                              <div className="w-full h-full relative bg-slate-900 flex items-center justify-center">
+                                <video
+                                  src={mediaUrl(lastItem.url)}
+                                  className="w-full h-full object-cover brightness-[0.3]"
+                                  muted
+                                  playsInline
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                                  <Play size={10} className="fill-white text-white stroke-[2.5]" />
+                                </div>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white font-display select-none">
+                              +{remainingCount}
+                            </div>
+                          </button>
+                        );
+                      })()}
+                    </>
+                  );
+                }
+              })()}
             </div>
           )}
         </div>
@@ -502,6 +629,10 @@ View Details: ${window.location.origin}/property/${property.id}`;
             <div className="bg-white rounded-2xl border border-charcoal/5 p-4 shadow-sm flex flex-col gap-3">
               <button 
                 onClick={() => {
+                  if (property.listingRole === "Agency") {
+                    setShowAgencyProfileModal(true);
+                    return;
+                  }
                   if (!token) {
                     localStorage.setItem("pending_deep_link", `/property/${id}`);
                     navigate("/login");
@@ -668,6 +799,95 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 </a>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showAgencyProfileModal && property && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowAgencyProfileModal(false)}
+        >
+          <div 
+            className="bg-[#121418] border border-white/10 rounded-3xl p-6 w-full max-w-[340px] shadow-2xl relative flex flex-col items-center text-center gap-5 text-[#e2e8f0] animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowAgencyProfileModal(false)}
+              className="absolute top-4 right-4 p-1 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-all cursor-pointer"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Logo */}
+            <div className="flex flex-col items-center gap-2 mt-2">
+              {property.agencyLogoUrl ? (
+                <img 
+                  src={mediaUrl(property.agencyLogoUrl)} 
+                  alt="Agency Logo" 
+                  className="w-20 h-20 rounded-full object-cover border border-white/15 shadow-md"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-[#1c1f26] border border-white/10 flex items-center justify-center shadow-md">
+                  <span className="text-2xl font-black text-white/50">A</span>
+                </div>
+              )}
+              <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full select-none mt-2">
+                Agency Profile
+              </span>
+              <h3 className="font-display font-extrabold text-xl text-white mt-1 leading-snug">
+                {property.agencyName || "Agency"}
+              </h3>
+            </div>
+
+            {/* Address & District info */}
+            <div className="w-full flex flex-col gap-3.5 bg-[#1c1f26] border border-white/5 p-4 rounded-2xl text-left text-xs text-slate-300">
+              <div className="flex items-start gap-2.5">
+                <MapPin size={15} className="text-slate-400 shrink-0 mt-0.5" />
+                <div className="flex flex-col">
+                  <span className="font-bold text-white/70">Office Address</span>
+                  <span className="mt-0.5 text-slate-400 leading-relaxed">
+                    {property.agencyAddress || "Address not provided"}
+                    {property.agencyDistrict && `, ${property.agencyDistrict}`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact details */}
+            <div className="w-full flex flex-col gap-2.5 border-t border-white/5 pt-4">
+              {(property.contactNumber || property.ownerPhone) && (
+                <a
+                  href={`tel:${property.contactNumber || property.ownerPhone}`}
+                  className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-[#0a0b0d] text-xs font-bold font-display flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]"
+                >
+                  <Phone size={13} />
+                  <span>Call Office</span>
+                </a>
+              )}
+              {(property.whatsappNumber || property.ownerPhone) && (
+                <a
+                  href={`https://wa.me/${(property.whatsappNumber || property.ownerPhone || "").replace(/\D/g, "")}?text=${encodeURIComponent("Hello, I am interested in your property listing: " + property.title)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-2.5 px-4 rounded-xl border border-white/15 hover:bg-white/5 text-white text-xs font-bold font-display flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                >
+                  <MessageCircle size={13} />
+                  <span>WhatsApp</span>
+                </a>
+              )}
+            </div>
+
+            {/* Dedicated Agency Ads/Banners Section */}
+            <div className="w-full bg-[#1c1f26] rounded-2xl p-4 border border-white/5 text-left relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent pointer-events-none" />
+              <span className="text-[8px] font-black text-white/35 uppercase tracking-widest block">Featured Promotion</span>
+              <h4 className="text-[11px] font-bold text-white mt-1 leading-snug">Elite Property Consultants</h4>
+              <p className="text-[9.5px] text-slate-400 mt-1 leading-relaxed">Contact us directly for premium property listings, spatial data advice, and custom land acquisitions.</p>
+            </div>
+
           </div>
         </div>
       )}

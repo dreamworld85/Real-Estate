@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
-import { upload } from "../middleware/upload.js";
+import { upload, optimizeImages } from "../middleware/upload.js";
 import { checkUserAccess } from "../utils/access.js";
+import fs from "fs/promises";
+import path from "path";
 
 const router = Router();
 
@@ -279,7 +281,8 @@ router.get("/mine", requireAuth, async (req, res) => {
 router.get("/:id", optionalAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT p.*, u.name AS owner_name, u.phone AS owner_phone, u.role AS user_role
+      `SELECT p.*, u.name AS owner_name, u.phone AS owner_phone, u.role AS user_role,
+              u.agency_address, u.agency_district
        FROM properties p JOIN users u ON u.id = p.owner_id
        WHERE p.id = ?`,
       [req.params.id]
@@ -402,6 +405,8 @@ router.get("/:id", optionalAuth, async (req, res) => {
       ratingCount: Number(ratingRow.ratingCount) || 0,
       contactAccess,
       isMasked,
+      agencyAddress: rows[0].agency_address || null,
+      agencyDistrict: rows[0].agency_district || null,
     });
   } catch (err) {
     console.error(err);
@@ -537,12 +542,12 @@ router.post("/:id/enquiries", requireAuth, async (req, res) => {
 
 // POST /api/properties — create a new listing (multipart/form-data)
 // Fields match the Add Property wizard's steps 1–4.
-router.post("/", requireAuth, upload.any(), async (req, res) => {
+router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => {
   let user;
   let isOverLimit = false;
   try {
     const [userRows] = await pool.query(
-      "SELECT role, subscription_status, subscription_duration_months FROM users WHERE id = ?",
+      "SELECT role, subscription_status, subscription_duration_months, agency_logo_url FROM users WHERE id = ?",
       [req.userId]
     );
     if (userRows.length === 0) {
@@ -624,7 +629,28 @@ router.post("/", requireAuth, upload.any(), async (req, res) => {
     const files = req.files || [];
     const logoFile = files.find((f) => f.fieldname === "agencyLogo");
     const mediaFiles = files.filter((f) => f.fieldname === "media");
-    const agencyLogoUrl = logoFile ? `/uploads/${logoFile.filename}` : null;
+    const agencyLogoUrl = logoFile ? `/uploads/${logoFile.filename}` : (user.agency_logo_url || null);
+
+    // Synchronize Agency profile details (name and logo) to the users table
+    if (finalRole === "agency") {
+      const updateFields = [];
+      const updateVals = [];
+      if (agencyName) {
+        updateFields.push("name = ?");
+        updateVals.push(agencyName);
+      }
+      if (agencyLogoUrl) {
+        updateFields.push("agency_logo_url = ?");
+        updateVals.push(agencyLogoUrl);
+      }
+      if (updateFields.length > 0) {
+        updateVals.push(req.userId);
+        await conn.query(
+          `UPDATE users SET ${updateFields.join(", ")} WHERE id = ?`,
+          updateVals
+        );
+      }
+    }
 
     const initialStatus = isOverLimit ? 'Inactive' : 'Pending';
     const finalIsBrokerPersonalProperty = (finalRole === "broker" && (isBrokerPersonalProperty === "true" || isBrokerPersonalProperty === true || isBrokerPersonalProperty === 1)) ? 1 : 0;
@@ -814,7 +840,7 @@ router.post("/:id/report", requireAuth, async (req, res) => {
 });
 
 // PUT /api/properties/:id - Edit property details and add new media files
-router.put("/:id", requireAuth, upload.any(), async (req, res) => {
+router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const {
@@ -893,14 +919,60 @@ router.put("/:id", requireAuth, upload.any(), async (req, res) => {
 
 // DELETE /api/properties/:id
 router.delete("/:id", requireAuth, async (req, res) => {
+  const conn = await pool.getConnection();
   try {
-    const [rows] = await pool.query("SELECT owner_id FROM properties WHERE id = ?", [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ error: "Property not found" });
-    if (rows[0].owner_id !== req.userId) return res.status(403).json({ error: "Not your property" });
+    // 1. Fetch property to check ownership
+    const [rows] = await conn.query("SELECT owner_id FROM properties WHERE id = ?", [req.params.id]);
+    if (rows.length === 0) {
+      conn.release();
+      return res.status(404).json({ error: "Property not found" });
+    }
+    if (rows[0].owner_id !== req.userId) {
+      conn.release();
+      return res.status(403).json({ error: "Not your property" });
+    }
 
-    await pool.query("DELETE FROM properties WHERE id = ?", [req.params.id]);
+    // 2. Fetch all media file paths associated with this property BEFORE deleting DB record
+    const [mediaRows] = await conn.query("SELECT url FROM property_media WHERE property_id = ?", [req.params.id]);
+
+    await conn.beginTransaction();
+
+    // 3. Delete the property record (cascades database delete to property_media and other child tables)
+    await conn.query("DELETE FROM properties WHERE id = ?", [req.params.id]);
+
+    await conn.commit();
+    conn.release();
+
+    // 4. Physical file cleanup from local uploads folder
+    console.log(`[DELETE PROPERTY] Found ${mediaRows.length} media items to delete.`);
+
+    for (const media of mediaRows) {
+      if (media.url) {
+        const filename = path.basename(media.url);
+        // Path 1: src/uploads/
+        const path1 = path.join(path.resolve("src/uploads"), filename);
+        try {
+          await fs.unlink(path1);
+          console.log(`[DELETE PROPERTY] Unlinked from src/uploads: ${path1}`);
+        } catch (e) {
+          // ignore if missing
+        }
+
+        // Path 2: uploads/
+        const path2 = path.join(path.resolve("uploads"), filename);
+        try {
+          await fs.unlink(path2);
+          console.log(`[DELETE PROPERTY] Unlinked from uploads: ${path2}`);
+        } catch (e) {
+          // ignore if missing
+        }
+      }
+    }
+
     res.status(204).end();
   } catch (err) {
+    await conn.rollback();
+    conn.release();
     console.error(err);
     res.status(500).json({ error: "Failed to delete property" });
   }

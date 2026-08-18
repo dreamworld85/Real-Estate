@@ -79,8 +79,6 @@ export default function EditProfile() {
           </p>
           <Button 
             variant="destructive" 
-            fullWidth 
-            className="bg-coral text-cream border-coral hover:bg-coral/95 hover:text-cream hover:border-coral"
             disabled={saving || deleting} 
             onClick={handleDeleteAccount}
           >

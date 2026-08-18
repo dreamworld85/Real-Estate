@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Eye, MessageSquare, Heart, Pencil, Power, Trash2, ChevronLeft, Share2, Star, Sparkles, X, User, Phone, MessageCircle } from "lucide-react";
+import { Eye, MessageSquare, Heart, Pencil, Power, Trash2, ChevronLeft, Share2, Star, Sparkles, X, User, Phone, MessageCircle, Play } from "lucide-react";
 import { api, ApiPropertyDetail, mediaUrl, formatArea } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import BottomNav from "@/components/BottomNav";
@@ -42,6 +42,17 @@ export default function OwnerPropertyDetails() {
   const [showActivationChoice, setShowActivationChoice] = useState(false);
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [featuredData, setFeaturedData] = useState<any>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const handleThumbnailClick = (idx: number) => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({
+        left: carouselRef.current.clientWidth * idx,
+        behavior: "smooth"
+      });
+      setActiveIdx(idx);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -113,6 +124,7 @@ export default function OwnerPropertyDetails() {
     <div className="min-h-screen pb-28 bg-slate-50">
       <div className="relative">
         <div 
+          ref={carouselRef}
           onScroll={(e) => {
             const container = e.currentTarget;
             const scrollPos = container.scrollLeft;
@@ -156,17 +168,124 @@ export default function OwnerPropertyDetails() {
           )}
         </div>
         
-        {/* Indicators */}
-        {((property.images?.length || 0) + (property.videos?.length || 0)) > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/35 px-2.5 py-1.5 rounded-full z-10">
-            {Array.from({ length: (property.images?.length || 0) + (property.videos?.length || 0) }).map((_, idx) => (
-              <span 
-                key={idx}
-                className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  activeIdx === idx ? "bg-white" : "bg-white/40"
-                }`}
-              />
-            ))}
+        {/* Thumbnails Row */}
+        {property.images && (property.images.length + (property.videos?.length || 0)) > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-transparent px-2 py-1.5 flex items-center gap-1.5 max-w-[90%] overflow-x-auto no-scrollbar z-20">
+            {(() => {
+              const mediaItems = [
+                ...(property.images || []).map((img) => ({ type: "image" as const, url: img })),
+                ...(property.videos || []).map((vid) => ({ type: "video" as const, url: vid }))
+              ];
+
+              if (mediaItems.length <= 5) {
+                return mediaItems.map((item, idx) => {
+                  const isActive = activeIdx === idx;
+                  return (
+                    <button
+                      key={`thumb-${idx}`}
+                      onClick={() => handleThumbnailClick(idx)}
+                      className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                        isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
+                      }`}
+                    >
+                      {item.type === "image" ? (
+                        <img
+                          src={mediaUrl(item.url)}
+                          alt={`Thumbnail ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full relative bg-slate-900 flex items-center justify-center">
+                          <video
+                            src={mediaUrl(item.url)}
+                            className="w-full h-full object-cover brightness-[0.7]"
+                            muted
+                            playsInline
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <Play size={10} className="fill-white text-white stroke-[2.5]" />
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                });
+              } else {
+                return (
+                  <>
+                    {mediaItems.slice(0, 4).map((item, idx) => {
+                      const isActive = activeIdx === idx;
+                      return (
+                        <button
+                          key={`thumb-${idx}`}
+                          onClick={() => handleThumbnailClick(idx)}
+                          className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                            isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
+                          }`}
+                        >
+                          {item.type === "image" ? (
+                            <img
+                              src={mediaUrl(item.url)}
+                              alt={`Thumbnail ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full relative bg-slate-900 flex items-center justify-center">
+                              <video
+                                src={mediaUrl(item.url)}
+                                className="w-full h-full object-cover brightness-[0.7]"
+                                muted
+                                playsInline
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                <Play size={10} className="fill-white text-white stroke-[2.5]" />
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {(() => {
+                      const remainingCount = mediaItems.length - 4;
+                      const idx = 4;
+                      const isActive = activeIdx >= idx;
+                      const lastItem = mediaItems[4];
+                      return (
+                        <button
+                          onClick={() => handleThumbnailClick(idx)}
+                          className={`w-9 h-9 rounded-xl overflow-hidden relative flex-shrink-0 transition-all border-2 cursor-pointer ${
+                            isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-85 hover:opacity-100"
+                          }`}
+                        >
+                          {lastItem.type === "image" ? (
+                            <img
+                              src={mediaUrl(lastItem.url)}
+                              alt="More media"
+                              className="w-full h-full object-cover brightness-[0.4]"
+                            />
+                          ) : (
+                            <div className="w-full h-full relative bg-slate-900 flex items-center justify-center">
+                              <video
+                                src={mediaUrl(lastItem.url)}
+                                className="w-full h-full object-cover brightness-[0.3]"
+                                muted
+                                playsInline
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                                <Play size={10} className="fill-white text-white stroke-[2.5]" />
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white font-display select-none">
+                            +{remainingCount}
+                          </div>
+                        </button>
+                      );
+                    })()}
+                  </>
+                );
+              }
+            })()}
           </div>
         )}
 

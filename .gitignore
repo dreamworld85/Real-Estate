@@ -33,6 +33,9 @@ server/.env
 server/src/uploads/*
 !server/src/uploads/.gitkeep
 !server/src/uploads/*.apk
+server/uploads/*
+!server/uploads/.gitkeep
+
 
 # Accidental duplicate/nested project folder
 RealEstate/

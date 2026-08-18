@@ -171,6 +171,15 @@ export const adminApi = {
     return res.json();
   },
 
+  async getActivityLogs(): Promise<{
+    propertyViews: any[];
+    contactClicks: any[];
+  }> {
+    const res = await fetch(`${API_URL}/api/admin/activity-logs`, { headers: getAdminHeaders() });
+    if (!res.ok) throw new Error("Failed to load user activity logs.");
+    return res.json();
+  },
+
   async getAnalytics(): Promise<AdminAnalytics> {
     const res = await fetch(`${API_URL}/api/admin/analytics`, { headers: getAdminHeaders() });
     if (!res.ok) throw new Error("Failed to load analytics.");

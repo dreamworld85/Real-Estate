@@ -20,6 +20,9 @@ export interface ApiUser {
   subscriptionStatus?: "trial" | "active" | "expired" | "canceled" | null;
   razorpaySubscriptionId?: string | null;
   role?: "Owner" | "Broker" | "Agency" | "User" | null;
+  agencyLogoUrl?: string | null;
+  agencyAddress?: string | null;
+  agencyDistrict?: string | null;
   hasAccess?: boolean;
   hasTrial?: boolean;
   remainingDays?: number;
@@ -75,6 +78,8 @@ export interface ApiPropertyDetail extends ApiProperty {
   agencyLogoUrl?: string | null;
   contactAccess?: boolean;
   isMasked?: boolean;
+  agencyAddress?: string | null;
+  agencyDistrict?: string | null;
 }
 
 export interface ApiPublicProfile extends ApiUser {
