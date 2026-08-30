@@ -313,7 +313,7 @@ export default function OwnerPropertyDetails() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <p className="font-display font-extrabold text-2xl text-ink leading-tight">
+              <p className="font-display font-semibold text-[18px] text-ink leading-tight">
                 {formatPrice(property.price)}
               </p>
               {property.isPriceNegotiable && (
@@ -322,7 +322,7 @@ export default function OwnerPropertyDetails() {
                 </span>
               )}
             </div>
-            <p className="font-display font-bold text-charcoal mt-1 text-[15px]">{property.title}</p>
+            <p className="font-display font-medium text-charcoal mt-1 text-[14px]">{property.title}</p>
             <p className="text-xs text-slate mt-0.5">{formatArea(property.areaSqft, property.propertyType)} &middot; {property.district}</p>
           </div>
           

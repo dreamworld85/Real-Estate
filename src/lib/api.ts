@@ -63,6 +63,8 @@ export interface ApiProperty {
   ownerName?: string;
   contactNumber?: string | null;
   whatsappNumber?: string | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
 }
 
 export interface ApiPropertyDetail extends ApiProperty {
@@ -268,6 +270,15 @@ export const api = {
     return handle<{ ok: boolean }>(res);
   },
 
+  async schedulePropertyTour(propertyId: number, date: string) {
+    const res = await fetch(`${API_URL}/api/properties/${propertyId}/schedule`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ date }),
+    });
+    return handle<{ success: boolean; message: string }>(res);
+  },
+
   async recordClickInquiry(propertyId: number) {
     const res = await fetch(`${API_URL}/api/properties/${propertyId}/click-inquiry`, {
       method: "POST",
@@ -294,13 +305,53 @@ export const api = {
     return handle<{ success: boolean }>(res);
   },
 
-  async updateMyProfile(input: Partial<Pick<ApiUser, "name" | "phone" | "email" | "location">>) {
+  async updateMyProfile(input: Partial<Pick<ApiUser, "name" | "phone" | "email" | "location" | "whatsappNumber">>) {
     const res = await fetch(`${API_URL}/api/users/me`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(input),
     });
     return handle<ApiUser>(res);
+  },
+
+  async uploadAvatar(file: File) {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    const res = await fetch(`${API_URL}/api/users/me/avatar`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("kr_token")}`
+      },
+      body: formData,
+    });
+    return handle<ApiUser>(res);
+  },
+
+  async fetchAgents() {
+    const res = await fetch(`${API_URL}/api/users/agents`);
+    return handle<ApiUser[]>(res);
+  },
+
+  async fetchTopLocations() {
+    const res = await fetch(`${API_URL}/api/admin/top-locations`);
+    return handle<{ id: number; name: string; image_url: string }[]>(res);
+  },
+
+  async adminAddTopLocation(formData: FormData) {
+    const res = await fetch(`${API_URL}/api/admin/top-locations`, {
+      method: "POST",
+      headers: { "x-admin-auth": "KeralaRealtyAdminSecretToken2026" },
+      body: formData,
+    });
+    return handle<{ success: boolean; message: string }>(res);
+  },
+
+  async adminDeleteTopLocation(id: number) {
+    const res = await fetch(`${API_URL}/api/admin/top-locations/${id}`, {
+      method: "DELETE",
+      headers: { "x-admin-auth": "KeralaRealtyAdminSecretToken2026" },
+    });
+    return handle<{ success: boolean; message: string }>(res);
   },
 
   async setupRole(formData: FormData) {

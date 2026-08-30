@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { ListingRole } from "./types";
+import { useAuth } from "./AuthContext";
 
 export interface NewPropertyForm {
   role: ListingRole | null;
@@ -30,8 +31,24 @@ export interface NewPropertyForm {
   agencyAddress?: string;
   agencyDistrict?: string;
   useAdminContact?: boolean;
-  isBrokerPersonalProperty?: boolean;
   isPriceNegotiable?: boolean;
+  isBrokerPersonalProperty?: boolean;
+  roadAccess?: string;
+  waterSource?: string;
+  electricity?: string;
+  balconies?: string;
+  carpetArea?: string;
+  builtUpArea?: string;
+  superBuiltUpArea?: string;
+  totalFloors?: string;
+  propertyFloor?: string;
+  isDuplex?: boolean;
+  availabilityStatus?: string;
+  isAllInclusive?: boolean;
+  isTaxExcluded?: boolean;
+  latitude?: number;
+  longitude?: number;
+  mapAddress?: string;
 }
 
 const initialForm: NewPropertyForm = {
@@ -65,6 +82,22 @@ const initialForm: NewPropertyForm = {
   useAdminContact: false,
   isBrokerPersonalProperty: false,
   isPriceNegotiable: false,
+  roadAccess: "Available",
+  waterSource: "Well",
+  electricity: "Available",
+  balconies: "",
+  carpetArea: "",
+  builtUpArea: "",
+  superBuiltUpArea: "",
+  totalFloors: "",
+  propertyFloor: "",
+  isDuplex: false,
+  availabilityStatus: "",
+  isAllInclusive: false,
+  isTaxExcluded: false,
+  latitude: undefined,
+  longitude: undefined,
+  mapAddress: "",
 };
 
 interface AddPropertyContextValue {
@@ -81,9 +114,19 @@ interface AddPropertyContextValue {
 const AddPropertyContext = createContext<AddPropertyContextValue | null>(null);
 
 export function AddPropertyProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [form, setForm] = useState<NewPropertyForm>(initialForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [lastSubmittedStatus, setLastSubmittedStatus] = useState<{ status: string; isOverLimit: boolean; id?: number | null } | null>(null);
+  const [prevUserId, setPrevUserId] = useState<number | null>(user?.id || null);
+
+  useEffect(() => {
+    const currentUserId = user?.id || null;
+    if (currentUserId !== prevUserId) {
+      reset();
+      setPrevUserId(currentUserId);
+    }
+  }, [user, prevUserId]);
 
   function update(patch: Partial<NewPropertyForm>) {
     setForm((prev) => ({ ...prev, ...patch }));
@@ -125,6 +168,9 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
       agencyLogo: null,
       useAdminContact: !!property.useAdminContact,
       isBrokerPersonalProperty: !!property.isBrokerPersonalProperty,
+      roadAccess: property.roadAccess || "Available",
+      waterSource: property.waterSource || "Well",
+      electricity: property.electricity || "Available",
     });
   }
 

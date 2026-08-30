@@ -137,13 +137,12 @@ export default function Landing() {
     <div className="min-h-screen bg-cream font-body text-charcoal w-full overflow-x-hidden selection:bg-gold/20 select-none">
       {/* Sticky Navigation Bar */}
       <nav className="sticky top-0 z-40 bg-cream/90 backdrop-blur-md border-b border-charcoal/5 px-8 py-4 flex items-center justify-between max-w-7xl mx-auto w-full transition-all">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-          <div className="w-10 h-10 rounded-2xl bg-forest text-cream flex items-center justify-center shadow-md">
-            <Building2 size={20} />
-          </div>
-          <span className="font-display font-black text-xl text-ink tracking-tight">
-            Kerala<span className="text-forest">Realty</span>
-          </span>
+        <div className="flex items-center cursor-pointer select-none shrink-0 bg-forest rounded-2xl p-2.5 shadow-sm hover:opacity-90 transition-all" onClick={() => navigate("/")}>
+          <img 
+            src="/brand_logo.png" 
+            alt="Brand Logo" 
+            className="h-[32px] w-auto object-contain brightness-0 invert"
+          />
         </div>
 
         <div className="flex items-center gap-8 text-sm font-semibold text-charcoal/80">
@@ -531,13 +530,12 @@ export default function Landing() {
       <footer id="contact" className="bg-charcoal text-white pt-12 pb-6 px-8 border-t border-white/5">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 mb-8 text-left">
           <div className="md:col-span-4 flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-forest text-cream flex items-center justify-center">
-                <Building2 size={16} />
-              </div>
-              <span className="font-display font-black text-lg text-white tracking-tight">
-                Kerala<span className="text-gold">Realty</span>
-              </span>
+            <div className="flex items-center select-none shrink-0">
+              <img 
+                src="/brand_logo.png" 
+                alt="Brand Logo" 
+                className="h-10 w-auto object-contain brightness-110"
+              />
             </div>
             <p className="text-xs text-white/65 leading-relaxed max-w-sm">
               Discover, buy, and lease properties across Kerala. GreenReal is the premier real estate platform connecting buyers and verified listing promoters.

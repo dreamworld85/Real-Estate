@@ -6,9 +6,12 @@ import Login from "@/screens/Login";
 import Home from "@/screens/Home";
 import MyProperties from "@/screens/MyProperties";
 import Search from "@/screens/Search";
+import MapSearch from "@/screens/MapSearch";
 import Saved from "@/screens/Saved";
 import Profile from "@/screens/Profile";
 import EditProfile from "@/screens/EditProfile";
+import TopLocations from "@/screens/TopLocations";
+import LocationProperties from "@/screens/LocationProperties";
 import VisitorsEnquiries from "@/screens/VisitorsEnquiries";
 import PublicPropertyDetails from "@/screens/PublicPropertyDetails";
 import OwnerPropertyDetails from "@/screens/OwnerPropertyDetails";
@@ -20,6 +23,7 @@ import DetailsStep1 from "@/screens/AddProperty/DetailsStep1";
 import MediaStep2 from "@/screens/AddProperty/MediaStep2";
 import MoreInfoStep3 from "@/screens/AddProperty/MoreInfoStep3";
 import ReviewStep4 from "@/screens/AddProperty/ReviewStep4";
+import MapPickerStep from "@/screens/AddProperty/MapPickerStep";
 import Success from "@/screens/AddProperty/Success";
 import ComingSoon from "@/screens/ComingSoon";
 import PrivacyPolicy from "@/screens/Legal/PrivacyPolicy";
@@ -62,6 +66,10 @@ export default function App() {
 
         <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+        <Route path="/map-search" element={<ProtectedRoute><MapSearch /></ProtectedRoute>} />
+        <Route path="/map_search" element={<ProtectedRoute><MapSearch /></ProtectedRoute>} />
+        <Route path="/top-locations" element={<ProtectedRoute><TopLocations /></ProtectedRoute>} />
+        <Route path="/location/:locationName" element={<ProtectedRoute><LocationProperties /></ProtectedRoute>} />
         <Route path="/saved" element={<ProtectedRoute><Saved /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
@@ -96,6 +104,7 @@ export default function App() {
                 <Route path="details" element={<DetailsStep1 />} />
                 <Route path="media" element={<MediaStep2 />} />
                 <Route path="more-info" element={<MoreInfoStep3 />} />
+                <Route path="map-picker" element={<MapPickerStep />} />
                 <Route path="review" element={<ReviewStep4 />} />
                 <Route path="success" element={<Success />} />
               </Routes>

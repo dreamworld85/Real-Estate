@@ -110,7 +110,7 @@ export default function Subscriptions() {
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="font-display font-extrabold text-2xl text-black">Subscription & Pricing Panel</h1>
-          <p className="text-xs text-slate mt-0.5">Configure live plan pricing, discounts, and offer descriptions for Kerala Realty.</p>
+          <p className="text-xs text-slate mt-0.5">Configure live plan pricing, discounts, and offer descriptions for Sparrows Property.</p>
         </div>
         <button
           onClick={handleUpdatePlans}

@@ -69,95 +69,72 @@ export default function PropertyCard({
   }
 
   const image = property.images[0] ? mediaUrl(property.images[0]) : FALLBACK_IMAGE;
+  const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 4.5;
 
   return (
     <button
       onClick={() => navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`)}
-      className={`group w-full text-left bg-white rounded-[16px] border hover:scale-[1.005] transition-all duration-300 overflow-hidden active:scale-[0.99] cursor-pointer ${
-        property.isFeatured 
-          ? "border-amber-300 shadow-[0_8px_30px_rgb(200,155,60,0.06)] hover:border-amber-400/80 bg-gradient-to-b from-amber-50/15 to-white" 
-          : "border-charcoal/4 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
-      }`}
+      className="relative w-full aspect-[4/4.1] rounded-[16px] overflow-hidden group hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-md text-left cursor-pointer border border-charcoal/5"
     >
-      <div className="relative h-32 bg-sage overflow-hidden">
-        <img
-          src={image}
-          alt={property.title}
-          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        {property.isFeatured && (
-          <div className="absolute top-2.5 left-2.5 z-10 bg-gold text-white text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm border border-white/20 select-none">
-            <Star size={8} className="fill-white text-white" />
-            <span>Featured</span>
-          </div>
-        )}
-        {property.avgRating !== undefined && (
-          <div className={`absolute top-2.5 ${property.isFeatured ? "left-16" : "left-2.5"} bg-black/60 backdrop-blur-sm text-gold text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 select-none transition-all`}>
-            <Star size={10} className="fill-gold text-gold" />
-            <span>{property.avgRating.toFixed(1)}</span>
-          </div>
-        )}
-        <div className="absolute bottom-2.5 left-2.5 bg-black/65 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 select-none">
-          <Eye size={10} />
-          <span>{property.views || 0}</span>
-        </div>
-        <span
-          onClick={handleSaveClick}
-          className="absolute top-2.5 right-2.5 bg-white/90 rounded-full p-1.5 cursor-pointer hover:bg-white active:scale-95 transition-transform"
+      {/* Background Image */}
+      <img
+        src={image}
+        alt={property.title}
+        style={{ objectFit: "cover" }}
+        className="absolute inset-0 w-full h-full group-hover:scale-105 transition-transform duration-500"
+      />
+
+      {/* Dark Vignette Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+      {/* Top Left: Verification Badge */}
+      {property.isFeatured && (
+        <div 
+          style={{ width: "15px", height: "15px" }}
+          className="absolute top-3 left-3 z-10 flex items-center justify-center bg-blue-500 text-white rounded-full shadow-sm border border-dashed border-white"
         >
-          <Heart size={14} className={saved ? "fill-coral text-coral" : "text-ink"} />
-        </span>
+          <svg 
+            style={{ width: "10px", height: "10px" }}
+            className="fill-current" 
+            viewBox="0 0 20 20"
+          >
+            <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+          </svg>
+        </div>
+      )}
+
+      {/* Top Right: Price Tag */}
+      <div className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm text-charcoal text-[10px] font-medium px-2.5 py-1 rounded-full shadow-sm">
+        {formatPrice(property.price)}
+        {property.purpose === "For Rent" && <span className="text-[8px] font-medium text-slate-500">/ Mo</span>}
       </div>
-      <div className="p-3 flex flex-col gap-1">
-        <div className="flex items-center gap-1.5">
-          <p className="font-display font-bold text-[15px] text-ink">
-            {formatPrice(property.price)}
-          </p>
-          {property.isPriceNegotiable && (
-            <span className="text-[8px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-500/10 px-1.5 py-0.2 rounded uppercase tracking-wider">
-              Nego
-            </span>
-          )}
+
+      {/* Absolute Favorite Button (below price tag) */}
+      <span
+        onClick={handleSaveClick}
+        className="absolute top-11 right-3 z-10 bg-black/45 backdrop-blur-sm hover:bg-black/60 active:scale-90 text-white rounded-full p-2 transition-all shadow-sm cursor-pointer"
+      >
+        <Heart size={15} className={saved ? "fill-coral text-coral" : "text-white"} />
+      </span>
+
+      {/* Bottom Content Container */}
+      <div className="absolute bottom-3.5 left-3.5 right-3.5 z-10 flex flex-col pointer-events-none">
+        {/* Star Rating Badge */}
+        <div className="bg-white/95 backdrop-blur-sm text-charcoal text-[8px] font-medium px-2 py-0.5 rounded-full flex items-center gap-0.5 w-fit mb-1.5 shadow-sm">
+          <Star size={11} className="fill-gold text-gold" />
+          <span>{rating.toFixed(1)}</span>
         </div>
-        <p className="font-display font-semibold text-xs text-charcoal leading-snug truncate">
-          {property.title}
-        </p>
-        <div className="flex items-center justify-between text-[11px] text-slate mt-0.5 gap-2">
-          <p className="flex items-center gap-0.5 truncate">
-            <MapPin size={11} className="shrink-0 text-slate/80" /> 
-            <span>{compact ? property.district : `${property.address}, ${property.district}`}</span>
-          </p>
-          <div className="flex items-center gap-1 shrink-0">
-            {!compact && (
-              <span className="flex items-center gap-1 text-[9px] font-bold text-slate/75 bg-slate-100/70 border border-charcoal/5 px-1.5 py-0.5 rounded-md">
-                <Eye size={10} className="text-slate/60" />
-                <span>{property.views || 0}</span>
-              </span>
-            )}
-            <span className="shrink-0 text-[10px] text-slate/60 font-semibold bg-slate-100/70 border border-charcoal/5 px-1.5 py-0.5 rounded-md">
-              {formatPostedDate(property.createdAt)}
-            </span>
-          </div>
+
+        {/* Property Title */}
+        <h3 className="font-display font-medium text-[11px] text-white truncate leading-tight select-none">
+          {property.title.replace("Plot / Land", "Land").replace("Independent House / Villa", "House")}
+        </h3>
+
+        {/* Location Row */}
+        <div className="flex items-center gap-1 text-[8.5px] text-white/80 mt-0.5 select-none truncate">
+          <MapPin size={11} className="shrink-0 text-white/80" />
+          <span>{compact ? property.district : `${property.address}, ${property.district}`}</span>
         </div>
-        {!compact && (
-          <div className="flex items-center gap-3 text-xs text-slate mt-1 w-full">
-            <span>{formatArea(property.areaSqft, property.propertyType)}</span>
-            {property.bedrooms > 0 && (
-              <span className="flex items-center gap-1">
-                <BedDouble size={13} /> {property.bedrooms}
-              </span>
-            )}
-            {property.bathrooms > 0 && (
-              <span className="flex items-center gap-1">
-                <Bath size={13} /> {property.bathrooms}
-              </span>
-            )}
-            <span className="flex items-center gap-1 text-[11px] text-slate/75 ml-auto shrink-0">
-              <Eye size={13} className="text-slate/60" />
-              <span>{property.views || 0}</span>
-            </span>
-          </div>
-        )}
       </div>
     </button>
   );

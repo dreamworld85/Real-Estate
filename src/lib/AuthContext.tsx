@@ -61,8 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.logout().catch((err) => console.error("Failed to clear backend session cookie:", err));
     setToken(null);
     setUser(null);
-    localStorage.removeItem("kr_token");
-    localStorage.removeItem("kr_user");
+    localStorage.clear();
+    sessionStorage.clear();
   }
 
   return (

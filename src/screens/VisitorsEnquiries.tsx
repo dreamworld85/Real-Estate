@@ -93,7 +93,7 @@ export default function VisitorsEnquiries() {
             </div>
 
             <div className="flex items-center justify-between mt-3">
-              <h2 className="font-display font-extrabold text-sm text-ink uppercase tracking-wider">Recent Visitors</h2>
+              <h2 className="font-display font-semibold text-[16px] text-ink uppercase tracking-wider">Recent Visitors</h2>
               {isBrokerOrAgency && !isSubscribed && (
                 <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-500/10">
                   {stats.isTrialExpired ? "Locked" : "Trial Active"}

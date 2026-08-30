@@ -5,8 +5,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: "#0F3D3E",       // deep backwater teal — primary
-        forest: "#1B5E4F",    // secondary green
+        ink: "#000000",       // black color
+        forest: "#3F8F4B",    // dark green
+        emerald: {
+          50: "#f0fdf4",
+          100: "#dcfce7",
+          500: "#59AD63",
+          600: "#59AD63",
+          700: "#3F8F4B",
+          800: "#2E6B37",
+        },
         gold: "#C89B3C",      // spice gold — accent
         cream: "#FAF8F3",     // background
         sage: "#E8F0EA",      // surfaces
@@ -16,8 +24,9 @@ export default {
         slate: "#6B7A78",     // secondary text
       },
       fontFamily: {
-        display: ["Manrope", "sans-serif"],
+        display: ["Inter", "sans-serif"],
         body: ["Inter", "sans-serif"],
+        sans: ["Inter", "sans-serif"],
       },
       borderRadius: {
         card: "1.25rem",

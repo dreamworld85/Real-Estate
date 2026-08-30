@@ -32,7 +32,7 @@ export default function Login() {
             <Building2 size={28} className="text-white" />
           </div>
           <div>
-            <h1 className="font-display font-extrabold text-xl tracking-tight text-black">Kerala Realty</h1>
+            <h1 className="font-display font-extrabold text-xl tracking-tight text-black">Sparrows Property Admin</h1>
             <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Admin Workspace</p>
           </div>
         </div>

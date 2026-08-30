@@ -2,13 +2,21 @@ import { Router } from "express";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { checkUserAccess } from "../utils/access.js";
+import { deleteUploadedFile } from "../utils/fileHelper.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
+const uploadDir = process.env.UPLOADS_DIR 
+  ? path.resolve(process.env.UPLOADS_DIR) 
+  : path.resolve("src/uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
@@ -29,7 +37,7 @@ function toPublicUser(row) {
     location: row.location,
     avatarUrl: row.avatar_url,
     trialEndsAt: row.custom_trial_expiry || row.trial_ends_at,
-    subscriptionStatus: row.subscription_status,
+    subscriptionStatus: row.is_free_subscription_granted === 1 ? "active" : row.subscription_status,
     razorpaySubscriptionId: row.razorpay_subscription_id,
     role: row.role,
     createdAt: row.created_at,
@@ -75,7 +83,15 @@ router.patch("/me", requireAuth, async (req, res) => {
         avatar_url = COALESCE(?, avatar_url),
         whatsapp_number = COALESCE(?, whatsapp_number)
        WHERE id = ?`,
-      [name, phone, email, location, avatarUrl, whatsappNumber, req.userId]
+      [
+        name !== undefined ? name : null,
+        phone !== undefined ? phone : null,
+        email !== undefined ? email : null,
+        location !== undefined ? location : null,
+        avatarUrl !== undefined ? avatarUrl : null,
+        whatsappNumber !== undefined ? whatsappNumber : null,
+        req.userId
+      ]
     );
     const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [req.userId]);
     const accessCheck = await checkUserAccess(req.userId);
@@ -91,7 +107,44 @@ router.patch("/me", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    if (err && (err.code === "ER_DUP_ENTRY" || err.errno === 1062)) {
+      const msg = err.message || "";
+      if (msg.includes("phone")) {
+        return res.status(400).json({ error: "This contact number is already registered to another account." });
+      }
+      if (msg.includes("email")) {
+        return res.status(400).json({ error: "This email address is already registered to another account." });
+      }
+      return res.status(400).json({ error: "This detail is already registered to another account." });
+    }
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+// POST /api/users/me/avatar — Upload and update user avatar image
+router.post("/me/avatar", requireAuth, upload.single("avatar"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    await pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [avatarUrl, req.userId]);
+    
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [req.userId]);
+    const accessCheck = await checkUserAccess(req.userId);
+    const [countRows] = await pool.query("SELECT COUNT(*) AS count FROM properties WHERE owner_id = ?", [req.userId]);
+    res.json({
+      ...toPublicUser(rows[0]),
+      hasAccess: accessCheck.hasAccess,
+      hasTrial: accessCheck.hasTrial,
+      remainingDays: accessCheck.remainingDays,
+      isSubscribed: accessCheck.isSubscribed,
+      inquiryCount: accessCheck.inquiryCount,
+      propertiesCount: countRows[0].count,
+    });
+  } catch (err) {
+    console.error("Avatar upload failed:", err);
+    res.status(500).json({ error: "Failed to upload avatar" });
   }
 });
 
@@ -110,7 +163,8 @@ router.get("/me/stats", requireAuth, async (req, res) => {
       [req.userId]
     );
     const accessCheck = await checkUserAccess(req.userId);
-    const isTrialExpired = (accessCheck.role === "Broker" || accessCheck.role === "Agency") && !accessCheck.hasAccess;
+    const roleLower = String(accessCheck.role || "").toLowerCase();
+    const isTrialExpired = (roleLower === "broker" || roleLower === "agency") && !accessCheck.hasAccess;
 
     const [recentVisitors] = await pool.query(
       `SELECT u.name AS visitorName, u.location AS visitorLocation, u.phone AS visitorPhone, u.email AS visitorEmail,
@@ -453,30 +507,8 @@ router.delete("/me", requireAuth, async (req, res) => {
 
     // 5. Delete physical files from disk
     for (const relativePath of pathsToDelete) {
-      if (typeof relativePath === "string" && relativePath.startsWith("/uploads/")) {
-        const filename = relativePath.substring("/uploads/".length);
-        
-        // Path 1: src/uploads
-        const path1 = path.join(path.resolve("src/uploads"), filename);
-        try {
-          if (fs.existsSync(path1)) {
-            fs.unlinkSync(path1);
-            console.log("Successfully deleted physical file from src/uploads:", path1);
-          }
-        } catch (err) {
-          console.error("Failed to delete file from src/uploads:", path1, err);
-        }
-
-        // Path 2: uploads
-        const path2 = path.join(path.resolve("uploads"), filename);
-        try {
-          if (fs.existsSync(path2)) {
-            fs.unlinkSync(path2);
-            console.log("Successfully deleted physical file from uploads:", path2);
-          }
-        } catch (err) {
-          console.error("Failed to delete file from uploads:", path2, err);
-        }
+      if (relativePath) {
+        await deleteUploadedFile(relativePath);
       }
     }
 
@@ -487,6 +519,22 @@ router.delete("/me", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to delete account" });
   } finally {
     conn.release();
+  }
+});
+
+// GET /api/users/agents — Fetch public list of estate agents (Brokers and Agencies)
+router.get("/agents", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, name, email, phone, location, avatar_url AS avatarUrl, role 
+       FROM users 
+       WHERE role IN ('Broker', 'Agency', 'broker', 'agency') 
+       ORDER BY id DESC LIMIT 12`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Failed to fetch agents:", err);
+    res.status(500).json({ error: "Failed to fetch agents" });
   }
 });
 

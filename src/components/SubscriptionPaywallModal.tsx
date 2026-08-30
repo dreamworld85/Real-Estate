@@ -115,7 +115,7 @@ export default function SubscriptionPaywallModal({
           contact: user?.phone || "",
         },
         theme: {
-          color: "#0F3D3E", // Primary Theme color (ink)
+          color: "#60A963", // Primary Theme color (ink)
         },
       };
 

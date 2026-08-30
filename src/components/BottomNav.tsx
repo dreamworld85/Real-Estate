@@ -19,6 +19,7 @@ export default function BottomNav() {
         {items.map(({ icon: Icon, label, path }) => {
           const active =
             location.pathname === path ||
+            (path === "/search" && (location.pathname === "/search" || location.pathname === "/map-search" || location.pathname === "/map_search")) ||
             (path === "/visitors-enquiries" &&
               (location.pathname === "/visitors-enquiries" ||
                 location.pathname === "/enquiries"));

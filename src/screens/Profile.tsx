@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User as UserIcon, Home, Heart, MessageSquare, BarChart3, Pencil, Settings, LogOut, ChevronRight, CreditCard, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { api } from "@/lib/api";
+import { api, mediaUrl } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 
 const menuItems = [
@@ -69,9 +69,17 @@ export default function Profile() {
   return (
     <div className="min-h-screen pb-28 bg-cream">
       <header className="px-4 pt-6 pb-5 flex items-center gap-4 bg-white border-b border-charcoal/5">
-        <div className="w-16 h-16 rounded-full bg-sage flex items-center justify-center border border-charcoal/10 shadow-inner">
-          <UserIcon size={28} className="text-forest" />
-        </div>
+        {user?.avatarUrl ? (
+          <img 
+            src={mediaUrl(user.avatarUrl)} 
+            alt="Profile" 
+            className="w-16 h-16 rounded-full object-cover border border-charcoal/10 shadow-md"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-[#1F4C6B] text-white flex items-center justify-center text-xl font-bold border border-charcoal/10 shadow-md select-none uppercase">
+            {(user?.name || "U").charAt(0)}
+          </div>
+        )}
         <div>
           <p className="font-display font-bold text-lg text-ink">{user?.name || "Your Name"}</p>
           <p className="text-xs text-slate mt-0.5">{user?.phone || user?.email}</p>

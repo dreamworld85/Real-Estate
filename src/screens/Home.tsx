@@ -1,33 +1,64 @@
 import { useEffect, useState } from "react";
-import { Bell, Search, SlidersHorizontal, ChevronDown, ChevronRight, X, Leaf, Heart, Star } from "lucide-react";
-import { api, ApiProperty, mediaUrl, ApiNotification } from "@/lib/api";
+import { Bell, Search, SlidersHorizontal, ChevronDown, ChevronRight, X, Heart, Star, MapPin } from "lucide-react";
+import { api, ApiProperty, mediaUrl, ApiNotification, ApiUser } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
+import FeaturedPropertyCard from "@/components/FeaturedPropertyCard";
 import BottomNav from "@/components/BottomNav";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-import allIcon from "../../header-icons/All.svg";
-import landIcon from "../../header-icons/land.svg";
-import houseIcon from "../../header-icons/house.svg";
-import villaIcon from "../../header-icons/villa.svg";
-import apartmentsIcon from "../../header-icons/Apartments.svg";
+import allIcon from "../../header-icons/All.png";
+import landIcon from "../../header-icons/land.png";
+import houseIcon from "../../header-icons/house.png";
+import villaIcon from "../../header-icons/villa.png";
+import apartmentsIcon from "../../header-icons/Apartments.png";
 
 const categories = [
   { label: "All", icon: allIcon },
   { label: "Land", icon: landIcon },
   { label: "House", icon: houseIcon },
-  { label: "Villa", icon: villaIcon },
   { label: "Apartment", icon: apartmentsIcon },
+];
+
+const MOCK_AGENTS = [
+  { id: 9991, name: "Amanda", avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop", role: "Broker" },
+  { id: 9992, name: "Anderson", avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop", role: "Broker" },
+  { id: 9993, name: "Samantha", avatarUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop", role: "Broker" },
+  { id: 9994, name: "Andrew", avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop", role: "Broker" }
 ];
 
 export default function Home() {
   const { user } = useAuth();
   const [properties, setProperties] = useState<ApiProperty[]>([]);
+  const [agents, setAgents] = useState<ApiUser[]>([]);
+  const [topLocations, setTopLocations] = useState<{ id: number; name: string; image_url: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
   const [bannerUrl, setBannerUrl] = useState("/kerala_house_banner.jpg");
+  const [bannerTitle, setBannerTitle] = useState("Find homes, villas, lands & escapes");
+  const [bannerSubtitle, setBannerSubtitle] = useState("Discover unique properties that match your lifestyle.");
+  const isVideoBanner = (url: string) => {
+    const ext = url.split('.').pop()?.toLowerCase();
+    return ["mp4", "webm", "ogg", "mov", "m4v"].includes(ext || "");
+  };
+
+  useEffect(() => {
+    api.fetchAgents()
+      .then((data) => {
+        if (data) setAgents(data);
+      })
+      .catch((err) => console.error("Failed to fetch agents:", err));
+  }, []);
+
+  useEffect(() => {
+    api.fetchTopLocations()
+      .then((data) => {
+        if (data) setTopLocations(data);
+      })
+      .catch((err) => console.error("Failed to fetch top locations:", err));
+  }, []);
 
   useEffect(() => {
     api.fetchSetting("welcome_banner_url")
@@ -37,6 +68,22 @@ export default function Home() {
         }
       })
       .catch((err) => console.error("Failed to load banner setting:", err));
+
+    api.fetchSetting("welcome_banner_title")
+      .then((data) => {
+        if (data && data.value) {
+          setBannerTitle(data.value);
+        }
+      })
+      .catch((err) => console.error("Failed to load banner title setting:", err));
+
+    api.fetchSetting("welcome_banner_subtitle")
+      .then((data) => {
+        if (data && data.value) {
+          setBannerSubtitle(data.value);
+        }
+      })
+      .catch((err) => console.error("Failed to load banner subtitle setting:", err));
   }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,177 +169,245 @@ export default function Home() {
     : "Wayanad, Kerala";
 
   return (
-    <div className="min-h-screen pb-28">
-      <header className="sticky top-0 z-20 bg-cream/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-charcoal/5">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-1.5 select-none">
-          <div className="w-8 h-8 rounded-xl bg-forest/8 text-forest flex items-center justify-center">
-            <Leaf size={16} className="fill-forest/10" />
-          </div>
-          <span className="font-display font-black text-lg text-ink tracking-tight">
-            Green<span className="text-forest">Real</span>
-          </span>
+    <div className="min-h-screen pb-28 w-full max-w-md mx-auto bg-cream overflow-x-hidden relative">
+      {/* Top curved backdrop decoration */}
+      <div className="absolute top-0 left-0 w-[55%] h-[160px] bg-[#60A963] rounded-br-[100px] z-0 pointer-events-none" />
+
+      {/* Sticky Header Nav */}
+      <header className="sticky top-0 z-20 bg-transparent px-5 py-2 flex items-center justify-between border-none w-full">
+        {/* Brand Logo - Properly cropped & professional */}
+        <div className="flex items-center select-none shrink-0 z-10">
+          <img 
+            src="/brand_logo.png" 
+            alt="Logo" 
+            className="h-[46px] w-auto object-contain"
+          />
         </div>
 
-        {/* Header Actions */}
-        <div className="flex items-center gap-2.5">
-          <button 
-            onClick={() => setIsFilterOpen(true)}
-            className="flex items-center gap-1 text-[11px] font-bold text-slate bg-slate-100/70 border border-charcoal/5 px-3 py-1.5 rounded-full hover:bg-slate-200/50 transition-colors cursor-pointer select-none active:scale-95"
-          >
-            <span>{appliedDistrict || user?.location || "All Kerala"}</span>
-            <ChevronDown size={11} className="text-slate/50" />
-          </button>
-          
+        {/* Right actions */}
+        <div className="flex items-center gap-2.5 select-none shrink-0 z-10">
           <button 
             onClick={handleOpenNotifications}
             aria-label="Notifications" 
-            className="relative p-1.5 hover:bg-slate-100 rounded-full transition-colors active:scale-95"
+            className="relative w-9 h-9 bg-white border border-charcoal/5 flex items-center justify-center rounded-full shadow-sm hover:bg-slate-50 transition-colors active:scale-95 cursor-pointer shrink-0"
           >
-            <Bell size={20} className={`text-ink ${hasUnread ? "animate-bell-ring" : ""}`} />
+            <Bell size={16} className={`text-ink ${hasUnread ? "animate-bell-ring" : ""}`} />
             {hasUnread && (
-              <>
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-cream z-10" />
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-cream animate-ping" />
-              </>
+              <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-rose-500 border border-white z-10" />
             )}
           </button>
+          
+          {user?.avatarUrl ? (
+            <img 
+              src={mediaUrl(user.avatarUrl)} 
+              alt="Profile" 
+              className="w-9 h-9 rounded-full object-cover border border-white shadow-sm shrink-0 cursor-pointer animate-fade-in"
+              onClick={() => navigate("/profile")}
+            />
+          ) : (
+            <div 
+              className="w-9 h-9 rounded-full bg-[#59AD63] text-white flex items-center justify-center text-xs font-bold shadow-sm shrink-0 cursor-pointer border border-white select-none animate-fade-in uppercase"
+              onClick={() => navigate("/profile")}
+            >
+              {(user?.name || "J").charAt(0)}
+            </div>
+          )}
         </div>
       </header>
 
-      <div className="px-4 mt-3.5 mb-5 flex gap-2 w-full items-stretch">
-        <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl px-4 py-3 border border-charcoal/8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] focus-within:border-forest/40 focus-within:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all min-w-0">
-          <Search size={18} className="text-slate/75" />
+      {/* Welcome Greetings - Clean, Compact, Minimal */}
+      <div className="px-5 pt-[5px] text-left select-none relative z-10">
+        <h1 className="text-[13px] text-white/95 font-medium leading-none">
+          Hi, {user?.name ? user.name.split(" ")[0] : "Alex"}! 👋
+        </h1>
+        <p className="text-[13px] font-semibold text-ink mt-1.5 font-display leading-tight tracking-tight">
+          Find your perfect place
+        </p>
+      </div>
+
+      {/* Responsive Search Input Row */}
+      <form 
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (searchQuery.trim()) {
+            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+          }
+        }}
+        className="px-5 mt-5 z-10 relative"
+      >
+        <div className="flex items-center bg-[#F5F4F8] rounded-2xl px-4 py-3 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] border border-charcoal/5 gap-3">
+          <Search 
+            size={18} 
+            className="text-slate/60 shrink-0 cursor-pointer hover:text-charcoal transition-colors" 
+            onClick={() => {
+              if (searchQuery.trim()) {
+                navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+              }
+            }}
+          />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search location, property..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium min-w-0"
+            placeholder="Search House, Apartment, etc"
+            className="flex-1 bg-transparent text-xs outline-none placeholder:text-slate/40 text-charcoal font-semibold"
+          />
+          <div className="h-5 w-[1px] bg-charcoal/10" />
+          <SlidersHorizontal 
+            size={18} 
+            className="text-slate/60 cursor-pointer shrink-0 hover:text-charcoal transition-colors" 
+            onClick={() => setIsFilterOpen(true)}
           />
         </div>
-        <button 
-          onClick={() => setIsFilterOpen(true)}
-          className={`rounded-2xl px-3.5 border transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] active:scale-95 cursor-pointer flex items-center justify-center shrink-0 ${
-            appliedTypes.length > 0 || appliedPurpose || appliedDistrict
-              ? "bg-forest border-forest text-cream"
-              : "bg-white border-charcoal/8 text-charcoal hover:bg-slate-50"
-          }`}
-          aria-label="Filter properties"
-          title="Filter properties"
-        >
-          <SlidersHorizontal size={18} />
-        </button>
-        <button 
-          onClick={() => navigate("/saved")}
-          className="rounded-2xl px-3.5 border border-charcoal/8 bg-white text-charcoal hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] active:scale-95 cursor-pointer flex items-center justify-center group shrink-0"
-          aria-label="Saved properties"
-          title="Saved properties"
-        >
-          <Heart size={18} className="text-slate/75 group-hover:text-rose-500 transition-colors" />
-        </button>
-      </div>
+      </form>
 
-      <div className="w-full flex flex-nowrap gap-2 px-3.5 mb-5 py-0.5 justify-between">
-        {categories.map((cat) => (
-          <button
-            key={cat.label}
-            onClick={() => setActiveCategory(cat.label)}
-            className={`flex flex-col items-center gap-1 py-2 px-1 flex-1 max-w-[72px] rounded-xl transition-all duration-300 active:scale-95 cursor-pointer shrink-0 ${
-              activeCategory === cat.label
-                ? "bg-forest text-cream shadow-md shadow-forest/10 scale-105"
-                : "bg-white text-charcoal/90 border border-charcoal/5 shadow-sm hover:bg-slate-50"
-            }`}
-          >
-            <div className="w-6 h-6 flex items-center justify-center">
-              <img
-                src={cat.icon}
-                alt={`${cat.label} icon`}
-                className={`w-4 h-4 object-contain transition-all duration-300 ${
-                  activeCategory === cat.label ? "brightness-0 invert" : "opacity-80"
-                }`}
+      {/* Categories Horizontal Rounded Card Blocks */}
+      <div className="px-5 mt-5 flex gap-2.5 overflow-x-auto no-scrollbar select-none z-10 relative">
+        {categories.map((cat) => {
+          const isActive = activeCategory === cat.label;
+          return (
+            <button
+              key={cat.label}
+              onClick={() => setActiveCategory(cat.label)}
+              className={`flex-1 min-w-[60px] h-[60px] rounded-[14px] flex flex-col items-center justify-center gap-1 shadow-[0_2px_6px_rgba(0,0,0,0.015)] transition-all active:scale-95 cursor-pointer border ${
+                isActive 
+                  ? "bg-[#3F8F4B] text-white border-[#3F8F4B] shadow-md shadow-[#3F8F4B]/10 font-bold" 
+                  : "bg-white text-charcoal border-charcoal/5 hover:bg-slate-50 font-medium"
+              }`}
+            >
+              <img 
+                src={cat.icon} 
+                alt={cat.label} 
+                className={`w-5 h-5 object-contain ${isActive ? "brightness-0 invert" : ""}`}
               />
-            </div>
-            <span className="text-[10px] font-bold tracking-tight">{cat.label}</span>
-          </button>
-        ))}
+              <span className="text-[9.5px] tracking-wide font-semibold block">{cat.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Welcome Banner */}
-      <div className="px-4 mb-6">
-        <div className="relative h-44 rounded-[24px] overflow-hidden shadow-card">
-          <img
-            src={mediaUrl(bannerUrl)}
-            alt="Welcome Banner"
-            className="absolute inset-0 w-full h-full object-cover brightness-[0.7]"
-          />
-          <div className="absolute inset-0 flex flex-col justify-end p-5 bg-gradient-to-t from-black/85 via-black/25 to-transparent">
-            <span className="text-[10px] font-bold text-gold uppercase tracking-widest mb-1.5">
-              Perfect Stay
-            </span>
-            <h2 className="font-display font-extrabold text-lg text-white leading-tight tracking-wide">
-              Find homes, villas, lands & escapes
-            </h2>
-            <p className="text-white/85 text-[11px] mt-0.5 max-w-[220px] leading-relaxed">
-              Discover unique properties that match your lifestyle.
-            </p>
-          </div>
-        </div>
-      </div>
+
 
       {loading && (
-        <p className="px-4 text-sm text-slate">Loading properties…</p>
+        <p className="px-5 mt-6 text-sm text-slate select-none text-left">Loading properties…</p>
       )}
 
       {error && (
-        <p className="px-4 text-sm text-coral">
+        <p className="px-5 mt-6 text-sm text-coral select-none text-left">
           Couldn't load properties: {error}
         </p>
       )}
 
       {!loading && !error && filteredProperties.length === 0 && (
-        <p className="px-4 text-sm text-slate">
+        <p className="px-5 mt-6 text-sm text-slate select-none text-left">
           No properties found matching your search.
         </p>
       )}
 
-      {!loading && !error && filteredProperties.length > 0 && (
+      {!loading && !error && (
         <>
-          {(activeCategory === "All" && filteredProperties.some(p => p.isFeatured)) && (
-            <section className="mb-6 animate-fade-in">
-              <div className="flex items-center justify-between px-4 mb-3">
-                <div className="flex items-center gap-1.5">
-                  <Star size={14} className="fill-gold text-gold" />
-                  <h2 className="font-display font-extrabold text-[15px] tracking-wide text-ink">Featured Listings</h2>
-                </div>
+
+
+          {/* Featured Estates Slider */}
+          {activeCategory === "All" && filteredProperties.filter((p) => p.isFeatured).length > 0 && (
+            <section className="mt-6 text-left select-none z-10 relative">
+              <div className="flex items-center justify-between px-5 mb-3">
+                <h2 className="font-display font-semibold text-[16px] tracking-wide text-ink">Featured Estates</h2>
                 <button 
                   onClick={() => navigate("/search?featured=true")}
-                  className="text-xs font-bold text-forest hover:text-emerald-700 transition-colors flex items-center gap-0.5 cursor-pointer"
+                  className="text-[10px] font-bold text-slate/70 hover:text-charcoal cursor-pointer uppercase tracking-wider"
                 >
-                  View All <ChevronRight size={13} className="text-forest/65" />
+                  view all
                 </button>
               </div>
-              <div className="px-4 flex gap-4 overflow-x-auto no-scrollbar">
+              <div className="px-5 flex gap-4 overflow-x-auto no-scrollbar">
                 {filteredProperties.filter((p) => p.isFeatured).slice(0, 8).map((p) => (
-                  <div key={p.id} className="min-w-[260px]">
-                    <PropertyCard property={p} />
+                  <div key={p.id} className="min-w-[290px] w-[calc(100vw-36px)] max-w-[360px]">
+                    <FeaturedPropertyCard property={p} />
                   </div>
                 ))}
               </div>
             </section>
           )}
 
-          <section className="px-4 pb-12">
+          {/* Welcome Banner */}
+          {activeCategory === "All" && bannerUrl && (
+            <div className="px-5 mt-6 select-none">
+              <div className="relative h-[11rem] rounded-2xl overflow-hidden border border-charcoal/5 shadow-sm bg-slate-100 flex items-center">
+                {isVideoBanner(bannerUrl) ? (
+                  <video 
+                    src={mediaUrl(bannerUrl)} 
+                    autoPlay 
+                    loop 
+                    muted 
+                    playsInline 
+                    className="absolute inset-0 w-full h-full object-cover brightness-[0.7]"
+                  />
+                ) : (
+                  <img 
+                    src={mediaUrl(bannerUrl)} 
+                    alt="Homepage Banner" 
+                    className="absolute inset-0 w-full h-full object-cover brightness-[0.7]"
+                  />
+                )}
+                <div className="absolute inset-0 flex flex-col justify-end p-5 bg-gradient-to-t from-black/80 via-black/30 to-transparent">
+                  <h3 className="font-display font-extrabold text-[15px] text-white leading-tight">
+                    {bannerTitle}
+                  </h3>
+                  <p className="text-white/80 text-[10px] mt-1 leading-snug">
+                    {bannerSubtitle}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Popular Locations dynamic list row */}
+          {activeCategory === "All" && topLocations.length > 0 && (
+            <section className="mt-8 mb-6 text-left select-none animate-fade-in">
+              <div className="flex items-center justify-between px-5 mb-3.5">
+                <h2 className="font-display font-semibold text-[16px] tracking-wide text-ink">Popular Locations</h2>
+                <button 
+                  onClick={() => navigate("/top-locations")}
+                  className="text-[10px] font-bold text-slate/70 hover:text-charcoal cursor-pointer uppercase tracking-wider"
+                >
+                  explore
+                </button>
+              </div>
+              <div className="px-5 flex items-center gap-3 w-full py-1 overflow-x-auto no-scrollbar flex-nowrap">
+                {topLocations.map((loc) => (
+                  <div 
+                    key={loc.id} 
+                    onClick={() => navigate(`/location/${encodeURIComponent(loc.name)}`)}
+                    className="relative w-[105px] h-[135px] shrink-0 rounded-2xl overflow-hidden shadow-sm cursor-pointer border border-charcoal/5 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    <img 
+                      src={mediaUrl(loc.image_url)} 
+                      alt={loc.name} 
+                      className="absolute inset-0 w-full h-full object-cover" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-transparent flex flex-col justify-end p-2.5 text-left">
+                      <span className="text-[12px] font-bold text-white leading-tight truncate block">{loc.name}</span>
+                      <span className="text-[9px] font-semibold text-white/70 mt-0.5 truncate block">Kerala</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Explore Nearby Estates (general grid list) */}
+          <section className="px-5 pb-12 mt-8">
             <div className="flex items-center justify-between mb-3.5">
-              <h2 className="font-display font-extrabold text-[15px] tracking-wide text-ink">Recently Added</h2>
+              <h2 className="font-display font-semibold text-[16px] tracking-wide text-ink">Explore Nearby Estates</h2>
               <button 
                 onClick={() => navigate("/search")}
-                className="text-xs font-bold text-forest hover:text-emerald-700 transition-colors flex items-center gap-0.5 cursor-pointer"
+                className="text-[10px] font-bold text-slate/70 hover:text-charcoal cursor-pointer uppercase tracking-wider"
               >
-                View All <ChevronRight size={13} className="text-forest/65" />
+                view all
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3.5">
-              {filteredProperties.filter((p) => activeCategory !== "All" ? true : !p.isFeatured).map((p) => (
+              {filteredProperties.map((p) => (
                 <PropertyCard key={p.id} property={p} compact={true} />
               ))}
             </div>

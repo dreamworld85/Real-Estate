@@ -3,7 +3,6 @@ import { useState } from "react";
 import { CheckCircle2, ShieldAlert } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import { api } from "@/lib/api";
-import Button from "@/components/Button";
 import BottomNav from "@/components/BottomNav";
 
 export default function Success() {
@@ -25,16 +24,15 @@ export default function Success() {
     setPublishing(true);
     setErrorMsg(null);
     try {
-      try {
-        await api.updatePropertyStatus(propId, "Active");
-      } catch (fallbackErr) {
-        // Retry with admin contact override if standard activation failed
-        await api.updatePropertyStatus(propId, "Active", true);
-      }
+      await api.updatePropertyStatus(propId, "Active");
       reset();
       navigate(`/property/${propId}`);
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to publish property");
+      if (err.requiresActivationChoice) {
+        setErrorMsg("Standard activation failed: You need a Premium Subscription to publish this listing with your own number.");
+      } else {
+        setErrorMsg(err.message || "Failed to publish property");
+      }
     } finally {
       setPublishing(false);
     }
@@ -48,7 +46,7 @@ export default function Success() {
             <ShieldAlert size={40} className="text-rose-500" strokeWidth={2} />
           </div>
 
-          <h1 className="font-display font-extrabold text-2xl text-ink mb-2">
+          <h1 className="font-display font-extrabold text-[18px] text-ink mb-2">
             Limit Reached!
           </h1>
           <p className="text-slate leading-relaxed mb-1 text-xs">
@@ -59,14 +57,15 @@ export default function Success() {
           </span>
 
           <div className="w-full flex flex-col gap-3">
-            <Button
+            <button
               onClick={() => {
                 reset();
                 navigate("/subscription");
               }}
+              className="w-full bg-[#59AD63] hover:bg-[#3F8F4B] text-white font-display font-bold text-[14px] py-4 rounded-2xl transition-all shadow-md active:scale-[0.99] cursor-pointer"
             >
               Upgrade & Activate Now
-            </Button>
+            </button>
             <button
               className="text-sm font-semibold text-slate py-2 hover:text-charcoal transition-all"
               onClick={() => {
@@ -80,11 +79,11 @@ export default function Success() {
         </>
       ) : (
         <>
-          <div className="w-20 h-20 rounded-full bg-forest flex items-center justify-center mb-6">
-            <CheckCircle2 size={40} className="text-cream" strokeWidth={2} />
+          <div className="w-20 h-20 rounded-full bg-[#59AD63] flex items-center justify-center mb-6">
+            <CheckCircle2 size={40} className="text-white" strokeWidth={2} />
           </div>
 
-          <h1 className="font-display font-extrabold text-2xl text-ink mb-2">
+          <h1 className="font-display font-extrabold text-[18px] text-ink mb-2">
             Successful
           </h1>
           <p className="text-slate leading-relaxed mb-8">
@@ -92,22 +91,34 @@ export default function Success() {
           </p>
 
           {errorMsg && (
-            <p className="text-xs text-rose-600 font-bold mb-4 bg-rose-50 border border-rose-100 rounded-xl p-2 w-full">
+            <p className="text-xs text-rose-600 font-bold mb-4 bg-rose-50 border border-rose-100 rounded-[8px] p-2 w-full">
               {errorMsg}
             </p>
           )}
 
           <div className="w-full flex flex-col gap-3.5">
+            {errorMsg && errorMsg.includes("Premium") && (
+              <button
+                type="button"
+                onClick={() => {
+                  reset();
+                  navigate("/subscription");
+                }}
+                className="w-full bg-[#59AD63] hover:bg-[#3F8F4B] text-white font-display font-extrabold text-xs tracking-wider uppercase py-3.5 rounded-[2px] border border-white/5 shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer animate-fade-in"
+              >
+                Upgrade to Premium
+              </button>
+            )}
             <button
               onClick={handlePublish}
               disabled={publishing}
-              className="w-full bg-[#121418] hover:bg-[#1c1f26] text-white font-display font-extrabold text-xs tracking-wider uppercase py-3.5 rounded-xl border border-white/5 shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full bg-[#59AD63] hover:bg-[#3F8F4B] text-white font-display font-extrabold text-xs tracking-wider uppercase py-3.5 rounded-[2px] border border-white/5 shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {publishing ? "Publishing..." : "Publish My Property"}
             </button>
             
             <button
-              className="text-xs font-extrabold text-forest uppercase tracking-wider py-2 hover:text-emerald-700 transition-all cursor-pointer"
+              className="text-xs font-extrabold text-[#59AD63] uppercase tracking-wider py-2 hover:text-[#3F8F4B] transition-all cursor-pointer"
               onClick={() => {
                 reset();
                 navigate("/add-property");

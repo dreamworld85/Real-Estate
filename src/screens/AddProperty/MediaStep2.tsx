@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, Plus, UploadCloud, X, Check, Camera, Crop, ChevronLeft } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import BottomNav from "@/components/BottomNav";
 import StepProgress from "@/components/StepProgress";
+import { api } from "@/lib/api";
 
 export default function MediaStep2() {
   const navigate = useNavigate();
@@ -12,6 +13,18 @@ export default function MediaStep2() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const [whatsappLink, setWhatsappLink] = useState("https://wa.me/917012021221");
+
+  useEffect(() => {
+    api.fetchSetting("admin_contact_number")
+      .then((data) => {
+        if (data && data.value) {
+          const cleanNum = data.value.replace(/\D/g, "");
+          setWhatsappLink(`https://wa.me/${cleanNum.startsWith("91") ? cleanNum : `91${cleanNum}`}`);
+        }
+      })
+      .catch((err) => console.error("Error loading admin contact number:", err));
+  }, []);
 
   // Cropper states
   const [selectedImageForCrop, setSelectedImageForCrop] = useState<File | null>(null);
@@ -128,41 +141,60 @@ export default function MediaStep2() {
   const canContinue = form.images.length > 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 pb-28">
-      {/* Header Section */}
-      <div className="flex justify-between items-center px-6 pt-5 pb-1">
+    <div className="min-h-screen flex flex-col bg-white pb-24 text-left font-display select-none overflow-x-hidden relative">
+      {/* Top Blue Progress Bar Line (100% completed) */}
+      <div className="w-full h-1 bg-slate-100 flex shrink-0">
+        <div className="h-full bg-[#59AD63] w-[100%] transition-all duration-300" />
+      </div>
+
+      {/* Header Row */}
+      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0">
         <button 
-          onClick={() => navigate("/add-property/details")} 
-          className="text-ink p-1.5 -ml-1.5 hover:bg-charcoal/5 rounded-full transition-colors cursor-pointer active:scale-95"
+          type="button"
+          onClick={() => navigate("/add-property/more-info")}
+          className="text-charcoal p-1.5 -ml-1.5 hover:bg-charcoal/5 rounded-full transition-all duration-200 cursor-pointer active:scale-95"
           aria-label="Back"
         >
-          <ChevronLeft size={22} />
+          <ChevronLeft size={22} className="text-[#091F40]" />
         </button>
+        
+        <div className="flex flex-col items-center">
+          <span className="font-bold text-sm text-[#091F40]">Property Media</span>
+          <span className="text-[9px] font-bold text-slate/50 tracking-wider uppercase leading-none mt-0.5">
+            Step 3 of 3
+          </span>
+        </div>
+
+        <a 
+          href={whatsappLink} 
+          target="_blank" 
+          rel="noreferrer" 
+          className="flex items-center gap-1 text-[11.5px] font-bold text-[#59AD63] hover:underline"
+        >
+          <span>Need Help?</span>
+          <svg className="w-4 h-4 text-[#25D366] fill-current" viewBox="0 0 24 24">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.45 5.516.002 10.003-4.484 10.006-9.998.002-2.673-1.039-5.187-2.932-7.082C16.43 1.63 13.918.585 11.244.585 5.729.585 1.24 5.07 1.238 10.586c-.001 1.516.398 2.998 1.157 4.312L1.336 21.05l6.311-1.657-.001-.239zM18.06 14.86c-.329-.165-1.953-.965-2.253-1.074-.3-.109-.519-.165-.738.165-.219.329-.848 1.074-1.039 1.293-.19.219-.382.246-.71.082-1.393-.697-2.316-1.229-3.232-2.81-.242-.415.242-.385.693-1.284.076-.153.038-.287-.019-.396-.057-.109-.519-1.25-.71-1.71-.186-.447-.376-.386-.519-.393-.134-.007-.288-.008-.442-.008-.154 0-.404.058-.616.287-.211.23-.807.788-.807 1.921 0 1.134.826 2.23.94 2.385.115.155 1.625 2.483 3.937 3.48.55.237 1.03.396 1.385.508.558.177 1.066.152 1.468.092.448-.067 1.953-.799 2.228-1.573.275-.774.275-1.439.192-1.573-.082-.134-.3-.213-.629-.379z"/>
+          </svg>
+        </a>
       </div>
 
-      <StepProgress step={2} />
-
-      <div className="px-6 pb-3">
-        <h1 className="font-display font-extrabold text-xl text-ink leading-tight">
+      <div className="px-6 flex flex-col gap-6 mt-3 flex-1">
+        {/* Title */}
+        <h1 className="font-display font-extrabold text-[18px] text-[#091F40] leading-none">
           Upload Photos & Videos
         </h1>
-        <p className="text-[9px] font-bold text-slate/75 tracking-wider uppercase mt-0.5">
-          Step 2 of 4 • Property Media
-        </p>
-      </div>
 
-      <div className="px-6 flex flex-col gap-4.5 flex-1">
-        {/* Field 1 - Photos Section */}
-        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-2.5">
-          <div className="flex justify-between items-center">
-            <label className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">
+        {/* Section 1: Photos */}
+        <div className="flex flex-col gap-2.5">
+          <div className="flex justify-between items-center px-0.5">
+            <label className="text-sm font-bold text-[#091F40]">
               Property Photos
             </label>
             {attemptedNext && form.images.length === 0 && (
-              <span className="text-[10px] text-rose-500 font-bold">Required</span>
+              <span className="text-[11px] text-rose-500 font-bold">Required</span>
             )}
           </div>
-          <p className="text-[10px] text-slate mt-0.5 leading-none">Upload up to 12 property photos.</p>
+          <p className="text-[11px] text-slate/50 leading-none px-0.5 -mt-1">Upload up to 12 property photos.</p>
 
           <input
             ref={photoInputRef}
@@ -182,11 +214,11 @@ export default function MediaStep2() {
             onChange={handlePhotosSelected}
           />
 
-          <div className="grid grid-cols-4 gap-2 mt-2">
+          <div className="grid grid-cols-4 gap-2.5 mt-1">
             {form.images.map((file, i) => (
               <div
                 key={i}
-                className="relative aspect-square rounded-xl bg-slate-100 border border-charcoal/8 overflow-hidden shadow-sm"
+                className="relative aspect-square rounded-[8px] bg-slate-100 border border-charcoal/8 overflow-hidden shadow-sm transition-all"
               >
                 <img
                   src={URL.createObjectURL(file)}
@@ -195,7 +227,7 @@ export default function MediaStep2() {
                 />
                 <button
                   onClick={() => removePhoto(i)}
-                  className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5 transition-colors"
+                  className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5 transition-colors cursor-pointer"
                   aria-label="Remove photo"
                 >
                   <X size={10} className="text-white" />
@@ -205,14 +237,15 @@ export default function MediaStep2() {
             
             {form.images.length < 12 && (
               <button
+                type="button"
                 onClick={() => setShowSourceSelector(true)}
-                className={`aspect-square rounded-xl border border-dashed flex flex-col items-center justify-center gap-1 transition-all shadow-sm ${
+                className={`aspect-square rounded-[8px] border border-dashed flex flex-col items-center justify-center gap-1 transition-all shadow-sm cursor-pointer ${
                   attemptedNext && form.images.length === 0
                     ? "border-rose-500 text-rose-500 bg-rose-50/5 shadow-rose-100"
-                    : "border-charcoal/15 text-slate hover:border-emerald-600 hover:text-emerald-700 bg-slate-50/50"
+                    : "border-[#59AD63]/30 text-slate hover:border-[#59AD63] hover:text-[#59AD63] bg-white"
                 }`}
               >
-                <Plus size={16} className={attemptedNext && form.images.length === 0 ? "text-rose-500" : "text-slate/60"} />
+                <Plus size={16} className={attemptedNext && form.images.length === 0 ? "text-rose-500" : "text-slate/40"} />
                 <span className="text-[9px] font-bold uppercase tracking-wider">
                   {form.images.length === 0 ? "Add" : "More"}
                 </span>
@@ -221,9 +254,9 @@ export default function MediaStep2() {
           </div>
         </div>
 
-        {/* Field 2 - Videos Section */}
-        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-2.5">
-          <label className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">
+        {/* Section 2: Walkthrough Video */}
+        <div className="flex flex-col gap-2.5 border-t border-slate-100 pt-4 mt-2">
+          <label className="text-sm font-bold text-[#091F40] px-0.5">
             Walkthrough Video (Optional)
           </label>
 
@@ -236,10 +269,10 @@ export default function MediaStep2() {
           />
 
           {form.video ? (
-            <div className="flex items-center justify-between bg-emerald-50/40 rounded-xl border border-emerald-500/20 px-3.5 py-2.5 shadow-sm">
+            <div className="flex items-center justify-between bg-emerald-50 rounded-[8px] border border-emerald-100 px-4 py-3 shadow-sm mt-1">
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="bg-emerald-100 rounded-full p-0.5">
-                  <Check size={12} className="text-emerald-600" />
+                  <Check size={12} className="text-[#25D366]" />
                 </div>
                 <span className="text-xs font-semibold text-emerald-800 truncate">
                   {form.video.name}
@@ -248,7 +281,7 @@ export default function MediaStep2() {
               <button 
                 type="button" 
                 onClick={removeVideo}
-                className="text-slate hover:text-coral transition-colors p-1"
+                className="text-slate hover:text-rose-500 transition-colors p-1 cursor-pointer"
                 aria-label="Remove video"
               >
                 <X size={14} />
@@ -256,21 +289,22 @@ export default function MediaStep2() {
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => videoInputRef.current?.click()}
-              className="w-full rounded-xl border border-dashed border-charcoal/15 bg-white py-3 flex items-center justify-center gap-2 hover:border-emerald-600 transition-colors shadow-sm cursor-pointer"
+              className="w-full rounded-[8px] border border-dashed border-[#59AD63]/30 bg-white py-4 flex items-center justify-center gap-2.5 hover:border-[#59AD63] hover:bg-[#F0F8FF] transition-all shadow-sm cursor-pointer mt-1"
             >
-              <UploadCloud size={16} className="text-slate/60" />
+              <UploadCloud size={18} className="text-slate/50" />
               <div className="text-left">
-                <span className="text-[11px] font-bold text-charcoal block">Upload Walkthrough Video</span>
-                <span className="text-[9px] text-slate/50 block">MP4 format (Max 100MB)</span>
+                <span className="text-[11.5px] font-bold text-charcoal block">Upload Walkthrough Video</span>
+                <span className="text-[9px] text-slate/40 block">MP4 format (Max 100MB)</span>
               </div>
             </button>
           )}
         </div>
 
-        {/* Field 3 - YouTube Link Section */}
-        <div className="bg-white border border-charcoal/5 p-3.5 rounded-2xl shadow-sm flex flex-col gap-2.5">
-          <label className="text-[10px] font-bold text-slate uppercase tracking-wider pl-0.5">
+        {/* Section 3: YouTube Link */}
+        <div className="flex flex-col gap-2.5 border-t border-slate-100 pt-4 mt-2">
+          <label className="text-sm font-bold text-[#091F40] px-0.5">
             YouTube Video Link (Optional)
           </label>
           <input
@@ -278,37 +312,37 @@ export default function MediaStep2() {
             value={form.youtubeUrl}
             onChange={(e) => update({ youtubeUrl: e.target.value })}
             placeholder="e.g. https://www.youtube.com/watch?v=..."
-            className="w-full bg-white rounded-xl border border-charcoal/15 px-3 py-2.5 text-xs text-ink placeholder-slate/40 focus:border-emerald-500 focus:outline-none shadow-sm transition-all"
+            className="w-full h-[50px] rounded-[8px] bg-white border border-[#59AD63]/30 px-4 text-[13.5px] font-semibold text-charcoal placeholder:text-slate/30 focus:border-[#59AD63] focus:ring-1 focus:ring-[#59AD63]/30 outline-none transition-all mt-1"
           />
         </div>
-      </div>
 
-      {/* Footer next button container */}
-      <div className="px-6 pb-6 pt-5">
-        <button
-          onClick={() => {
-            setAttemptedNext(true);
-            if (canContinue) {
-              navigate("/add-property/more-info");
-            } else {
-              setTimeout(() => {
-                const firstError = document.querySelector(".border-rose-500");
-                if (firstError) {
-                  firstError.scrollIntoView({ behavior: "smooth", block: "center" });
-                }
-              }, 100);
-            }
-          }}
-          className="w-full py-3.5 rounded-xl font-display font-semibold text-[14px] transition-all shadow-md bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.99] cursor-pointer"
-        >
-          Continue
-        </button>
+        {/* Post & Review Action Button */}
+        <div className="mt-6 pb-6">
+          <button
+            onClick={() => {
+              setAttemptedNext(true);
+              if (canContinue) {
+                navigate("/add-property/map-picker");
+              } else {
+                setTimeout(() => {
+                  const firstError = document.querySelector(".border-rose-500");
+                  if (firstError) {
+                    firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }, 100);
+              }
+            }}
+            className="w-full py-4 rounded-[2px] font-display font-bold text-[14px] text-white bg-[#59AD63] hover:bg-[#3F8F4B] transition-all duration-200 cursor-pointer active:scale-98 shadow-sm shadow-[#59AD63]/10 flex items-center justify-center"
+          >
+            Continue to Review
+          </button>
+        </div>
       </div>
 
       {/* Crop Modal Overlay */}
       {selectedImageForCrop && (
         <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-6 animate-fadeIn">
-          <div className="bg-slate-900 rounded-3xl w-full max-w-[360px] p-5 shadow-2xl flex flex-col gap-4 border border-white/10">
+          <div className="bg-slate-900 rounded-[8px] w-full max-w-[360px] p-5 shadow-2xl flex flex-col gap-4 border border-white/10">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2 text-white">
                 <Crop size={18} className="text-emerald-500" />
@@ -393,14 +427,14 @@ export default function MediaStep2() {
               <button
                 type="button"
                 onClick={cancelCrop}
-                className="py-3 rounded-xl border border-white/15 hover:bg-white/5 font-semibold text-xs text-white transition-colors"
+                className="py-3 rounded-[2px] border border-white/15 hover:bg-white/5 font-semibold text-xs text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={saveCroppedImage}
-                className="py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-semibold text-xs text-white transition-colors shadow-lg active:scale-[0.98]"
+                className="py-3 rounded-[2px] bg-emerald-600 hover:bg-emerald-700 font-semibold text-xs text-white transition-colors shadow-lg active:scale-[0.98]"
               >
                 Add Photo
               </button>
@@ -416,7 +450,7 @@ export default function MediaStep2() {
           onClick={() => setShowSourceSelector(false)}
         >
           <div 
-            className="bg-white rounded-t-3xl p-5 shadow-2xl animate-slide-up flex flex-col gap-4 max-w-[420px] mx-auto w-full"
+            className="bg-white rounded-t-[8px] p-5 shadow-2xl animate-slide-up flex flex-col gap-4 max-w-[420px] mx-auto w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-charcoal/6 pb-2.5">
@@ -437,7 +471,7 @@ export default function MediaStep2() {
                   setShowSourceSelector(false);
                   cameraInputRef.current?.click();
                 }}
-                className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 border border-charcoal/5 hover:border-emerald-600/30 transition-all gap-2"
+                className="flex flex-col items-center justify-center p-4 rounded-[8px] bg-slate-50 border border-charcoal/5 hover:border-emerald-600/30 transition-all gap-2"
               >
                 <div className="p-3 rounded-full bg-emerald-50 text-emerald-600">
                   <Camera size={20} />
@@ -451,7 +485,7 @@ export default function MediaStep2() {
                   setShowSourceSelector(false);
                   photoInputRef.current?.click();
                 }}
-                className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 border border-charcoal/5 hover:border-emerald-600/30 transition-all gap-2"
+                className="flex flex-col items-center justify-center p-4 rounded-[8px] bg-slate-50 border border-charcoal/5 hover:border-emerald-600/30 transition-all gap-2"
               >
                 <div className="p-3 rounded-full bg-sky-50 text-sky-600">
                   <UploadCloud size={20} />

@@ -93,10 +93,10 @@ export default function AdminLayout() {
         {/* Sidebar Brand/Header */}
         <div className="p-5 border-b border-charcoal/5 flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-display font-extrabold text-sm shadow-md">
-            KR
+            SP
           </div>
           <div>
-            <h2 className="font-display font-extrabold text-sm text-black leading-tight">Kerala Realty</h2>
+            <h2 className="font-display font-extrabold text-sm text-black leading-tight">Sparrows Property Admin</h2>
             <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest block mt-0.5">Admin Workspace</span>
           </div>
         </div>

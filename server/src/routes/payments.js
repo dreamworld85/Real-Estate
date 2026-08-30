@@ -182,7 +182,7 @@ router.post("/verify-featured-payment", requireAuth, async (req, res) => {
     // Log activity
     const logAction = `Property listing "${title}" (ID: #${propertyId}) promoted to Featured tier via payment.`;
     await pool.query(
-      "INSERT INTO activity_logs (user_id, action, category) VALUES (?, ?, 'Listings')",
+      "INSERT INTO activity_logs (user_id, action, category) VALUES (?, ?, 'Properties')",
       [req.userId, logAction]
     );
 

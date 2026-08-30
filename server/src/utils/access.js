@@ -28,12 +28,13 @@ export async function checkUserAccess(userId) {
   const userDays = userSetting ? parseInt(userSetting.value, 10) : 30;
   const freeLimit = limitSetting ? parseInt(limitSetting.value, 10) : 20;
 
+  const roleLower = String(user.role || "").toLowerCase();
   let defaultTrialExpiry = null;
-  if (user.role === "broker") {
+  if (roleLower === "broker") {
     defaultTrialExpiry = new Date(new Date(user.created_at).getTime() + brokerDays * 24 * 60 * 60 * 1000);
-  } else if (user.role === "agency") {
+  } else if (roleLower === "agency") {
     defaultTrialExpiry = new Date(new Date(user.created_at).getTime() + agencyDays * 24 * 60 * 60 * 1000);
-  } else if (user.role === "user") {
+  } else if (roleLower === "user") {
     defaultTrialExpiry = new Date(new Date(user.created_at).getTime() + userDays * 24 * 60 * 60 * 1000);
   } else {
     defaultTrialExpiry = new Date(new Date(user.created_at).getTime() + defaultDays * 24 * 60 * 60 * 1000);
@@ -45,15 +46,16 @@ export async function checkUserAccess(userId) {
     (user.subscription_expires_at === null || new Date(user.subscription_expires_at) > now);
   
   const hasCustomTrial = user.custom_trial_expiry && new Date(user.custom_trial_expiry) > now;
+  const hasDbTrial = user.trial_ends_at && new Date(user.trial_ends_at) > now;
   const hasDefaultTrial = defaultTrialExpiry && defaultTrialExpiry > now;
-  const hasTrial = hasCustomTrial || hasDefaultTrial;
+  const hasTrial = hasCustomTrial || hasDbTrial || hasDefaultTrial;
 
   let hasAccess = false;
   let clickCount = 0;
 
   if (isSubscribed || isFreeGranted) {
     hasAccess = true;
-  } else if (user.role === "user") {
+  } else if (roleLower === "user") {
     if (hasTrial) {
       hasAccess = true;
     } else {

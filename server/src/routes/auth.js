@@ -20,7 +20,7 @@ function toPublicUser(row) {
     location: row.location,
     avatarUrl: row.avatar_url,
     trialEndsAt: row.trial_ends_at,
-    subscriptionStatus: row.subscription_status,
+    subscriptionStatus: row.is_free_subscription_granted === 1 ? "active" : row.subscription_status,
     razorpaySubscriptionId: row.razorpay_subscription_id,
     role: row.role,
     agencyLogoUrl: row.agency_logo_url,

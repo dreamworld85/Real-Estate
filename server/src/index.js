@@ -91,7 +91,9 @@ async function checkDbMigration() {
       { key: "landing_app_title", value: "Download Our Mobile App For Real-Time Notifications" },
       { key: "landing_app_description", value: "Visiting our mobile app gives you access to maps, instant push notifications for matching properties, real-time agent chats, and location-aware search features. Scan the QR code or click the download button below to load the mobile-optimized experience directly on your smartphone." },
       { key: "landing_app_download_url", value: "http://localhost:5173/login" },
-      { key: "landing_app_qr_image", value: "" }
+      { key: "landing_app_qr_image", value: "" },
+      { key: "login_heading", value: "Hello!" },
+      { key: "login_subheading", value: "Welcome to Property" }
     ];
 
     for (const setting of defaultSettings) {
@@ -437,6 +439,31 @@ async function checkDbMigration() {
         FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+
+    // Create top_locations table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS top_locations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        image_url VARCHAR(500) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database top_locations table verified.");
+
+    // Seed default top locations if empty
+    const [locations] = await pool.query("SELECT COUNT(*) AS count FROM top_locations");
+    if (locations[0].count === 0) {
+      console.log("Seeding default top locations...");
+      const defaultLocations = [
+        { name: "Bali", image_url: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=300&h=300&fit=crop" },
+        { name: "Jakarta", image_url: "https://images.unsplash.com/photo-1505995433366-e12047f3f144?w=300&h=300&fit=crop" },
+        { name: "Yogyakarta", image_url: "https://images.unsplash.com/photo-1584810359583-96fc3448beaa?w=300&h=300&fit=crop" }
+      ];
+      for (const loc of defaultLocations) {
+        await pool.query("INSERT INTO top_locations (name, image_url) VALUES (?, ?)", [loc.name, loc.image_url]);
+      }
+    }
 
     // Synchronize pricing & feature plans catalog
     await seedPlans();

@@ -12,12 +12,15 @@ body {
 
 /* Visible keyboard focus for accessibility */
 a:focus-visible,
-button:focus-visible,
+button:focus-visible {
+  outline: 2px solid #59AD63;
+  outline-offset: 2px;
+}
+
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #c89b3c;
-  outline-offset: 2px;
+  outline: none;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -79,4 +82,50 @@ textarea:focus-visible {
   .app-container, .bottom-nav-container {
     max-width: 100% !important;
   }
+}
+
+/* Agent Profile Responsive Scaling */
+@media (max-width: 375px) {
+  .agent-contact-btn {
+    width: 2rem !important; /* 32px */
+    height: 2rem !important; /* 32px */
+  }
+  .agent-contact-icon-wa {
+    width: 0.95rem !important; /* 15.2px */
+    height: 0.95rem !important; /* 15.2px */
+  }
+  .agent-contact-icon-phone {
+    width: 0.85rem !important; /* 13.6px */
+    height: 0.85rem !important; /* 13.6px */
+  }
+}
+
+@media (max-width: 365px) {
+  .agent-avatar-circle {
+    width: 2.75rem !important; /* 44px */
+    height: 2.75rem !important; /* 44px */
+  }
+  .agent-avatar-text {
+    font-size: 0.85rem !important;
+  }
+  .agent-verified-badge {
+    width: 13.5px !important;
+    height: 13.5px !important;
+  }
+  .agent-verified-check {
+    width: 8px !important;
+    height: 8px !important;
+  }
+}
+
+/* Redefine font-black to weight 500 */
+.font-black {
+  font-weight: 500 !important;
+}
+
+.rounded-3xl {
+  border-radius: 0.5rem !important;
+}
+.rounded-2xl {
+  border-radius: 10px !important;
 }

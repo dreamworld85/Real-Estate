@@ -151,8 +151,28 @@ export default function ChooseRole() {
 
   const handleConfirmRole = async () => {
     if (isRoleAlreadyLocked) {
-      // Just proceed to details step
-      navigate("/add-property/details");
+      setSubmitting(true);
+      setSetupError(null);
+      try {
+        const needsUpdate = 
+          form.contactPhone !== (user?.phone || "") || 
+          form.whatsappNumber !== (user?.whatsappNumber || "");
+
+        if (needsUpdate) {
+          const res = await api.updateMyProfile({
+            phone: form.contactPhone,
+            whatsappNumber: form.whatsappNumber
+          });
+          if (res && token) {
+            login(token, res);
+          }
+        }
+        navigate("/add-property/details");
+      } catch (err: any) {
+        setSetupError(err.message || "Failed to save contact profile details.");
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -194,39 +214,40 @@ export default function ChooseRole() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col pb-28 bg-slate-50">
-      {/* Header */}
-      <header className="flex flex-col bg-white border-b border-charcoal/8">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            {stage === "setup" && !isRoleAlreadyLocked && (
-              <button 
-                onClick={() => setStage("choose")}
-                className="p-1 hover:bg-slate-100 rounded-full transition-colors mr-1 cursor-pointer"
-              >
-                <ChevronLeft size={20} className="text-ink" />
-              </button>
-            )}
-            <h1 className="font-display font-extrabold text-[20px] text-ink">Add Property</h1>
-          </div>
-          <button 
-            onClick={() => navigate("/home")} 
-            className="p-1.5 hover:bg-charcoal/5 rounded-full transition-colors cursor-pointer"
-            aria-label="Close"
-          >
-            <X size={20} className="text-ink" />
-          </button>
+    <div className="min-h-screen flex flex-col pb-28 bg-white select-none">
+      {/* Top Green Progress Bar Line */}
+      <div className="w-full h-1 bg-slate-100 flex shrink-0">
+        <div className={`h-full bg-[#59AD63] transition-all duration-300 ${stage === "choose" ? "w-[16.6%]" : "w-[33.3%]"}`} />
+      </div>
+
+      {/* Header Row */}
+      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0">
+        <div className="flex items-center gap-2">
+          {stage === "setup" && !isRoleAlreadyLocked && (
+            <button 
+              type="button"
+              onClick={() => setStage("choose")}
+              className="p-1 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer active:scale-95 mr-1"
+            >
+              <ChevronLeft size={20} className="text-[#091F40]" />
+            </button>
+          )}
+          <h1 className="font-display font-extrabold text-[18px] text-[#091F40]">Add Property</h1>
         </div>
-        <div className="relative h-1 bg-slate-100 w-full overflow-hidden">
-          <div className={`absolute top-0 left-0 h-full w-[16.6%] bg-charcoal transition-all ${stage === "setup" ? "w-[33.3%]" : ""}`}></div>
-        </div>
-      </header>
+        <button 
+          onClick={() => navigate("/home")} 
+          className="p-1.5 hover:bg-charcoal/5 rounded-full transition-colors cursor-pointer"
+          aria-label="Close"
+        >
+          <X size={20} className="text-[#091F40]" />
+        </button>
+      </div>
 
       <div className="px-6 py-6 flex-1 flex flex-col gap-5 max-w-lg mx-auto w-full">
         {stage === "choose" ? (
           <>
             <div>
-              <h2 className="font-display font-bold text-[17px] text-ink leading-tight">
+              <h2 className="font-display font-semibold text-[16px] text-ink leading-tight">
                 How are you listing?
               </h2>
               <p className="text-slate text-xs mt-0.5 font-medium">
@@ -243,16 +264,16 @@ export default function ChooseRole() {
                     key={role}
                     type="button"
                     onClick={() => update({ role })}
-                    className={`relative flex flex-col items-center justify-center rounded-xl py-2.5 px-1.5 border transition-all cursor-pointer ${
+                    className={`relative flex flex-col items-center justify-center rounded-[8px] py-2.5 px-1.5 border transition-all cursor-pointer ${
                       selected 
-                        ? "border-black bg-white ring-1 ring-black shadow-sm" 
-                        : "border-charcoal/10 bg-white hover:border-charcoal/20 active:scale-[0.98]"
+                        ? "border-[#59AD63] bg-[#59AD63]/10 ring-1 ring-[#59AD63] text-[#59AD63]" 
+                        : "border-[#59AD63]/30 bg-white hover:border-charcoal/20 active:scale-[0.98]"
                     }`}
                   >
                     {/* Radio Indicator (Top Right) */}
                     <div className="absolute top-1.5 right-1.5">
                       <div className={`w-3 h-3 rounded-full border flex items-center justify-center transition-all ${
-                        selected ? "border-black bg-black text-white" : "border-charcoal/20"
+                        selected ? "border-[#59AD63] bg-[#59AD63] text-white" : "border-charcoal/20"
                       }`}>
                         {selected && <div className="w-1 h-1 rounded-full bg-white" />}
                       </div>
@@ -260,11 +281,11 @@ export default function ChooseRole() {
 
                     {/* Icon */}
                     <div className="mt-1">
-                      <Icon size={16} className={selected ? "text-black" : "text-slate"} />
+                      <Icon size={16} className={selected ? "text-[#59AD63]" : "text-slate"} />
                     </div>
 
                     {/* Label */}
-                    <span className={`font-display font-bold text-[11px] mt-1 ${selected ? "text-black" : "text-slate"}`}>
+                    <span className={`font-display font-bold text-[11px] mt-1 ${selected ? "text-[#59AD63]" : "text-slate"}`}>
                       {label}
                     </span>
                   </button>
@@ -274,7 +295,7 @@ export default function ChooseRole() {
 
             {/* Features Description Card */}
             {form.role && (
-              <div className="bg-white border border-charcoal/5 rounded-2xl p-4 shadow-sm flex flex-col gap-3.5 font-display text-left">
+              <div className="bg-white border border-charcoal/5 rounded-[8px] p-4 shadow-sm flex flex-col gap-3.5 font-display text-left">
                 <div className="border-b border-slate-100/80 pb-2">
                   <h3 className="font-extrabold text-xs text-ink">{form.role} Features</h3>
                   <p className="text-[10px] text-slate mt-0.5 leading-snug font-medium">
@@ -318,7 +339,7 @@ export default function ChooseRole() {
                 <button
                   type="button"
                   onClick={() => setShowPlansModal(true)}
-                  className="w-full mt-1.5 py-2.5 border border-emerald-600/10 bg-emerald-50 hover:bg-emerald-100/50 text-emerald-700 text-[10px] font-extrabold rounded-lg uppercase tracking-wider transition-all cursor-pointer text-center"
+                  className="w-full mt-1.5 py-2.5 border border-[#59AD63]/10 bg-[#59AD63]/5 hover:bg-[#59AD63]/10 text-[#59AD63] text-[10px] font-extrabold rounded-lg uppercase tracking-wider transition-all cursor-pointer text-center"
                 >
                   View Details & Pricing
                 </button>
@@ -328,8 +349,8 @@ export default function ChooseRole() {
             <button
               disabled={!form.role}
               onClick={() => setStage("setup")}
-              className={`w-full py-3.5 rounded-xl font-display font-semibold text-[14px] transition-all shadow-md mt-auto active:scale-[0.99] cursor-pointer ${
-                form.role ? "bg-ink text-cream hover:bg-black" : "bg-charcoal/15 text-slate/50 cursor-not-allowed shadow-none"
+              className={`w-full py-4 rounded-[2px] font-display font-bold text-[14px] transition-all shadow-md mt-auto active:scale-[0.99] cursor-pointer ${
+                form.role ? "bg-[#59AD63] text-white hover:bg-[#3F8F4B]" : "bg-charcoal/15 text-slate/50 cursor-not-allowed shadow-none"
               }`}
             >
               Next: Complete Onboarding Setup
@@ -338,7 +359,7 @@ export default function ChooseRole() {
         ) : (
           <>
             <div>
-              <h2 className="font-display font-bold text-[17px] text-ink leading-tight">
+              <h2 className="font-display font-semibold text-[16px] text-ink leading-tight">
                 {isRoleAlreadyLocked ? "Profile Details" : `Complete ${form.role} Setup`}
               </h2>
               <p className="text-slate text-xs mt-0.5 font-medium">
@@ -347,182 +368,194 @@ export default function ChooseRole() {
             </div>
 
             {setupError && (
-              <div className="p-3.5 bg-rose-50 text-rose-600 text-xs rounded-2xl border border-rose-100 flex items-start gap-2">
+              <div className="p-3.5 bg-rose-50 text-rose-600 text-xs rounded-[8px] border border-rose-100 flex items-start gap-2">
                 <ShieldAlert size={16} className="shrink-0 mt-0.5" />
                 <span>{setupError}</span>
               </div>
             )}
 
-            {isRoleAlreadyLocked && (
-              <div className="p-4 rounded-3xl bg-amber-50/80 border border-amber-200/80 text-amber-950 text-xs font-medium leading-relaxed shadow-sm flex flex-col gap-2">
-                <div className="flex items-start gap-2.5">
-                  <span className="text-base leading-none mt-0.5">⚠️</span>
-                  <div>
-                    <p>
-                      Your listing role is currently locked as <strong className="capitalize">{user?.role || form.role}</strong>.
-                    </p>
-                    <p className="mt-1 text-slate-700">
-                      Need to switch to another role?{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSwitchError(null);
-                          setSwitchSuccessMessage(null);
-                          setSwitchTargetRole("");
-                          setShowSwitchModal(true);
-                        }}
-                        className="font-bold underline text-amber-900 hover:text-black cursor-pointer inline transition-colors"
-                      >
-                        Click here to send request to admin
-                      </button>.
-                    </p>
-                  </div>
+            {/* Selected Role Summary Box */}
+            <div className="bg-white border border-[#59AD63]/30 rounded-[8px] p-4 shadow-sm text-left flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-slate/50 uppercase tracking-wider">
+                    {isRoleAlreadyLocked ? "Account Role (Locked)" : "Selected Role"}
+                  </span>
+                  <h3 className="font-display font-extrabold text-sm text-ink capitalize flex items-center gap-1.5 mt-0.5">
+                    👤 {form.role || user?.role || "User"}
+                  </h3>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSwitchError(null);
+                    setSwitchSuccessMessage(null);
+                    setSwitchTargetRole("");
+                    setShowSwitchModal(true);
+                  }}
+                  className="text-[10px] font-extrabold text-[#0F5B5C] bg-[#EAF5F5] hover:bg-[#D5EDED] px-3 py-1.5 rounded-[2px] transition-all cursor-pointer shadow-sm border border-[#0F5B5C]/10"
+                >
+                  Request Admin to Switch
+                </button>
               </div>
-            )}
+              <p className="text-[10.5px] text-slate/70 leading-relaxed">
+                {isRoleAlreadyLocked 
+                  ? "Your listing role is locked. Need to switch? Submit a request to the Admin." 
+                  : "You can lock this listing role or submit a request to the Admin to change it."}
+              </p>
 
-            {/* Inputs based on role */}
-            <div className="flex flex-col gap-5 text-left">
-              {form.role === "Owner" && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate uppercase tracking-wider">Owner Name</label>
-                  <input
-                    type="text"
-                    disabled={isRoleAlreadyLocked}
-                    placeholder="Enter owner name"
-                    value={form.ownerName}
-                    onChange={(e) => update({ ownerName: e.target.value })}
-                    className="w-full rounded-xl border border-charcoal/12 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
-                  />
+              {/* Display user's name if role is already locked */}
+              {isRoleAlreadyLocked && user?.name && (
+                <div className="mt-1 border-t border-slate-100 pt-2 flex flex-col">
+                  <span className="text-[9px] font-bold text-slate/50 uppercase tracking-wider">Registered Name</span>
+                  <span className="text-[13px] font-extrabold text-charcoal">{user.name}</span>
                 </div>
               )}
+            </div>
 
-              {form.role === "Broker" && (
-                <div className="flex flex-col gap-5">
+            {/* Inputs based on role (Hidden when role is already locked) */}
+            {!isRoleAlreadyLocked && (
+              <div className="flex flex-col gap-5 text-left animate-fade-in">
+                {form.role === "Owner" && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate uppercase tracking-wider">Broker Name</label>
+                    <label className="text-xs font-bold text-slate uppercase tracking-wider">Owner Name</label>
                     <input
                       type="text"
                       disabled={isRoleAlreadyLocked}
-                      placeholder="Enter broker name"
-                      value={form.brokerName}
-                      onChange={(e) => update({ brokerName: e.target.value })}
-                      className="w-full rounded-xl border border-charcoal/12 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
+                      placeholder="Enter owner name"
+                      value={form.ownerName}
+                      onChange={(e) => update({ ownerName: e.target.value })}
+                      className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
                     />
                   </div>
-                </div>
-              )}
+                )}
 
-              {form.role === "Agency" && (
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Name</label>
-                    <input
-                      type="text"
-                      disabled={isRoleAlreadyLocked}
-                      placeholder="Enter agency name"
-                      value={form.agencyName}
-                      onChange={(e) => update({ agencyName: e.target.value })}
-                      className="w-full rounded-xl border border-charcoal/12 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
-                    />
-                  </div>
-
-                  {!isRoleAlreadyLocked && (
+                {form.role === "Broker" && (
+                  <div className="flex flex-col gap-5">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Logo</label>
+                      <label className="text-xs font-bold text-slate uppercase tracking-wider">Broker Name</label>
                       <input
-                        ref={logoInputRef}
-                        type="file"
-                        accept="image/png, image/jpeg, image/jpg"
-                        className="hidden"
-                        onChange={handleLogoChange}
+                        type="text"
+                        disabled={isRoleAlreadyLocked}
+                        placeholder="Enter broker name"
+                        value={form.brokerName}
+                        onChange={(e) => update({ brokerName: e.target.value })}
+                        className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
                       />
-                      {form.agencyLogo ? (
-                        <div className="flex items-center gap-3 bg-white border border-charcoal/10 rounded-xl p-3 shadow-sm">
-                          <img
-                            src={URL.createObjectURL(form.agencyLogo)}
-                            alt="Agency Logo"
-                            className="w-10 h-10 object-cover rounded-lg border border-charcoal/10"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-charcoal truncate">{form.agencyLogo.name}</p>
-                            <p className="text-[10px] text-slate mt-0.5">{(form.agencyLogo.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  </div>
+                )}
+
+                {form.role === "Agency" && (
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Name</label>
+                      <input
+                        type="text"
+                        disabled={isRoleAlreadyLocked}
+                        placeholder="Enter agency name"
+                        value={form.agencyName}
+                        onChange={(e) => update({ agencyName: e.target.value })}
+                        className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm"
+                      />
+                    </div>
+
+                    {!isRoleAlreadyLocked && (
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Logo</label>
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/png, image/jpeg, image/jpg"
+                          className="hidden"
+                          onChange={handleLogoChange}
+                        />
+                        {form.agencyLogo ? (
+                          <div className="flex items-center gap-3 bg-white border border-[#59AD63]/30 rounded-[8px] p-3 shadow-sm">
+                            <img
+                              src={URL.createObjectURL(form.agencyLogo)}
+                              alt="Agency Logo"
+                              className="w-10 h-10 object-cover rounded-lg border border-[#59AD63]/30"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-charcoal truncate">{form.agencyLogo.name}</p>
+                              <p className="text-[10px] text-slate mt-0.5">{(form.agencyLogo.size / 1024).toFixed(1)} KB</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => update({ agencyLogo: null })}
+                              className="text-xs font-bold text-coral hover:underline pr-1 cursor-pointer"
+                            >
+                              Remove
+                            </button>
                           </div>
+                        ) : (
                           <button
                             type="button"
-                            onClick={() => update({ agencyLogo: null })}
-                            className="text-xs font-bold text-coral hover:underline pr-1 cursor-pointer"
+                            onClick={() => logoInputRef.current?.click()}
+                            className="w-full py-5 border-2 border-dashed border-charcoal/15 hover:border-black rounded-[8px] flex flex-col items-center justify-center gap-1.5 transition-colors bg-white shadow-sm cursor-pointer"
                           >
-                            Remove
+                            <UploadCloud size={20} className="text-slate/60" />
+                            <span className="text-xs font-semibold text-charcoal">Upload Logo Image</span>
+                            <span className="text-[10px] text-slate/50">PNG or JPEG format</span>
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => logoInputRef.current?.click()}
-                          className="w-full py-5 border-2 border-dashed border-charcoal/15 hover:border-black rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors bg-white shadow-sm cursor-pointer"
-                        >
-                          <UploadCloud size={20} className="text-slate/60" />
-                          <span className="text-xs font-semibold text-charcoal">Upload Logo Image</span>
-                          <span className="text-[10px] text-slate/50">PNG or JPEG format</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    )}
 
-                  {/* Agency Address */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Address</label>
-                    <textarea
-                      disabled={isRoleAlreadyLocked}
-                      placeholder="Enter agency address"
-                      value={form.agencyAddress || ""}
-                      onChange={(e) => update({ agencyAddress: e.target.value })}
-                      rows={3}
-                      className="w-full rounded-xl border border-charcoal/12 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm resize-none"
-                    />
-                  </div>
-
-                  {/* Agency District */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate uppercase tracking-wider">District</label>
-                    <div className="relative">
-                      <select
+                    {/* Agency Address */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate uppercase tracking-wider">Agency Address</label>
+                      <textarea
                         disabled={isRoleAlreadyLocked}
-                        value={form.agencyDistrict || ""}
-                        onChange={(e) => update({ agencyDistrict: e.target.value })}
-                        className="w-full rounded-xl border border-charcoal/12 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm appearance-none cursor-pointer"
-                      >
-                        <option value="">Select District</option>
-                        {districts.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate/50">
-                        ▼
+                        placeholder="Enter agency address"
+                        value={form.agencyAddress || ""}
+                        onChange={(e) => update({ agencyAddress: e.target.value })}
+                        rows={3}
+                        className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm resize-none"
+                      />
+                    </div>
+
+                    {/* Agency District */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate uppercase tracking-wider">District</label>
+                      <div className="relative">
+                        <select
+                          disabled={isRoleAlreadyLocked}
+                          value={form.agencyDistrict || ""}
+                          onChange={(e) => update({ agencyDistrict: e.target.value })}
+                          className="w-full rounded-[8px] border border-[#59AD63]/30 bg-white px-4 py-3 text-xs font-semibold text-charcoal focus:border-black outline-none transition-colors disabled:bg-slate-100/70 disabled:text-slate/60 shadow-sm appearance-none cursor-pointer"
+                        >
+                          <option value="">Select District</option>
+                          {districts.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate/50">
+                          ▼
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {/* Contact Details */}
-              <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-4 mt-1">
-                <h3 className="font-display font-bold text-[14px] text-ink uppercase tracking-wider">
-                  Contact Details
-                </h3>
+            {/* Contact Details (Always visible) */}
+            <div className="flex flex-col gap-5 text-left">
+              <div className="flex flex-col gap-4 border-t border-[#59AD63]/30 pt-4 mt-1">
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate uppercase tracking-wider">Contact Number</label>
-                  <div className="flex items-center bg-white rounded-xl border border-charcoal/12 px-3 py-0.5 focus-within:border-black transition-colors shadow-sm disabled:bg-slate-100/50">
-                    <div className="flex items-center gap-1 text-[13px] font-semibold text-charcoal pr-3 border-r border-charcoal/12 cursor-pointer">
+                  <div className="flex items-center bg-white rounded-[8px] border border-[#59AD63]/30 px-3 py-0.5 focus-within:border-black transition-colors shadow-sm disabled:bg-slate-100/50">
+                    <div className="flex items-center gap-1 text-[13px] font-semibold text-charcoal pr-3 border-r border-[#59AD63]/30 cursor-pointer">
                       <span>+91</span>
                     </div>
                     <input
                       type="tel"
-                      disabled={isRoleAlreadyLocked}
+                      disabled={isRoleAlreadyLocked && !!user?.phone}
                       placeholder="Enter contact number"
                       value={form.contactPhone}
                       onChange={(e) => update({ contactPhone: e.target.value })}
@@ -531,43 +564,42 @@ export default function ChooseRole() {
                   </div>
                 </div>
 
-                {!isRoleAlreadyLocked && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      type="checkbox"
-                      id="sameAsContact"
-                      checked={form.sameAsContact}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        update({ 
-                          sameAsContact: checked,
-                          whatsappNumber: checked ? form.contactPhone : "" 
-                        });
-                      }}
-                      className="w-4 h-4 rounded border-charcoal/20 text-black focus:ring-black focus:ring-offset-0 bg-white cursor-pointer"
-                    />
-                    <label htmlFor="sameAsContact" className="text-xs font-semibold text-slate cursor-pointer select-none">
-                      WhatsApp number is same as contact number
-                    </label>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="checkbox"
+                    id="sameAsContact"
+                    checked={form.sameAsContact}
+                    disabled={isRoleAlreadyLocked && !!user?.whatsappNumber}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      update({ 
+                        sameAsContact: checked,
+                        whatsappNumber: checked ? form.contactPhone : "" 
+                      });
+                    }}
+                    className="w-4 h-4 rounded border-[#59AD63]/30 text-[#59AD63] focus:ring-[#59AD63] focus:ring-offset-0 bg-white cursor-pointer"
+                  />
+                  <label htmlFor="sameAsContact" className="text-xs font-semibold text-slate cursor-pointer select-none">
+                    WhatsApp number is same as contact number
+                  </label>
+                </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate uppercase tracking-wider">WhatsApp Number</label>
-                  <div className={`flex items-center rounded-xl border px-3 py-0.5 transition-colors shadow-sm ${
-                    isRoleAlreadyLocked || form.sameAsContact 
-                      ? "bg-slate-100/50 border-charcoal/8 text-slate/50" 
-                      : "bg-white border-charcoal/12 focus-within:border-black"
+                  <div className={`flex items-center rounded-[8px] border px-3 py-0.5 transition-colors shadow-sm ${
+                    (isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact 
+                      ? "bg-slate-100/50 border-[#59AD63]/30 text-slate/50" 
+                      : "bg-white border-[#59AD63]/30 focus-within:border-black"
                   }`}>
-                    <div className="flex items-center gap-1 text-[13px] font-semibold pr-3 border-r border-charcoal/12 cursor-pointer">
-                      <span className={isRoleAlreadyLocked || form.sameAsContact ? "text-slate/50" : "text-charcoal"}>+91</span>
+                    <div className="flex items-center gap-1 text-[13px] font-semibold pr-3 border-r border-[#59AD63]/30 cursor-pointer">
+                      <span className={(isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact ? "text-slate/50" : "text-charcoal"}>+91</span>
                     </div>
                     <input
                       type="tel"
                       placeholder="Enter WhatsApp number"
                       value={form.whatsappNumber}
                       onChange={(e) => update({ whatsappNumber: e.target.value })}
-                      disabled={isRoleAlreadyLocked || form.sameAsContact}
+                      disabled={(isRoleAlreadyLocked && !!user?.whatsappNumber) || form.sameAsContact}
                       className="flex-1 bg-transparent text-[14px] px-3 py-3 outline-none text-charcoal placeholder:text-slate/40 font-medium disabled:text-slate/50"
                     />
                   </div>
@@ -578,10 +610,10 @@ export default function ChooseRole() {
             <button
               disabled={submitting || !isSetupValid}
               onClick={handleConfirmRole}
-              className={`w-full py-4 rounded-xl font-display font-semibold text-[15px] transition-all shadow-md mt-auto active:scale-[0.99] bg-emerald-600 text-white cursor-pointer ${
+              className={`w-full py-4 rounded-[2px] font-display font-bold text-[14px] transition-all shadow-md mt-auto active:scale-[0.99] bg-[#59AD63] text-white cursor-pointer ${
                 submitting || !isSetupValid 
                   ? "opacity-50 cursor-not-allowed shadow-none" 
-                  : "hover:bg-emerald-700"
+                  : "hover:bg-[#3F8F4B]"
               }`}
             >
               {submitting ? "Locking Account Role..." : isRoleAlreadyLocked ? "Continue" : "Confirm & Lock Role"}
@@ -608,7 +640,7 @@ export default function ChooseRole() {
           onClick={() => setShowSwitchModal(false)}
         >
           <div 
-            className="bg-cream rounded-3xl p-6 w-full max-w-[380px] border border-charcoal/10 shadow-2xl relative flex flex-col gap-4 animate-slide-up font-display text-left"
+            className="bg-cream rounded-[8px] p-6 w-full max-w-[380px] border border-[#59AD63]/30 shadow-2xl relative flex flex-col gap-4 animate-slide-up font-display text-left"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -628,7 +660,7 @@ export default function ChooseRole() {
             </div>
 
             {switchSuccessMessage ? (
-              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-800 text-xs flex flex-col gap-3">
+              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-[8px] text-emerald-800 text-xs flex flex-col gap-3">
                 <div className="flex items-center gap-2 font-bold">
                   <CheckCircle2 size={16} className="text-emerald-600" />
                   <span>Request Submitted!</span>
@@ -638,7 +670,7 @@ export default function ChooseRole() {
                 </p>
                 <button
                   onClick={() => setShowSwitchModal(false)}
-                  className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold text-center mt-1 cursor-pointer"
+                  className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-[2px] text-xs font-bold text-center mt-1 cursor-pointer"
                 >
                   Done
                 </button>
@@ -661,10 +693,10 @@ export default function ChooseRole() {
                           key={r}
                           type="button"
                           onClick={() => setSwitchTargetRole(r)}
-                          className={`p-3.5 rounded-xl border flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                          className={`p-3.5 rounded-[8px] border flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
                             selected 
                               ? "border-black bg-white shadow-sm ring-1 ring-black text-ink" 
-                              : "border-charcoal/10 bg-white hover:bg-slate-50 text-charcoal"
+                              : "border-[#59AD63]/30 bg-white hover:bg-slate-50 text-charcoal"
                           }`}
                         >
                           <span>{r}</span>
@@ -695,7 +727,7 @@ export default function ChooseRole() {
                         setSwitchSubmitting(false);
                       }
                     }}
-                    className={`w-full py-3.5 bg-ink text-cream rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all ${
+                    className={`w-full py-3.5 bg-ink text-cream rounded-[2px] text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all ${
                       !switchTargetRole || switchSubmitting
                         ? "opacity-50 cursor-not-allowed"
                         : "hover:bg-black cursor-pointer active:scale-95"

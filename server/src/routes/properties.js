@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { upload, optimizeImages } from "../middleware/upload.js";
 import { checkUserAccess } from "../utils/access.js";
+import { deleteUploadedFile } from "../utils/fileHelper.js";
 import fs from "fs/promises";
 import path from "path";
 
@@ -52,6 +53,8 @@ function toPublicProperty(row, media = [], isSaved = false) {
     isFeatured: row.is_featured === 1,
     isBrokerPersonalProperty: row.is_broker_personal_property === 1,
     isPriceNegotiable: row.is_price_negotiable === 1,
+    latitude: row.latitude,
+    longitude: row.longitude,
   };
 }
 
@@ -477,7 +480,7 @@ router.post("/:id/feature", requireAuth, async (req, res) => {
 
     // Log activity
     const logAction = `Property listing "${rows[0].title}" (ID: #${id}) promoted to Featured tier.`;
-    await pool.query("INSERT INTO activity_logs (user_id, action, category) VALUES (?, ?, 'Listings')", [req.userId, logAction]);
+    await pool.query("INSERT INTO activity_logs (user_id, action, category) VALUES (?, ?, 'Properties')", [req.userId, logAction]);
 
     res.json({ success: true, message: "Property promoted to Featured status successfully!" });
   } catch (err) {
@@ -540,6 +543,48 @@ router.post("/:id/enquiries", requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/properties/:id/schedule  { date } — visitor schedules a visit
+router.post("/:id/schedule", requireAuth, async (req, res) => {
+  try {
+    const { date } = req.body;
+    if (!date) {
+      return res.status(400).json({ error: "Schedule date is required." });
+    }
+
+    // Get the property owner
+    const [propRows] = await pool.query("SELECT title, owner_id FROM properties WHERE id = ?", [req.params.id]);
+    if (propRows.length === 0) {
+      return res.status(404).json({ error: "Property not found." });
+    }
+    const prop = propRows[0];
+
+    // Get the visitor's name
+    const [[visitor]] = await pool.query("SELECT name FROM users WHERE id = ?", [req.userId]);
+    const visitorName = visitor ? visitor.name : "Someone";
+
+    // Notify the property owner/broker/agency
+    if (prop.owner_id && prop.owner_id !== req.userId) {
+      await pool.query(
+        `INSERT INTO notifications (user_id, sender_id, type, message, property_id, title, link)
+         VALUES (?, ?, 'schedule', ?, ?, ?, ?)`,
+        [
+          prop.owner_id, 
+          req.userId, 
+          `${visitorName} scheduled a visit for your property "${prop.title}" on ${date}`, 
+          req.params.id,
+          "Visit Scheduled",
+          `/my-properties/${req.params.id}`
+        ]
+      );
+    }
+
+    res.json({ success: true, message: "Visit scheduled successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to schedule visit" });
+  }
+});
+
 // POST /api/properties — create a new listing (multipart/form-data)
 // Fields match the Add Property wizard's steps 1–4.
 router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => {
@@ -547,7 +592,7 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
   let isOverLimit = false;
   try {
     const [userRows] = await pool.query(
-      "SELECT role, subscription_status, subscription_duration_months, agency_logo_url FROM users WHERE id = ?",
+      "SELECT role, subscription_status, subscription_duration_months, agency_logo_url, is_free_subscription_granted FROM users WHERE id = ?",
       [req.userId]
     );
     if (userRows.length === 0) {
@@ -555,6 +600,7 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
     }
     user = userRows[0];
     const isSubscribed = user.subscription_status === "active";
+    const isFreeGranted = user.is_free_subscription_granted === 1;
     const durationMonths = Number(user.subscription_duration_months || 0);
 
     const [countRows] = await pool.query(
@@ -585,7 +631,9 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
       }
     }
 
-    if (listingCount >= allowedLimit) {
+    if (isFreeGranted) {
+      isOverLimit = false;
+    } else if (listingCount >= allowedLimit) {
       isOverLimit = true;
     }
   } catch (err) {
@@ -599,7 +647,7 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
       title, propertyType, purpose, price, areaSqft, address, district,
       bedrooms, bathrooms, furnishing, facing, propertyAge, description, listingRole,
       contactNumber, whatsappNumber, ownerName, brokerName, agencyName, youtubeUrl,
-      isBrokerPersonalProperty, isPriceNegotiable,
+      isBrokerPersonalProperty, isPriceNegotiable, latitude, longitude,
     } = req.body;
 
     if (!propertyType || !purpose || !price || !areaSqft || !address || !district) {
@@ -660,8 +708,8 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
       `INSERT INTO properties
         (owner_id, title, property_type, purpose, price, area_sqft, address, district,
          bedrooms, bathrooms, furnishing, facing, property_age, description, listing_role,
-         contact_number, whatsapp_number, owner_name, broker_name, agency_name, agency_logo_url, youtube_url, status, is_broker_personal_property, is_price_negotiable)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         contact_number, whatsapp_number, owner_name, broker_name, agency_name, agency_logo_url, youtube_url, status, is_broker_personal_property, is_price_negotiable, latitude, longitude)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.userId,
         title || `${propertyType} in ${district}`,
@@ -674,6 +722,8 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
         initialStatus,
         finalIsBrokerPersonalProperty,
         finalIsPriceNegotiable,
+        latitude ? Number(latitude) : null,
+        longitude ? Number(longitude) : null,
       ]
     );
 
@@ -847,7 +897,7 @@ router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) =
       title, propertyType, purpose, price, areaSqft, address, district,
       bedrooms, bathrooms, furnishing, facing, propertyAge, description, listingRole,
       contactNumber, whatsappNumber, ownerName, brokerName, agencyName, youtubeUrl,
-      isBrokerPersonalProperty,
+      isBrokerPersonalProperty, isPriceNegotiable, latitude, longitude,
     } = req.body;
 
     await conn.beginTransaction();
@@ -868,12 +918,14 @@ router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) =
     const agencyLogoUrl = logoFile ? `/uploads/${logoFile.filename}` : rows[0].agency_logo_url;
 
     const finalIsBrokerPersonalProperty = (String(listingRole || "").toLowerCase() === "broker" && (isBrokerPersonalProperty === "true" || isBrokerPersonalProperty === true || isBrokerPersonalProperty === 1)) ? 1 : 0;
+    const finalIsPriceNegotiable = (isPriceNegotiable === "true" || isPriceNegotiable === true || isPriceNegotiable === 1) ? 1 : 0;
 
     await conn.query(
       `UPDATE properties SET
         title = ?, property_type = ?, purpose = ?, price = ?, area_sqft = ?, address = ?, district = ?,
         bedrooms = ?, bathrooms = ?, furnishing = ?, facing = ?, property_age = ?, description = ?, listing_role = ?,
-        contact_number = ?, whatsapp_number = ?, owner_name = ?, broker_name = ?, agency_name = ?, agency_logo_url = ?, youtube_url = ?, is_broker_personal_property = ?
+        contact_number = ?, whatsapp_number = ?, owner_name = ?, broker_name = ?, agency_name = ?, agency_logo_url = ?, youtube_url = ?, is_broker_personal_property = ?, is_price_negotiable = ?,
+        latitude = ?, longitude = ?
        WHERE id = ?`,
       [
         title || `${propertyType} in ${district}`,
@@ -884,6 +936,9 @@ router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) =
         ownerName || null, brokerName || null, agencyName || null, agencyLogoUrl,
         youtubeUrl || null,
         finalIsBrokerPersonalProperty,
+        finalIsPriceNegotiable,
+        latitude ? Number(latitude) : null,
+        longitude ? Number(longitude) : null,
         req.params.id,
       ]
     );
@@ -943,29 +998,12 @@ router.delete("/:id", requireAuth, async (req, res) => {
     await conn.commit();
     conn.release();
 
-    // 4. Physical file cleanup from local uploads folder
+    // 4. Physical file cleanup from uploads folders
     console.log(`[DELETE PROPERTY] Found ${mediaRows.length} media items to delete.`);
 
     for (const media of mediaRows) {
       if (media.url) {
-        const filename = path.basename(media.url);
-        // Path 1: src/uploads/
-        const path1 = path.join(path.resolve("src/uploads"), filename);
-        try {
-          await fs.unlink(path1);
-          console.log(`[DELETE PROPERTY] Unlinked from src/uploads: ${path1}`);
-        } catch (e) {
-          // ignore if missing
-        }
-
-        // Path 2: uploads/
-        const path2 = path.join(path.resolve("uploads"), filename);
-        try {
-          await fs.unlink(path2);
-          console.log(`[DELETE PROPERTY] Unlinked from uploads: ${path2}`);
-        } catch (e) {
-          // ignore if missing
-        }
+        await deleteUploadedFile(media.url);
       }
     }
 

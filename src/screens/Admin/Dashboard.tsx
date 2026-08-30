@@ -62,7 +62,7 @@ export default function Dashboard() {
         <div className="relative z-10 flex flex-col">
           <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Workspace Overview</span>
           <h2 className="font-display font-extrabold text-xl md:text-2xl mt-1 text-black">Welcome back, Admin</h2>
-          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Here is what is happening today at Kerala Realty.</p>
+          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Here is what is happening today at Sparrows Property.</p>
         </div>
         <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none hidden md:block">
           <TrendingUp size={140} />

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { upload } from "../middleware/upload.js";
+import { deleteUploadedFile } from "../utils/fileHelper.js";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
@@ -98,6 +99,16 @@ router.get("/mobile-share-settings", async (req, res) => {
   }
 });
 
+
+// GET /api/admin/top-locations (Public)
+router.get("/top-locations", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM top_locations ORDER BY id ASC");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Apply admin protection check to all subsequent routes
 router.use(checkAdminSession);
@@ -282,6 +293,7 @@ router.put("/settings/:key", upload.single("banner"), async (req, res) => {
     const isImageKey = [
       "welcome_banner_url",
       "login_banner_url",
+      "loading_banner_url",
       "landing_hero_image",
       "landing_app_qr_image"
     ].includes(key);
@@ -499,12 +511,47 @@ router.put("/users/:id/subscription-override", async (req, res) => {
 
     const trialExpiryVal = custom_trial_expiry ? new Date(custom_trial_expiry) : null;
 
+    // Check if free subscription or trial is newly granted or extended
+    const [[existing]] = await pool.query("SELECT is_free_subscription_granted, custom_trial_expiry FROM users WHERE id = ?", [id]);
+    const wasGranted = existing ? existing.is_free_subscription_granted === 1 : false;
+    const previousTrialExpiry = existing && existing.custom_trial_expiry ? new Date(existing.custom_trial_expiry) : null;
+    
+    const isNowGranted = is_free_subscription_granted === true || is_free_subscription_granted === 1;
+    const isTrialExtended = trialExpiryVal && (!previousTrialExpiry || trialExpiryVal.getTime() !== previousTrialExpiry.getTime());
+
     await pool.query(
       "UPDATE users SET custom_trial_expiry = ?, is_free_subscription_granted = ? WHERE id = ?",
-      [trialExpiryVal, is_free_subscription_granted ? 1 : 0, id]
+      [trialExpiryVal, isNowGranted ? 1 : 0, id]
     );
 
-    const action = `User ID #${id} subscription overrides updated by Admin (Free Grant: ${is_free_subscription_granted ? 'Yes' : 'No'}, Trial Expiry: ${custom_trial_expiry || 'None'})`;
+    if (isNowGranted && !wasGranted) {
+      await pool.query(
+        `INSERT INTO notifications (user_id, sender_id, type, message, title, link)
+         VALUES (?, null, 'System', ?, ?, ?)`,
+        [
+          id,
+          "Congratulations! The Admin has granted you a Free Premium Subscription. You now have unlimited access to all features.",
+          "Free Subscription Granted",
+          "/profile"
+        ]
+      );
+    }
+
+    if (isTrialExtended) {
+      const formattedDate = trialExpiryVal.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+      await pool.query(
+        `INSERT INTO notifications (user_id, sender_id, type, message, title, link)
+         VALUES (?, null, 'System', ?, ?, ?)`,
+        [
+          id,
+          `Your premium trial period has been updated/extended by the Admin to expire on ${formattedDate}.`,
+          "Trial Period Updated",
+          "/profile"
+        ]
+      );
+    }
+
+    const action = `User ID #${id} subscription overrides updated by Admin (Free Grant: ${isNowGranted ? 'Yes' : 'No'}, Trial Expiry: ${custom_trial_expiry || 'None'})`;
     await pool.query("INSERT INTO activity_logs (user_id, action, category) VALUES (null, ?, 'Users')", [action]);
 
     res.json({ success: true, message: "Subscription overrides updated successfully." });
@@ -571,19 +618,9 @@ router.delete("/users/:id", async (req, res) => {
     await conn.commit();
 
     // 5. Delete physical files from disk
-    const serverUploadsDir = path.join(process.cwd(), "uploads");
     for (const relativePath of pathsToDelete) {
-      if (typeof relativePath === "string" && relativePath.startsWith("/uploads/")) {
-        const filename = relativePath.substring("/uploads/".length);
-        const fullPath = path.join(serverUploadsDir, filename);
-        try {
-          if (fs.existsSync(fullPath)) {
-            fs.unlinkSync(fullPath);
-            console.log("Successfully deleted physical file:", fullPath);
-          }
-        } catch (err) {
-          console.error("Failed to delete physical file:", fullPath, err);
-        }
+      if (relativePath) {
+        await deleteUploadedFile(relativePath);
       }
     }
 
@@ -688,30 +725,8 @@ router.delete("/properties/:id", async (req, res) => {
 
     // 3. Delete physical files from disk
     for (const relativePath of pathsToDelete) {
-      if (typeof relativePath === "string" && relativePath.startsWith("/uploads/")) {
-        const filename = relativePath.substring("/uploads/".length);
-        
-        // Path 1: src/uploads
-        const path1 = path.join(path.resolve("src/uploads"), filename);
-        try {
-          if (fs.existsSync(path1)) {
-            fs.unlinkSync(path1);
-            console.log("Successfully deleted physical file from src/uploads:", path1);
-          }
-        } catch (err) {
-          console.error("Failed to delete file from src/uploads:", path1, err);
-        }
-
-        // Path 2: uploads
-        const path2 = path.join(path.resolve("uploads"), filename);
-        try {
-          if (fs.existsSync(path2)) {
-            fs.unlinkSync(path2);
-            console.log("Successfully deleted physical file from uploads:", path2);
-          }
-        } catch (err) {
-          console.error("Failed to delete file from uploads:", path2, err);
-        }
+      if (relativePath) {
+        await deleteUploadedFile(relativePath);
       }
     }
 
@@ -1154,6 +1169,76 @@ router.get("/database/export", checkAdminSession, (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ error: err.message });
     }
+  }
+});
+
+// POST /api/admin/top-locations (Admin Protected)
+router.post("/top-locations", upload.single("image"), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) {
+      return res.status(400).json({ message: "Location name is required." });
+    }
+    let imageUrl = "";
+    if (req.file) {
+      imageUrl = `/uploads/${req.file.filename}`;
+    } else if (req.body.imageUrl) {
+      imageUrl = req.body.imageUrl;
+    } else {
+      return res.status(400).json({ message: "Image file or imageUrl is required." });
+    }
+    await pool.query("INSERT INTO top_locations (name, image_url) VALUES (?, ?)", [name, imageUrl]);
+    res.json({ success: true, message: "Location added successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/top-locations/:id (Admin Protected)
+router.put("/top-locations/:id", upload.single("image"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    
+    const [[existing]] = await pool.query("SELECT * FROM top_locations WHERE id = ?", [id]);
+    if (!existing) {
+      return res.status(404).json({ message: "Location not found." });
+    }
+    
+    let imageUrl = existing.image_url;
+    if (req.file) {
+      imageUrl = `/uploads/${req.file.filename}`;
+      // Clean up the old image file if it is different
+      if (existing.image_url && existing.image_url !== imageUrl) {
+        await deleteUploadedFile(existing.image_url);
+      }
+    }
+    
+    await pool.query(
+      "UPDATE top_locations SET name = COALESCE(?, name), image_url = ? WHERE id = ?",
+      [name || null, imageUrl, id]
+    );
+    res.json({ success: true, message: "Location updated successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/top-locations/:id (Admin Protected)
+router.delete("/top-locations/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [[existing]] = await pool.query("SELECT image_url FROM top_locations WHERE id = ?", [id]);
+    
+    await pool.query("DELETE FROM top_locations WHERE id = ?", [id]);
+    
+    if (existing && existing.image_url) {
+      await deleteUploadedFile(existing.image_url);
+    }
+    
+    res.json({ success: true, message: "Location deleted successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

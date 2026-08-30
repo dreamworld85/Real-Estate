@@ -1,17 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw, Heart } from "lucide-react";
+import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw, Heart, MapPin } from "lucide-react";
 import { api, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import BottomNav from "@/components/BottomNav";
 
 const propertyTypes = ["House", "Villa", "Apartment", "Land", "Commercial Space"];
 const purposes = ["For Sale", "For Rent"];
-const districts = [
-  "Wayanad", "Kozhikode", "Kannur", "Kasaragod", "Malappuram", "Palakkad",
-  "Thrissur", "Ernakulam", "Idukki", "Kottayam", "Alappuzha", "Pathanamthitta",
-  "Kollam", "Thiruvananthapuram",
-];
 
 export default function Search() {
   const navigate = useNavigate();
@@ -19,14 +14,34 @@ export default function Search() {
   const searchParams = new URLSearchParams(location.search);
   const showFeaturedOnly = searchParams.get("featured") === "true";
   const [district, setDistrict] = useState("");
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
   const [propertyType, setPropertyType] = useState("");
   const [purpose, setPurpose] = useState("");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(searchParams.get("q") || "");
+  
+  useEffect(() => {
+    const qParam = new URLSearchParams(location.search).get("q") || "";
+    setQuery(qParam);
+  }, [location.search]);
   
   const [rawResults, setRawResults] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch all active properties on mount to extract available districts/cities
+  useEffect(() => {
+    api.fetchProperties({})
+      .then((data) => {
+        if (data) {
+          const uniqueDistricts = Array.from(new Set(data.map(p => p.district)))
+            .filter(Boolean)
+            .sort();
+          setAvailableDistricts(uniqueDistricts);
+        }
+      })
+      .catch((err) => console.error("Failed to load active districts for filter dropdown:", err));
+  }, []);
 
   // Run search automatically when filters change
   useEffect(() => {
@@ -76,8 +91,8 @@ export default function Search() {
   });
 
   return (
-    <div className="min-h-screen pb-28 bg-slate-50/50">
-      <div className="px-6 pt-6 pb-4 max-w-7xl mx-auto w-full">
+    <div className="min-h-screen pb-28 bg-[#FAF8F3] w-full max-w-md mx-auto overflow-x-hidden">
+      <div className="px-4 pt-6 pb-4 w-full">
         {/* Search Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -92,32 +107,43 @@ export default function Search() {
                 setPurpose("");
                 setQuery("");
               }}
-              className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl transition-all active:scale-95"
+              className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 shrink-0"
             >
-              <RefreshCw size={12} />
-              Reset Filters
+              <RefreshCw size={11} className="shrink-0" />
+              Reset
             </button>
           )}
         </div>
 
         {/* Search Input Bar + Saved */}
-        <div className="flex gap-2 mb-4">
-          <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl px-4 py-3 border border-charcoal/10 shadow-sm focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
-            <SearchIcon size={18} className="text-slate" />
+        <div className="flex gap-2 mb-4 items-center">
+          <div className="flex-1 flex items-center gap-2 bg-white rounded-2xl px-3.5 py-2.5 border border-charcoal/10 shadow-sm focus-within:border-black transition-all min-w-0">
+            <SearchIcon size={16} className="text-slate shrink-0" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search address, title, district..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium"
+              className="flex-1 bg-transparent text-xs sm:text-sm outline-none placeholder:text-slate/40 text-charcoal font-medium min-w-0"
             />
           </div>
+          
+          {/* Dedicated Map Search Button */}
+          <button
+            onClick={() => navigate("/map-search")}
+            className="w-11 h-11 rounded-2xl border border-[#60A963]/25 bg-[#60A963]/10 text-emerald-700 hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center shrink-0"
+            aria-label="Map Search"
+            title="Map Search"
+          >
+            <MapPin size={18} className="shrink-0" />
+          </button>
+
           <button
             onClick={() => navigate("/saved")}
-            className="rounded-2xl px-3.5 border border-charcoal/10 bg-white text-charcoal hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center group"
+            className="w-11 h-11 rounded-2xl border border-charcoal/10 bg-white text-charcoal hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center group shrink-0"
             aria-label="Saved properties"
             title="Saved properties"
           >
-            <Heart size={18} className="text-slate/75 group-hover:text-rose-500 transition-colors" />
+            <Heart size={16} className="text-slate/75 group-hover:text-rose-500 transition-colors shrink-0" />
           </button>
         </div>
 
@@ -134,20 +160,20 @@ export default function Search() {
         )}
 
         {/* 3-Column Pill Dropdowns */}
-        <div className="grid grid-cols-3 gap-2.5 mb-2">
+        <div className="grid grid-cols-3 gap-1.5 mb-2">
           {/* Property Type Dropdown */}
           <div className="relative">
             <select
               value={propertyType}
               onChange={(e) => setPropertyType(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-3.5 pr-8 py-3 text-xs font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2 pr-5.5 py-2.5 text-[10.5px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
             >
               <option value="">All Types</option>
               {propertyTypes.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
           </div>
 
           {/* Purpose Dropdown */}
@@ -155,35 +181,35 @@ export default function Search() {
             <select
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-3.5 pr-8 py-3 text-xs font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2 pr-5.5 py-2.5 text-[10.5px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
             >
               <option value="">All Purpose</option>
               {purposes.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
           </div>
 
-          {/* District Dropdown */}
+          {/* District Dropdown (Renamed to Locations and Dynamic) */}
           <div className="relative">
             <select
               value={district}
               onChange={(e) => setDistrict(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-3.5 pr-8 py-3 text-xs font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2 pr-5.5 py-2.5 text-[10.5px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
             >
-              <option value="">All Districts</option>
-              {districts.map((opt) => (
+              <option value="">All Locations</option>
+              {availableDistricts.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
           </div>
         </div>
       </div>
 
       {/* Grid Results Section */}
-      <div className="px-6 max-w-7xl mx-auto w-full mt-2">
+      <div className="px-4 max-w-md mx-auto w-full mt-2">
         {loading && (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
@@ -205,7 +231,7 @@ export default function Search() {
         )}
 
         {!loading && results.length > 0 && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
             {results.map((p) => (
               <PropertyCard key={p.id} property={p} compact />
             ))}

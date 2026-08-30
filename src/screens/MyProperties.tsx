@@ -148,7 +148,7 @@ export default function MyProperties() {
           contact: "",
         },
         theme: {
-          color: "#0F3D3E",
+          color: "#60A963",
         },
       };
 

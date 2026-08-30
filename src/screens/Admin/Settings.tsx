@@ -33,9 +33,10 @@ export default function Settings() {
       setActiveTab("menu");
     }
   }, [location.search]);
-  const [selectedSetting, setSelectedSetting] = useState<"welcome_banner_url" | "login_banner_url">("welcome_banner_url");
+  const [selectedSetting, setSelectedSetting] = useState<"welcome_banner_url" | "login_banner_url" | "loading_banner_url">("welcome_banner_url");
   const [currentBanner, setCurrentBanner] = useState("/kerala_house_banner.jpg");
   const [currentLoginBanner, setCurrentLoginBanner] = useState("/kerala_house_login.jpg");
+  const [currentLoadingBanner, setCurrentLoadingBanner] = useState("/app_background.jpg");
   const [saving, setSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export default function Settings() {
   const [contactAddress, setContactAddress] = useState("");
   const [featuredPrice, setFeaturedPrice] = useState(299);
   const [featuredText, setFeaturedText] = useState("");
+  const [enableScheduleVisit, setEnableScheduleVisit] = useState(true);
 
   const [landingHeroTitle, setLandingHeroTitle] = useState("");
   const [interstitialSettings, setInterstitialSettings] = useState<any>(null);
@@ -298,6 +300,16 @@ export default function Settings() {
       })
       .catch(err => console.error("Error loading login banner:", err));
 
+    // Fetch loading banner setting
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/loading_banner_url`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value) {
+          setCurrentLoadingBanner(data.value);
+        }
+      })
+      .catch(err => console.error("Error loading loading banner setting:", err));
+
     // Fetch default_trial_days_broker setting
     fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days_broker`)
       .then(res => res.json())
@@ -418,6 +430,16 @@ export default function Settings() {
       })
       .catch(err => console.error("Error loading featured_text setting:", err));
 
+    // Fetch enable_schedule_visit setting
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/enable_schedule_visit`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value !== undefined) {
+          setEnableScheduleVisit(data.value === "true" || data.value === true);
+        }
+      })
+      .catch(err => console.error("Error loading enable_schedule_visit setting:", err));
+
     api.fetchSubscriptionPlans()
       .then((data) => {
         setPlans(data.map((p: any) => ({
@@ -438,14 +460,30 @@ export default function Settings() {
       const data = await adminApi.updateSetting(selectedSetting, selectedFile);
       if (selectedSetting === "welcome_banner_url") {
         setCurrentBanner(data.value);
-      } else {
+      } else if (selectedSetting === "login_banner_url") {
         setCurrentLoginBanner(data.value);
+      } else {
+        setCurrentLoadingBanner(data.value);
       }
       setSelectedFile(null);
       setPreviewUrl(null);
       alert("Image updated successfully!");
     } catch (err: any) {
       alert(err.message || "Failed to update image.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleScheduleVisit() {
+    const newValue = !enableScheduleVisit;
+    setSaving(true);
+    try {
+      await adminApi.updateSetting("enable_schedule_visit", String(newValue));
+      setEnableScheduleVisit(newValue);
+      alert(`Schedule Visit option ${newValue ? "enabled" : "disabled"} successfully!`);
+    } catch (err: any) {
+      alert(err.message || "Failed to update schedule visit setting.");
     } finally {
       setSaving(false);
     }
@@ -1381,9 +1419,9 @@ export default function Settings() {
                    setSelectedFile(null);
                    setPreviewUrl(null);
                  }}
-                 className={`flex-1 py-2 text-center text-xs font-bold rounded-xl transition-all cursor-pointer ${selectedSetting === "welcome_banner_url" ? "bg-white text-ink shadow-sm" : "text-slate hover:text-ink"}`}
+                 className={`flex-1 py-2 text-center text-[10px] font-bold rounded-xl transition-all cursor-pointer ${selectedSetting === "welcome_banner_url" ? "bg-white text-ink shadow-sm" : "text-slate hover:text-ink"}`}
                >
-                 Homepage Banner
+                 Home Banner
                </button>
                <button 
                  onClick={() => {
@@ -1391,9 +1429,19 @@ export default function Settings() {
                    setSelectedFile(null);
                    setPreviewUrl(null);
                  }}
-                 className={`flex-1 py-2 text-center text-xs font-bold rounded-xl transition-all cursor-pointer ${selectedSetting === "login_banner_url" ? "bg-white text-ink shadow-sm" : "text-slate hover:text-ink"}`}
+                 className={`flex-1 py-2 text-center text-[10px] font-bold rounded-xl transition-all cursor-pointer ${selectedSetting === "login_banner_url" ? "bg-white text-ink shadow-sm" : "text-slate hover:text-ink"}`}
                >
-                 Login Page Banner
+                 Login Banner
+               </button>
+               <button 
+                 onClick={() => {
+                   setSelectedSetting("loading_banner_url");
+                   setSelectedFile(null);
+                   setPreviewUrl(null);
+                 }}
+                 className={`flex-1 py-2 text-center text-[10px] font-bold rounded-xl transition-all cursor-pointer ${selectedSetting === "loading_banner_url" ? "bg-white text-ink shadow-sm" : "text-slate hover:text-ink"}`}
+               >
+                 Loading BG
                </button>
             </div>
 
@@ -1414,7 +1462,7 @@ export default function Settings() {
                   </p>
                 </div>
               </div>
-            ) : (
+            ) : selectedSetting === "login_banner_url" ? (
               <div className="relative h-40 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-slate-100 mb-4">
                 <img 
                   src={mediaUrl(previewUrl || currentLoginBanner)} 
@@ -1428,6 +1476,23 @@ export default function Settings() {
                   </h2>
                   <p className="text-white/80 text-[10px] mt-0.5 leading-none">
                     Find homes, villas, lands and escapes that match your lifestyle.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="relative h-40 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-slate-100 mb-4">
+                <img 
+                  src={mediaUrl(previewUrl || currentLoadingBanner)} 
+                  alt="Loading Preview" 
+                  className="w-full h-full object-cover brightness-[0.75]"
+                />
+                <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
+                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Preview: Loading Screen BG</span>
+                  <h2 className="font-display font-extrabold text-sm text-white leading-tight mt-0.5">
+                    SPARROWS PROPERTY
+                  </h2>
+                  <p className="text-white/80 text-[10px] mt-0.5 leading-none">
+                    Loading your professional workspace...
                   </p>
                 </div>
               </div>
@@ -1459,6 +1524,35 @@ export default function Settings() {
             >
               <Upload size={14} />
               <span>{saving ? "Saving..." : "Update Image Asset"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Feature Flags & Controls */}
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left">
+          <div className="mb-4">
+            <h2 className="font-display font-extrabold text-base text-black">Feature Flags & Toggle Controls</h2>
+            <p className="text-[10px] text-slate mt-0.5">Toggle system features on or off dynamically.</p>
+          </div>
+
+          <div className="flex items-center justify-between bg-slate-50 border border-charcoal/5 p-4 rounded-2xl">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-bold text-ink">Schedule Tour / Visit Option</span>
+              <p className="text-[9.5px] text-slate leading-normal max-w-[340px]">
+                When disabled, the "Schedule Visit" calendar booking option will be completely hidden from the public property details screen.
+              </p>
+            </div>
+            
+            <button
+              onClick={handleToggleScheduleVisit}
+              disabled={saving}
+              className={`px-4 py-2 rounded-xl text-[10px] font-bold font-display cursor-pointer transition-all ${
+                enableScheduleVisit 
+                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" 
+                  : "bg-slate-100 text-slate hover:bg-slate-200"
+              }`}
+            >
+              {enableScheduleVisit ? "Enabled" : "Disabled"}
             </button>
           </div>
         </div>

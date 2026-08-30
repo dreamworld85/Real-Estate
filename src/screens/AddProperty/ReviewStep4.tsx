@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera } from "lucide-react";
+import { Camera, ChevronLeft } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import { useAuth } from "@/lib/AuthContext";
 import { api, mediaUrl } from "@/lib/api";
@@ -33,7 +33,7 @@ export default function ReviewStep4() {
     ["Purpose", form.purpose || "—"],
     ["Price", formatPrice(form.price) + (form.isPriceNegotiable ? " (Negotiable)" : "")],
     ["Area", form.areaSqft ? `${form.areaSqft} ${isLand ? form.areaUnit : "sq.ft"}` : "—"],
-    ["Location", `${form.address || "—"}, ${form.district || "—"}`],
+    ["Location", form.mapAddress || `${form.address || "—"}, ${form.district || "—"}`],
     ...(!isLand
       ? ([
           ...(showBedrooms ? [["Bedrooms", form.bedrooms || "—"]] : []),
@@ -42,7 +42,6 @@ export default function ReviewStep4() {
           ["Property Age", form.propertyAge || "—"],
         ] as [string, string][])
       : []),
-    ["Facing", form.facing || "—"],
     ["Listing Role", form.role ? `${form.role} Property` : "—"],
     ...(form.role === "Owner" ? ([["Owner Name", form.ownerName || "—"]] as [string, string][]) : []),
     ...(form.role === "Broker" ? ([
@@ -52,6 +51,7 @@ export default function ReviewStep4() {
     ...(form.role === "Agency" ? ([["Agency Name", form.agencyName || "—"]] as [string, string][]) : []),
     ["Contact Number", form.contactPhone || "—"],
     ["WhatsApp Number", form.whatsappNumber || "—"],
+    ...(form.latitude && form.longitude ? ([["Map Coordinates", `${form.latitude.toFixed(6)}, ${form.longitude.toFixed(6)}`]] as [string, string][]) : []),
     ...(form.youtubeUrl ? ([["YouTube Video Link", form.youtubeUrl]] as [string, string][]) : []),
   ];
 
@@ -72,18 +72,39 @@ export default function ReviewStep4() {
         }
       }
       fd.append("areaSqft", String(sqftVal));
-      fd.append("address", form.address);
-      fd.append("district", form.district);
+      fd.append("address", form.mapAddress || form.address);
+      
+      let districtVal = form.district;
+      if (!districtVal) {
+        const addr = (form.mapAddress || "").toLowerCase();
+        const districts = [
+          "Wayanad", "Kozhikode", "Kannur", "Kasaragod", "Malappuram", "Palakkad",
+          "Thrissur", "Ernakulam", "Idukki", "Kottayam", "Alappuzha", "Pathanamthitta",
+          "Kollam", "Thiruvananthapuram"
+        ];
+        const found = districts.find(d => addr.includes(d.toLowerCase()));
+        districtVal = found || "Wayanad"; // Default fallback to Wayanad if not matched
+      }
+      fd.append("district", districtVal);
+
       fd.append("bedrooms", form.bedrooms || "0");
       fd.append("bathrooms", form.bathrooms || "0");
       if (form.furnishing) fd.append("furnishing", form.furnishing);
-      if (form.facing) fd.append("facing", form.facing);
       if (form.propertyAge) fd.append("propertyAge", form.propertyAge);
       if (form.description) fd.append("description", form.description);
       if (form.role) fd.append("listingRole", form.role);
       if (form.youtubeUrl) fd.append("youtubeUrl", form.youtubeUrl);
       if (form.isPriceNegotiable !== undefined) {
         fd.append("isPriceNegotiable", String(form.isPriceNegotiable));
+      }
+      if (form.latitude !== undefined) {
+        fd.append("latitude", String(form.latitude));
+      }
+      if (form.longitude !== undefined) {
+        fd.append("longitude", String(form.longitude));
+      }
+      if (form.mapAddress) {
+        fd.append("mapAddress", form.mapAddress);
       }
       
       // Role & contact details
@@ -133,16 +154,39 @@ export default function ReviewStep4() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col pb-28 bg-slate-50">
-      <Header title={isEditing ? "Edit Property" : "Add Property"} showBack />
-      <StepProgress step={4} />
+    <div className="min-h-screen flex flex-col pb-28 bg-white select-none">
+      {/* Top Green Progress Bar Line */}
+      <div className="w-full h-1 bg-slate-100 flex shrink-0">
+        <div className="h-full bg-[#59AD63] w-full transition-all duration-300" />
+      </div>
+
+      {/* Header Row */}
+      <div className="flex justify-between items-center px-6 pt-5 pb-2 shrink-0">
+        <button 
+          type="button"
+          onClick={() => navigate("/add-property/map-picker")}
+          className="text-charcoal p-1.5 -ml-1.5 hover:bg-charcoal/5 rounded-full transition-all duration-200 cursor-pointer active:scale-95"
+          aria-label="Back"
+        >
+          <ChevronLeft size={22} className="text-[#091F40]" />
+        </button>
+        
+        <div className="flex flex-col items-center">
+          <span className="font-bold text-sm text-[#091F40]">Review details</span>
+          <span className="text-[9px] font-bold text-slate/50 tracking-wider uppercase leading-none mt-0.5">
+            Step 4 of 4
+          </span>
+        </div>
+
+        <div className="w-8 h-8" />
+      </div>
 
       <div className="px-6 flex flex-col gap-4 flex-1">
-        <h2 className="font-display font-extrabold text-xl text-black -mt-1">
+        <h2 className="font-display font-semibold text-[16px] text-[#091F40] leading-none mt-2">
           {isEditing ? "Review Your Changes" : "Review Your Property"}
         </h2>
 
-        <div className="relative rounded-2xl overflow-hidden bg-slate-100 border border-charcoal/8 h-36 flex items-center justify-center shadow-sm">
+        <div className="relative rounded-[8px] overflow-hidden bg-slate-100 border border-charcoal/8 h-36 flex items-center justify-center shadow-sm">
           {form.images.length > 0 ? (
             <>
               <img
@@ -176,7 +220,7 @@ export default function ReviewStep4() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-charcoal/5 shadow-sm divide-y divide-charcoal/6 overflow-hidden">
+        <div className="bg-white rounded-[8px] border border-charcoal/5 shadow-sm divide-y divide-charcoal/6 overflow-hidden">
           {rows.map(([label, value]) => (
             <div key={label} className="flex items-center justify-between px-4 py-2.5 text-xs">
               <span className="text-slate font-medium">{label}</span>
@@ -198,18 +242,18 @@ export default function ReviewStep4() {
       <div className="px-6 pb-6 pt-5 flex gap-3">
         <button
           disabled={submitting}
-          onClick={() => navigate(-1)}
-          className="flex-1 py-3.5 rounded-xl font-display font-semibold text-[14px] border border-charcoal/15 bg-white text-charcoal hover:bg-slate-50 transition-all active:scale-[0.99] cursor-pointer"
+          onClick={() => navigate("/add-property/map-picker")}
+          className="flex-1 py-4 rounded-[2px] font-display font-bold text-[14px] border border-slate-300 bg-white text-charcoal hover:bg-slate-50 transition-all active:scale-[0.99] cursor-pointer"
         >
           Back
         </button>
         <button
           disabled={submitting}
           onClick={handleSubmit}
-          className={`flex-[2] py-3.5 rounded-xl font-display font-semibold text-[14px] transition-all shadow-md active:scale-[0.99] bg-emerald-600 text-white cursor-pointer ${
+          className={`flex-[2] py-4 rounded-[2px] font-display font-bold text-[14px] transition-all shadow-md active:scale-[0.99] bg-[#59AD63] text-white cursor-pointer ${
             submitting 
               ? "opacity-40 cursor-not-allowed shadow-none" 
-              : "hover:bg-emerald-700"
+              : "hover:bg-[#3F8F4B]"
           }`}
         >
           {submitting ? "Submitting…" : isEditing ? "Update Property" : "Submit Property"}
