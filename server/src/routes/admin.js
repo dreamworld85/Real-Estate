@@ -110,6 +110,47 @@ router.get("/top-locations", async (req, res) => {
   }
 });
 
+// POST /api/admin/deploy-frontend (Upload zip to extract into public_html/sales)
+router.post("/deploy-frontend", upload.single("build_zip"), async (req, res) => {
+  try {
+    const adminToken = req.headers["x-admin-auth"] || req.query.secret;
+    if (adminToken !== "KeralaRealtyAdminSecretToken2026") {
+      return res.status(401).json({ message: "Unauthorized deployment request." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No build_zip file uploaded." });
+    }
+
+    const zipFilePath = req.file.path;
+    const targetDir = process.env.SALES_PUBLIC_DIR || "/home/u859202671/domains/greensparrows.com/public_html/sales";
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const { exec } = await import("child_process");
+    exec(`unzip -o "${zipFilePath}" -d "${targetDir}"`, (err, stdout, stderr) => {
+      fs.unlink(zipFilePath, () => {});
+
+      if (err) {
+        console.error("Unzip error:", err, stderr);
+        return res.status(500).json({ error: "Failed to extract zip on server: " + (stderr || err.message) });
+      }
+
+      console.log("Frontend successfully deployed to:", targetDir);
+      res.json({
+        success: true,
+        message: "Frontend files successfully extracted to " + targetDir,
+        output: stdout
+      });
+    });
+  } catch (err) {
+    console.error("Deployment route error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Apply admin protection check to all subsequent routes
 router.use(checkAdminSession);
 
