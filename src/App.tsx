@@ -32,6 +32,7 @@ import RefundPolicy from "@/screens/Legal/RefundPolicy";
 import ContactUs from "@/screens/Legal/ContactUs";
 import SubscriptionDetails from "@/screens/SubscriptionDetails";
 import Landing from "@/screens/Landing";
+import ApkDownload from "@/screens/ApkDownload";
 
 // Admin Screens
 import AdminLayout from "@/screens/Admin/AdminLayout";
@@ -55,7 +56,8 @@ export default function App() {
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isLandingPage = location.pathname === "/";
   const isPropertyGuestRoute = location.pathname.startsWith("/property/") && !token;
-  const isFullWidth = isAdminRoute || isLandingPage || isPropertyGuestRoute;
+  const isApkRoute = location.pathname.startsWith("/apk") || location.pathname.startsWith("/app-download");
+  const isFullWidth = isAdminRoute || isLandingPage || isPropertyGuestRoute || isApkRoute;
 
   return (
     <div className={isFullWidth ? "min-h-screen w-full bg-[#FAF8F3] relative" : "app-container w-full max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden"}>
@@ -63,6 +65,8 @@ export default function App() {
         <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/apk" element={<ApkDownload />} />
+        <Route path="/app-download" element={<ApkDownload />} />
 
         <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
