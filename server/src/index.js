@@ -776,6 +776,8 @@ if (fs.existsSync(gitUploadsDir) && gitUploadsDir !== uploadsDir) {
 }
 
 app.use("/uploads", express.static(uploadsDir));
+app.use("/uploads", express.static(path.resolve("src/uploads")));
+app.use("/uploads", express.static(path.resolve("uploads")));
 app.use("/apk", express.static(uploadsDir));
 
 app.get(["/apk", "/apk/"], (_req, res) => {
