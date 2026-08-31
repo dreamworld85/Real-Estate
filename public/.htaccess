@@ -2,6 +2,9 @@
   RewriteEngine On
   RewriteBase /
   
+  # Redirect uploads to backend api.greensparrows.com/uploads
+  RewriteRule ^uploads/(.*)$ https://api.greensparrows.com/uploads/$1 [R=301,L]
+
   # Route property details request to property.php to parse OG tags
   RewriteRule ^property/([0-9]+)/?$ property.php?id=$1 [L,QSA]
   
