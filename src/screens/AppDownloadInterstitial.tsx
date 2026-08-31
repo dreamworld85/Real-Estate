@@ -46,80 +46,67 @@ export default function AppDownloadInterstitial({ propertyTitle, onMaybeLater }:
   };
 
   return (
-    <div className="h-screen w-full max-w-[420px] mx-auto bg-[#FAF8F3] flex flex-col justify-between p-6 select-none shadow-md overflow-hidden relative font-display">
+    <div 
+      className="h-screen w-full max-w-[420px] mx-auto flex flex-col justify-between p-6 select-none shadow-md overflow-hidden relative font-display"
+      style={{ 
+        backgroundImage: `url('${mediaUrl(settings.background_image_url || "/share_interstitial_bg.png")}')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center"
+      }}
+    >
+      {/* Dark overlay to ensure text readability */}
+      <div className="absolute inset-0 bg-black/60 z-0" />
       
       {/* 1. TOP SECTION: Brand Logo/Text & Tagline */}
-      <div className="flex flex-col items-center text-center mt-3 animate-fadeIn">
-        <div className="mb-2">
+      <div className="flex flex-col items-center text-center mt-3 animate-fadeIn relative z-10">
+        <div className="mb-3">
           {settings.brand_logo_url ? (
-            <img 
-              src={mediaUrl(settings.brand_logo_url)} 
-              alt={settings.brand_name} 
-              className="w-auto object-contain animate-pulse-subtle"
-              style={{ height: "5.5rem" }}
-            />
+            <div className="h-16 px-5 py-2.5 bg-forest rounded-2xl flex items-center justify-center shadow-md relative overflow-hidden">
+              <img 
+                src={mediaUrl(settings.brand_logo_url)} 
+                alt={settings.brand_name} 
+                className="h-full w-auto object-contain animate-pulse-subtle"
+              />
+            </div>
           ) : (
             FALLBACK_LOGO
           )}
         </div>
 
-        <h1 className="text-xl font-extrabold text-forest tracking-tight leading-none">
+        <h1 className="text-xl font-extrabold text-white tracking-tight leading-none drop-shadow">
           {settings.brand_name}
         </h1>
-        <p className="text-[10px] text-slate-500 font-bold tracking-wide mt-1.5">
+        <p className="text-[10px] text-cream/75 font-bold tracking-wider mt-1.5 uppercase">
           {settings.tagline}
         </p>
 
         {propertyTitle && (
-          <div className="mt-2.5 bg-forest/5 text-forest text-[9px] font-black px-2 py-0.5 rounded-full border border-forest/10 shadow-sm inline-flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-forest rounded-full animate-ping" />
+          <div className="mt-3 bg-white/10 text-white text-[9px] font-black px-3 py-1.5 rounded-full border border-white/15 shadow-sm inline-flex items-center gap-1.5 backdrop-blur-sm">
+            <span className="w-1.5 h-1.5 bg-[#25D366] rounded-full animate-ping" />
             <span>Shared Listing: {propertyTitle}</span>
           </div>
         )}
       </div>
 
-      {/* 2. MIDDLE SECTION: Center Illustration & Quote */}
-      <div className="flex flex-col items-center text-center my-auto py-4">
-        {/* Dynamic Center Illustration */}
-        <div className="my-5 w-full flex justify-center">
-          {settings.illustration_url ? (
-            <img 
-              src={mediaUrl(settings.illustration_url)} 
-              alt="Illustration" 
-              className="w-auto object-contain rounded-2xl animate-float"
-              style={{ height: "10rem", maxHeight: "10rem" }}
-            />
-          ) : (
-            <div className="w-28 h-28 rounded-[28px] bg-white border border-charcoal/5 flex items-center justify-center shadow-md relative">
-              <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-slate-100 opacity-60 filter blur-[1px]" />
-              <div className="absolute -bottom-2 -right-3 w-10 h-10 rounded-full bg-emerald-50 opacity-50 filter blur-[1px]" />
-              <div className="w-12 h-20 border-[3px] border-forest/15 rounded-2xl flex items-center justify-center bg-slate-50 shadow-inner">
-                <Smartphone size={28} className="text-forest/80 stroke-[2]" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 bg-gold text-ink text-[10px] font-black w-7 h-7 rounded-full flex items-center justify-center border-4 border-white shadow-md">
-                ★
-              </div>
-            </div>
-          )}
-        </div>
-
-        <p className="text-xs text-slate-700 font-bold max-w-[240px] leading-relaxed">
+      {/* 2. MIDDLE SECTION: Center Quote only (Illustration removed as requested) */}
+      <div className="flex flex-col items-center text-center my-auto py-6 relative z-10">
+        <p className="text-xs text-cream/95 font-bold max-w-[280px] leading-relaxed bg-black/30 p-4.5 rounded-3xl border border-white/5 backdrop-blur-sm shadow-sm">
           {settings.description_quote}
         </p>
       </div>
 
       {/* 3. BOTTOM SECTION: Primary CTA Button & Trust Badge */}
-      <div className="flex flex-col items-center text-center mb-3 w-full">
+      <div className="flex flex-col items-center text-center mb-3 w-full relative z-10">
         <button 
           onClick={() => setShowPromptModal(true)}
-          className="w-full bg-forest hover:bg-emerald-800 text-cream py-3.5 rounded-2xl text-xs font-black tracking-wide shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+          className="w-full bg-forest hover:bg-forest/90 text-cream py-3.5 rounded-2xl text-xs font-black tracking-wide shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 border border-emerald-500/10"
         >
           <Download size={14} className="stroke-[3]" />
           <span>{settings.button_text}</span>
         </button>
 
-        <div className="text-[10px] font-bold text-slate-500 mt-3.5 flex items-center justify-center gap-1.5 bg-white border border-charcoal/5 px-4 py-1.5 rounded-full shadow-sm">
-          <ShieldCheck size={12} className="text-forest stroke-[2.5]" />
+        <div className="text-[10px] font-bold text-white/90 mt-3.5 flex items-center justify-center gap-1.5 bg-black/45 border border-white/10 px-4 py-1.5 rounded-full shadow-sm backdrop-blur-sm">
+          <ShieldCheck size={12} className="text-[#25D366] stroke-[2.5]" />
           <span>{settings.trust_text}</span>
         </div>
       </div>

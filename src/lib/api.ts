@@ -624,9 +624,11 @@ export const api = {
 
 export function mediaUrl(path: string): string {
   if (!path) return "";
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${API_URL}${cleanPath}`;
+  if (path.startsWith("http")) return path;
+  if (path.startsWith("/uploads")) {
+    return `${API_URL}${path}`;
+  }
+  return path;
 }
 
 export function formatArea(areaSqft: number, propertyType: string): string {
@@ -682,5 +684,6 @@ export interface ApiMobileShareSettings {
   google_play_url: string;
   app_store_url: string;
   trust_text: string;
+  background_image_url?: string;
 }
 

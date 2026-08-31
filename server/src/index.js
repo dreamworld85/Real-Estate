@@ -5,9 +5,13 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { pool } from "./db.js";
-import { getAllUploadsDirs } from "./utils/fileHelper.js";
 
-dotenv.config({ override: true });
+// Ensure uploads directory exists
+const serverUploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(serverUploadsDir)) {
+  console.log("Creating uploads directory...");
+  fs.mkdirSync(serverUploadsDir, { recursive: true });
+}
 
 import { seedPlans } from "./seedPlans.js";
 
@@ -160,10 +164,16 @@ async function checkDbMigration() {
         description_quote VARCHAR(500) NOT NULL,
         button_text VARCHAR(150) NOT NULL,
         google_play_url VARCHAR(255) NOT NULL,
-        app_store_url VARCHAR(255) NOT NULL,
-        trust_text VARCHAR(255) NOT NULL
+        app_store_url VARCHAR(255) NOT NULL
       )
     `);
+
+    const [shareCols] = await pool.query("SHOW COLUMNS FROM mobile_share_page_settings");
+    const shareColNames = shareCols.map(c => c.Field);
+    if (!shareColNames.includes("background_image_url")) {
+      console.log("Adding background_image_url column to mobile_share_page_settings...");
+      await pool.query("ALTER TABLE mobile_share_page_settings ADD COLUMN background_image_url VARCHAR(255) NULL DEFAULT '/share_interstitial_bg.png'");
+    }
 
     const [mobileShareSettingsCount] = await pool.query("SELECT COUNT(*) as count FROM mobile_share_page_settings");
     if (mobileShareSettingsCount[0].count === 0) {
@@ -179,11 +189,11 @@ async function checkDbMigration() {
           app_store_url,
           trust_text
         ) VALUES (
-          'Kerala Realty',
+          'Sparrow Properties',
+          '/brand_logo.png',
+          'Your trusted property partner',
           '',
-          'Your trusted property partner in Kerala',
-          '',
-          'The best way to buy, sell and rent properties in Kerala.',
+          'The best way to buy, sell and rent properties.',
           'Download the App to continue',
           'https://play.google.com/store',
           'https://www.apple.com/app-store',
@@ -714,87 +724,59 @@ function generateSystemBlueprintFile() {
 }
 generateSystemBlueprintFile();
 
+dotenv.config({ override: true });
+
 // Auto-configure persistent UPLOADS_DIR on Hostinger server
-const currentCwd = process.cwd();
-if (currentCwd.includes("api.greensparrows.com") || currentCwd.includes("u859202671")) {
-  if (!process.env.UPLOADS_DIR) {
-    process.env.UPLOADS_DIR = "/home/u859202671/domains/api.greensparrows.com/uploads";
+if (process.cwd().includes("api.greensparrows.com")) {
+  const envPath = path.resolve(".env");
+  let envContent = "";
+  if (fs.existsSync(envPath)) {
+    envContent = fs.readFileSync(envPath, "utf8");
+  }
+  if (!envContent.includes("UPLOADS_DIR")) {
+    console.log("Auto-injecting persistent UPLOADS_DIR into .env");
+    envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
+    fs.writeFileSync(envPath, envContent, "utf8");
+    // Reload environment variables
+    dotenv.config({ override: true });
   }
 }
 
 const app = express();
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",");
 
-const defaultOrigins = [
-  "https://sales.greensparrows.com",
-  "http://sales.greensparrows.com",
-  "https://api.greensparrows.com",
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "http://localhost:4000"
-];
-const envOrigins = process.env.CLIENT_ORIGIN ? process.env.CLIENT_ORIGIN.split(",") : [];
-const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
-      return callback(null, true);
-    }
-    return callback(null, true);
-  },
-  credentials: true
-}));
-
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
-// Multi-directory upload resolution & auto-creation
-const uploadDirs = getAllUploadsDirs();
-uploadDirs.forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
-  }
-});
+const uploadsDir = process.env.UPLOADS_DIR 
+  ? path.resolve(process.env.UPLOADS_DIR) 
+  : path.resolve("src/uploads");
 
-// Resilient Uploads Middleware with Extension & Directory Fallbacks
-app.use("/uploads/:filename", (req, res, next) => {
-  const requestedFile = req.params.filename;
-  if (!requestedFile || requestedFile.includes("..")) {
-    return next();
-  }
+// Ensure persistent upload directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
-  const dirs = getAllUploadsDirs();
-
-  // 1. Try exact filename match in any upload directory
-  for (const dir of dirs) {
-    const fullPath = path.join(dir, requestedFile);
-    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-      return res.sendFile(fullPath);
-    }
-  }
-
-  // 2. Try alternate extensions (.webp <-> .jpeg / .jpg / .png / .gif)
-  const ext = path.extname(requestedFile);
-  const baseName = path.basename(requestedFile, ext);
-  const candidateExtensions = [".webp", ".jpeg", ".jpg", ".png", ".gif"];
-
-  for (const dir of dirs) {
-    for (const altExt of candidateExtensions) {
-      if (altExt === ext) continue;
-      const altPath = path.join(dir, `${baseName}${altExt}`);
-      if (fs.existsSync(altPath) && fs.statSync(altPath).isFile()) {
-        return res.sendFile(altPath);
+// Auto-migrate files from Git folder to persistent uploads folder
+const gitUploadsDir = path.resolve("src/uploads");
+if (fs.existsSync(gitUploadsDir) && gitUploadsDir !== uploadsDir) {
+  try {
+    const files = fs.readdirSync(gitUploadsDir);
+    files.forEach(file => {
+      const srcFile = path.join(gitUploadsDir, file);
+      const destFile = path.join(uploadsDir, file);
+      if (!fs.existsSync(destFile)) {
+        fs.copyFileSync(srcFile, destFile);
+        console.log(`Migrated upload asset: ${file}`);
       }
-    }
+    });
+  } catch (err) {
+    console.error("Failed to migrate upload assets:", err);
   }
+}
 
-  next();
-});
-
-// Also enable standard express.static on all upload directories
-uploadDirs.forEach(dir => {
-  app.use("/uploads", express.static(dir, { maxAge: "7d" }));
-});
-app.use("/apk", express.static(uploadDirs[0]));
+app.use("/uploads", express.static(uploadsDir));
+app.use("/apk", express.static(uploadsDir));
 
 app.get(["/apk", "/apk/"], (_req, res) => {
   res.send(`

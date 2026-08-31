@@ -11,14 +11,15 @@ import {
   AlertOctagon, 
   ChevronRight,
   ChevronLeft,
-  Upload
+  Upload,
+  MapPin
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { api, mediaUrl } from "@/lib/api";
 
 export default function Settings() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<"menu" | "site" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial">("menu");
+  const [activeTab, setActiveTab] = useState<"menu" | "site" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial" | "locations">("menu");
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -29,6 +30,8 @@ export default function Settings() {
       setActiveTab("site");
     } else if (tabParam === "trials") {
       setActiveTab("trials");
+    } else if (tabParam === "locations") {
+      setActiveTab("locations");
     } else {
       setActiveTab("menu");
     }
@@ -54,6 +57,11 @@ export default function Settings() {
   const [featuredPrice, setFeaturedPrice] = useState(299);
   const [featuredText, setFeaturedText] = useState("");
   const [enableScheduleVisit, setEnableScheduleVisit] = useState(true);
+  const [locationsList, setLocationsList] = useState<{ id: number; name: string; image_url: string }[]>([]);
+  const [newLocationName, setNewLocationName] = useState("");
+  const [newLocationFile, setNewLocationFile] = useState<File | null>(null);
+  const [newLocationPreview, setNewLocationPreview] = useState<string | null>(null);
+  const [loadingLocations, setLoadingLocations] = useState(false);
 
   const [landingHeroTitle, setLandingHeroTitle] = useState("");
   const [interstitialSettings, setInterstitialSettings] = useState<any>(null);
@@ -61,6 +69,8 @@ export default function Settings() {
   const [interstitialPreview, setInterstitialPreview] = useState<string | null>(null);
   const [illustrationFile, setIllustrationFile] = useState<File | null>(null);
   const [illustrationPreview, setIllustrationPreview] = useState<string | null>(null);
+  const [interstitialBgFile, setInterstitialBgFile] = useState<File | null>(null);
+  const [interstitialBgPreview, setInterstitialBgPreview] = useState<string | null>(null);
   const [landingHeroDescription, setLandingHeroDescription] = useState("");
   const [landingHeroImage, setLandingHeroImage] = useState("");
   const [landingAppTitle, setLandingAppTitle] = useState("");
@@ -130,6 +140,9 @@ export default function Settings() {
       if (illustrationFile) {
         formData.append("illustration", illustrationFile);
       }
+      if (interstitialBgFile) {
+        formData.append("background", interstitialBgFile);
+      }
       formData.append("brand_name", interstitialSettings.brand_name || "");
       formData.append("brand_logo_url", interstitialSettings.brand_logo_url || "");
       formData.append("tagline", interstitialSettings.tagline || "");
@@ -139,6 +152,7 @@ export default function Settings() {
       formData.append("google_play_url", interstitialSettings.google_play_url || "");
       formData.append("app_store_url", interstitialSettings.app_store_url || "");
       formData.append("trust_text", interstitialSettings.trust_text || "");
+      formData.append("background_image_url", interstitialSettings.background_image_url || "");
 
       const res = await api.updateMobileShareSettings(formData);
       alert(res.message);
@@ -146,6 +160,8 @@ export default function Settings() {
       setInterstitialPreview(null);
       setIllustrationFile(null);
       setIllustrationPreview(null);
+      setInterstitialBgFile(null);
+      setInterstitialBgPreview(null);
       loadInterstitialSettings();
     } catch (err: any) {
       alert(err.message || "Failed to update settings.");
@@ -489,6 +505,74 @@ export default function Settings() {
     }
   }
 
+  useEffect(() => {
+    if (activeTab === "locations") {
+      loadLocations();
+    }
+  }, [activeTab]);
+
+  async function loadLocations() {
+    setLoadingLocations(true);
+    try {
+      const data = await api.fetchTopLocations();
+      setLocationsList(data || []);
+    } catch (err) {
+      console.error("Failed to load top locations:", err);
+    } finally {
+      setLoadingLocations(false);
+    }
+  }
+
+  async function handleAddLocation(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newLocationName.trim()) {
+      alert("Please enter a location name.");
+      return;
+    }
+    if (!newLocationFile) {
+      alert("Please select a cover image file.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", newLocationName.trim());
+      formData.append("image", newLocationFile);
+      const res = await api.adminAddTopLocation(formData);
+      if (res.success) {
+        alert("Location added successfully!");
+        setNewLocationName("");
+        setNewLocationFile(null);
+        setNewLocationPreview(null);
+        loadLocations();
+      } else {
+        alert(res.message || "Failed to add location.");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to add location.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteLocation(id: number) {
+    if (!window.confirm("Are you sure you want to delete this top location?")) return;
+    setSaving(true);
+    try {
+      const res = await api.adminDeleteTopLocation(id);
+      if (res.success) {
+        alert("Location deleted successfully!");
+        loadLocations();
+      } else {
+        alert(res.message || "Failed to delete location.");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to delete location.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const sections = [
     {
       title: "General Settings",
@@ -501,6 +585,7 @@ export default function Settings() {
         { key: "database", label: "Database Export", desc: "Download live SQL database dump files", icon: FileText, color: "text-rose-600 bg-rose-50" },
         { key: "landing", label: "Landing Manager", desc: "Manage desktop landing text, app QR, and feature cards", icon: FileText, color: "text-amber-600 bg-amber-50" },
         { key: "interstitial", label: "Share Interstitial Settings", desc: "Manage logo, store links, headlines and footers for shared links", icon: Sliders, color: "text-teal-600 bg-teal-50" },
+        { key: "locations", label: "Top Locations", desc: "Manage popular top locations and preview graphics", icon: MapPin, color: "text-indigo-600 bg-indigo-50" },
       ],
     },
     {
@@ -1216,6 +1301,37 @@ export default function Settings() {
               </div>
             </div>
 
+            {/* Page Background Image Upload */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end border-b border-charcoal/5 pb-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-ink">Page Background Image</label>
+                <p className="text-[10px] text-slate">Upload a cover background image for the app install/redirect page.</p>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setInterstitialBgFile(file);
+                      setInterstitialBgPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full mt-1.5"
+                />
+              </div>
+              <div className="h-24 rounded-2xl border border-charcoal/8 bg-[#FAF8F3] flex items-center justify-center p-4">
+                {interstitialBgPreview || interstitialSettings.background_image_url ? (
+                  <img 
+                    src={interstitialBgPreview || mediaUrl(interstitialSettings.background_image_url)} 
+                    alt="Background Preview" 
+                    className="h-full object-contain rounded"
+                  />
+                ) : (
+                  <span className="text-[10px] text-slate/60 font-bold">Using Default Background</span>
+                )}
+              </div>
+            </div>
+
             {/* Quote Description & Button Text */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
@@ -1560,6 +1676,121 @@ export default function Settings() {
     );
   }
 
+  function renderLocationsTab() {
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Back button for mobile view */}
+        <div className="flex items-center gap-2 lg:hidden px-1 text-left">
+          <button 
+            onClick={() => {
+              setActiveTab("menu");
+              setNewLocationFile(null);
+              setNewLocationPreview(null);
+            }}
+            className="p-1 hover:bg-slate-100 rounded-full transition-all text-slate cursor-pointer"
+            aria-label="Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
+        </div>
+
+        {/* Add Location Form Card */}
+        <form onSubmit={handleAddLocation} className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left flex flex-col gap-4">
+          <div>
+            <h2 className="font-display font-extrabold text-base text-black">Add New Top Location</h2>
+            <p className="text-[10px] text-slate mt-0.5">Upload a cover image and name a new popular location to show on the mobile welcome page.</p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-ink">Location Name</label>
+            <input 
+              type="text"
+              required
+              value={newLocationName}
+              onChange={(e) => setNewLocationName(e.target.value)}
+              placeholder="e.g. Wayanad"
+              className="text-xs text-ink border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none focus:border-forest/40 focus:bg-white transition-all w-full font-semibold font-display"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-ink">Cover Image</label>
+            <input 
+              type="file"
+              accept="image/*"
+              required
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setNewLocationFile(file);
+                  setNewLocationPreview(URL.createObjectURL(file));
+                }
+              }}
+              className="text-xs text-slate border border-charcoal/10 p-3 rounded-2xl bg-slate-50/50 focus:outline-none w-full"
+            />
+            {newLocationPreview && (
+              <div className="relative h-32 rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner bg-slate-100 mt-2 max-w-xs">
+                <img 
+                  src={newLocationPreview} 
+                  alt="Location Preview" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-center"
+          >
+            <span>{saving ? "Adding..." : "Add Location"}</span>
+          </button>
+        </form>
+
+        {/* Existing Locations List Card */}
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm text-left">
+          <div className="mb-4">
+            <h2 className="font-display font-extrabold text-base text-black">Current Top Locations</h2>
+            <p className="text-[10px] text-slate mt-0.5">Manage existing locations listed on the popular locations slider.</p>
+          </div>
+
+          {loadingLocations ? (
+            <div className="py-8 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600" />
+            </div>
+          ) : locationsList.length === 0 ? (
+            <p className="text-xs text-slate py-4 text-center">No locations added yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {locationsList.map((loc) => (
+                <div key={loc.id} className="flex items-center gap-3 border border-charcoal/5 p-3 rounded-2xl shadow-sm bg-slate-50/50">
+                  <img 
+                    src={mediaUrl(loc.image_url)} 
+                    alt={loc.name} 
+                    className="w-14 h-14 rounded-xl object-cover border border-charcoal/5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-bold text-ink truncate block">{loc.name}</span>
+                    <span className="text-[9px] text-slate block truncate">ID: {loc.id}</span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteLocation(loc.id)}
+                    disabled={saving}
+                    className="px-2.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[10px] font-bold transition-all cursor-pointer select-none"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   function renderPaymentTab() {
     return (
       <div className="flex flex-col gap-4 text-left">
@@ -1623,6 +1854,8 @@ export default function Settings() {
                           setActiveTab("landing");
                         } else if (item.key === "interstitial") {
                           setActiveTab("interstitial");
+                        } else if (item.key === "locations") {
+                          setActiveTab("locations");
                         } else {
                           alert(`${item.label} configurations loaded successfully.`);
                         }
@@ -1670,6 +1903,7 @@ export default function Settings() {
           {activeTab === "database" && renderDatabaseTab()}
           {activeTab === "landing" && renderLandingTab()}
           {activeTab === "interstitial" && renderInterstitialTab()}
+          {activeTab === "locations" && renderLocationsTab()}
         </div>
       </div>
     </div>

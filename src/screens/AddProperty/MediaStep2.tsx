@@ -39,8 +39,20 @@ export default function MediaStep2() {
 
   function handlePhotosSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      const [first, ...rest] = files;
+    const imageFiles = files.filter(f => f.type.startsWith("image/"));
+    const videoFiles = files.filter(f => f.type.startsWith("video/"));
+    
+    if (videoFiles.length > 0) {
+      const selectedVideo = videoFiles[0];
+      if (selectedVideo.size > 100 * 1024 * 1024) {
+        alert("Video file size must be less than 100MB.");
+      } else {
+        update({ video: selectedVideo });
+      }
+    }
+    
+    if (imageFiles.length > 0) {
+      const [first, ...rest] = imageFiles;
       setSelectedImageForCrop(first);
       setCropQueue(rest);
       setZoom(1);
@@ -89,7 +101,7 @@ export default function MediaStep2() {
       canvas.toBlob((blob) => {
         if (blob) {
           const croppedFile = new File([blob], selectedImageForCrop.name, { type: "image/jpeg" });
-          update({ images: [...form.images, croppedFile].slice(0, 12) });
+          update((prev) => ({ images: [...prev.images, croppedFile].slice(0, 12) }));
           
           // Process next image in queue
           if (cropQueue.length > 0) {
@@ -199,7 +211,7 @@ export default function MediaStep2() {
           <input
             ref={photoInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
             className="hidden"
             onChange={handlePhotosSelected}

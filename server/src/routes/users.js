@@ -2,10 +2,28 @@ import { Router } from "express";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { checkUserAccess } from "../utils/access.js";
-import { deleteUploadedFile, getUploadsDir } from "../utils/fileHelper.js";
-import { upload } from "../middleware/upload.js";
+import { deleteUploadedFile } from "../utils/fileHelper.js";
+import multer from "multer";
 import path from "path";
 import fs from "fs";
+
+const uploadDir = process.env.UPLOADS_DIR 
+  ? path.resolve(process.env.UPLOADS_DIR) 
+  : path.resolve("src/uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`);
+  }
+});
+const upload = multer({ storage });
 
 const router = Router();
 

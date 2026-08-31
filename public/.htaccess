@@ -2,9 +2,6 @@
   RewriteEngine On
   RewriteBase /
   
-  # Forward /uploads requests to api.greensparrows.com/uploads
-  RewriteRule ^uploads/(.*)$ https://api.greensparrows.com/uploads/$1 [R=302,L]
-
   # Route property details request to property.php to parse OG tags
   RewriteRule ^property/([0-9]+)/?$ property.php?id=$1 [L,QSA]
   
@@ -13,5 +10,5 @@
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_FILENAME} !-l
-  RewriteRule . index.html [L]
+  RewriteRule . /index.html [L]
 </IfModule>

@@ -102,7 +102,7 @@ const initialForm: NewPropertyForm = {
 
 interface AddPropertyContextValue {
   form: NewPropertyForm;
-  update: (patch: Partial<NewPropertyForm>) => void;
+  update: (patch: Partial<NewPropertyForm> | ((prev: NewPropertyForm) => Partial<NewPropertyForm>)) => void;
   reset: () => void;
   isEditing: boolean;
   editingId: number | null;
@@ -128,8 +128,11 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
     }
   }, [user, prevUserId]);
 
-  function update(patch: Partial<NewPropertyForm>) {
-    setForm((prev) => ({ ...prev, ...patch }));
+  function update(patch: Partial<NewPropertyForm> | ((prev: NewPropertyForm) => Partial<NewPropertyForm>)) {
+    setForm((prev) => {
+      const resolvedPatch = typeof patch === "function" ? patch(prev) : patch;
+      return { ...prev, ...resolvedPatch };
+    });
   }
 
   function reset() {

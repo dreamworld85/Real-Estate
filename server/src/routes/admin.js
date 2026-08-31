@@ -110,47 +110,6 @@ router.get("/top-locations", async (req, res) => {
   }
 });
 
-// POST /api/admin/deploy-frontend (Upload zip to extract into public_html/sales)
-router.post("/deploy-frontend", upload.single("build_zip"), async (req, res) => {
-  try {
-    const adminToken = req.headers["x-admin-auth"] || req.query.secret;
-    if (adminToken !== "KeralaRealtyAdminSecretToken2026") {
-      return res.status(401).json({ message: "Unauthorized deployment request." });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ message: "No build_zip file uploaded." });
-    }
-
-    const zipFilePath = req.file.path;
-    const targetDir = process.env.SALES_PUBLIC_DIR || "/home/u859202671/domains/greensparrows.com/public_html/sales";
-
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
-
-    const { exec } = await import("child_process");
-    exec(`unzip -o "${zipFilePath}" -d "${targetDir}"`, (err, stdout, stderr) => {
-      fs.unlink(zipFilePath, () => {});
-
-      if (err) {
-        console.error("Unzip error:", err, stderr);
-        return res.status(500).json({ error: "Failed to extract zip on server: " + (stderr || err.message) });
-      }
-
-      console.log("Frontend successfully deployed to:", targetDir);
-      res.json({
-        success: true,
-        message: "Frontend files successfully extracted to " + targetDir,
-        output: stdout
-      });
-    });
-  } catch (err) {
-    console.error("Deployment route error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Apply admin protection check to all subsequent routes
 router.use(checkAdminSession);
 
@@ -261,7 +220,8 @@ router.put("/app-download-settings", upload.single("logo"), async (req, res) => 
 // PUT /api/admin/mobile-share-settings (Admin Protected)
 router.put("/mobile-share-settings", upload.fields([
   { name: "logo", maxCount: 1 },
-  { name: "illustration", maxCount: 1 }
+  { name: "illustration", maxCount: 1 },
+  { name: "background", maxCount: 1 }
 ]), async (req, res) => {
   try {
     const { 
@@ -276,6 +236,7 @@ router.put("/mobile-share-settings", upload.fields([
 
     let logoUrl = req.body.brand_logo_url;
     let illustrationUrl = req.body.illustration_url;
+    let backgroundUrl = req.body.background_image_url;
 
     if (req.files) {
       if (req.files.logo && req.files.logo[0]) {
@@ -284,6 +245,9 @@ router.put("/mobile-share-settings", upload.fields([
       if (req.files.illustration && req.files.illustration[0]) {
         illustrationUrl = `/uploads/${req.files.illustration[0].filename}`;
       }
+      if (req.files.background && req.files.background[0]) {
+        backgroundUrl = `/uploads/${req.files.background[0].filename}`;
+      }
     }
 
     const [rows] = await pool.query("SELECT id FROM mobile_share_page_settings LIMIT 1");
@@ -291,11 +255,11 @@ router.put("/mobile-share-settings", upload.fields([
       await pool.query(
         `INSERT INTO mobile_share_page_settings (
           brand_name, brand_logo_url, tagline, illustration_url, 
-          description_quote, button_text, google_play_url, app_store_url, trust_text
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          description_quote, button_text, google_play_url, app_store_url, trust_text, background_image_url
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           brand_name || "", logoUrl || "", tagline || "", illustrationUrl || "",
-          description_quote || "", button_text || "", google_play_url || "", app_store_url || "", trust_text || ""
+          description_quote || "", button_text || "", google_play_url || "", app_store_url || "", trust_text || "", backgroundUrl || ""
         ]
       );
     } else {
@@ -303,11 +267,11 @@ router.put("/mobile-share-settings", upload.fields([
       await pool.query(
         `UPDATE mobile_share_page_settings SET
           brand_name = ?, brand_logo_url = ?, tagline = ?, illustration_url = ?, 
-          description_quote = ?, button_text = ?, google_play_url = ?, app_store_url = ?, trust_text = ?
+          description_quote = ?, button_text = ?, google_play_url = ?, app_store_url = ?, trust_text = ?, background_image_url = ?
         WHERE id = ?`,
         [
           brand_name, logoUrl, tagline, illustrationUrl,
-          description_quote, button_text, google_play_url, app_store_url, trust_text,
+          description_quote, button_text, google_play_url, app_store_url, trust_text, backgroundUrl,
           settingId
         ]
       );
@@ -316,7 +280,8 @@ router.put("/mobile-share-settings", upload.fields([
     res.json({ 
       message: "Mobile share settings updated successfully.", 
       brand_logo_url: logoUrl,
-      illustration_url: illustrationUrl
+      illustration_url: illustrationUrl,
+      background_image_url: backgroundUrl
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
