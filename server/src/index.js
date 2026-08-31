@@ -22,11 +22,12 @@ if (process.cwd().includes("api.greensparrows.com") || process.cwd().includes("u
   }
 }
 
-import { getUploadDir, getAllCandidateUploadDirs } from "./utils/uploadDir.js";
+import { getUploadDir, getAllCandidateUploadDirs, migrateHistoricalUploads } from "./utils/uploadDir.js";
 import { pool } from "./db.js";
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists and migrate historical files
 const serverUploadsDir = getUploadDir();
+migrateHistoricalUploads();
 
 import { seedPlans } from "./seedPlans.js";
 
@@ -843,14 +844,23 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.get("/api/debug-files", (_req, res) => {
   try {
     const cwd = process.cwd();
-    const exists = fs.existsSync(uploadsDir);
-    const files = exists ? fs.readdirSync(uploadsDir) : [];
+    const migratedCount = migrateHistoricalUploads();
+    const primary = getUploadDir();
+    const candidateDirs = getAllCandidateUploadDirs();
+    const dirDetails = candidateDirs.map(d => ({
+      path: d,
+      exists: fs.existsSync(d),
+      filesCount: fs.existsSync(d) ? fs.readdirSync(d).length : 0,
+      files: fs.existsSync(d) ? fs.readdirSync(d).slice(0, 20) : []
+    }));
+    const files = fs.existsSync(primary) ? fs.readdirSync(primary) : [];
     res.json({
       cwd,
-      uploadsDir,
-      exists,
-      filesCount: files.length,
-      files: files.slice(0, 100),
+      uploadsDir: primary,
+      migratedCount,
+      totalFilesInPrimary: files.length,
+      primaryFilesSample: files.slice(0, 50),
+      dirDetails
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
