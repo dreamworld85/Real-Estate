@@ -2,7 +2,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import sharp from "sharp";
-import { getUploadDir } from "../utils/uploadDir.js";
+import { getUploadDir, syncFileToAllDestinations } from "../utils/uploadDir.js";
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, getUploadDir()),
@@ -58,6 +58,8 @@ export async function optimizeImages(req, res, next) {
         const stats = fs.statSync(webpPath);
         file.size = stats.size;
       }
+      // Guarantee sync to public_html/uploads as well
+      syncFileToAllDestinations(file.filename, file.path);
     }
     next();
   } catch (err) {

@@ -13,15 +13,16 @@ export function getUploadDir() {
     dir = path.resolve(dir);
   }
 
-  if (!fs.existsSync(dir)) {
-    try {
-      fs.mkdirSync(dir, { recursive: true });
-    } catch (err) {
-      console.error(`Failed to create upload dir (${dir}), falling back to src/uploads:`, err);
-      dir = path.resolve("src/uploads");
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
+  const targetDirs = [dir];
+  if (process.cwd().includes("api.greensparrows.com") || process.cwd().includes("u859202671")) {
+    targetDirs.push("/home/u859202671/domains/api.greensparrows.com/public_html/uploads");
+  }
+
+  for (const d of targetDirs) {
+    if (d && !fs.existsSync(d)) {
+      try {
+        fs.mkdirSync(d, { recursive: true });
+      } catch (err) {}
     }
   }
   return dir;
@@ -66,22 +67,58 @@ export function getAllCandidateUploadDirs() {
   return unique;
 }
 
+export function syncFileToAllDestinations(filename, srcPath) {
+  const targets = [
+    "/home/u859202671/domains/api.greensparrows.com/uploads",
+    "/home/u859202671/domains/api.greensparrows.com/public_html/uploads",
+    path.resolve("src/uploads"),
+    path.resolve("uploads")
+  ];
+
+  for (const targetDir of targets) {
+    try {
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      const dest = path.join(targetDir, filename);
+      if (srcPath !== dest && !fs.existsSync(dest)) {
+        fs.copyFileSync(srcPath, dest);
+      }
+    } catch (err) {}
+  }
+}
+
 export function migrateHistoricalUploads() {
   const primary = getUploadDir();
   const candidateDirs = getAllCandidateUploadDirs();
+  const publicHtmlUploads = "/home/u859202671/domains/api.greensparrows.com/public_html/uploads";
+
   let count = 0;
 
   for (const dir of candidateDirs) {
-    if (dir === primary || !fs.existsSync(dir)) continue;
+    if (!fs.existsSync(dir)) continue;
     try {
       const files = fs.readdirSync(dir);
       for (const file of files) {
         const srcFile = path.join(dir, file);
-        const destFile = path.join(primary, file);
-        if (fs.statSync(srcFile).isFile() && !fs.existsSync(destFile)) {
-          fs.copyFileSync(srcFile, destFile);
-          console.log(`Auto-migrated historical upload file: ${file} to ${destFile}`);
+        if (!fs.statSync(srcFile).isFile()) continue;
+
+        // Copy to primary
+        const primaryDest = path.join(primary, file);
+        if (!fs.existsSync(primaryDest)) {
+          fs.copyFileSync(srcFile, primaryDest);
           count++;
+        }
+
+        // Copy to public_html/uploads
+        if (dir !== publicHtmlUploads) {
+          try {
+            if (!fs.existsSync(publicHtmlUploads)) fs.mkdirSync(publicHtmlUploads, { recursive: true });
+            const htmlDest = path.join(publicHtmlUploads, file);
+            if (!fs.existsSync(htmlDest)) {
+              fs.copyFileSync(srcFile, htmlDest);
+            }
+          } catch (e) {}
         }
       }
     } catch (err) {
