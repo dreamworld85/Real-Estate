@@ -6,17 +6,11 @@ import { deleteUploadedFile } from "../utils/fileHelper.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-
-const uploadDir = process.env.UPLOADS_DIR 
-  ? path.resolve(process.env.UPLOADS_DIR) 
-  : path.resolve("src/uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+import { getUploadDir } from "../utils/uploadDir.js";
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    cb(null, getUploadDir());
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
