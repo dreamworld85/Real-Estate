@@ -2,14 +2,14 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import sharp from "sharp";
-
-const uploadDir = process.env.UPLOADS_DIR 
-  ? path.resolve(process.env.UPLOADS_DIR) 
-  : path.resolve("src/uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+import { getUploadsDir } from "../utils/fileHelper.js";
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
+  destination: (_req, _file, cb) => {
+    const dir = getUploadsDir();
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
   filename: (_req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `${unique}${path.extname(file.originalname)}`);

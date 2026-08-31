@@ -1,25 +1,43 @@
 import fs from "fs/promises";
+import syncFs from "fs";
 import path from "path";
 
+export function getUploadsDir() {
+  if (process.env.UPLOADS_DIR) {
+    return path.resolve(process.env.UPLOADS_DIR);
+  }
+  const cwd = process.cwd();
+  if (cwd.includes("api.greensparrows.com") || cwd.includes("u859202671")) {
+    return path.resolve("/home/u859202671/domains/api.greensparrows.com/uploads");
+  }
+  return path.resolve("src/uploads");
+}
+
+export function getAllUploadsDirs() {
+  const primary = getUploadsDir();
+  const candidates = [
+    primary,
+    "/home/u859202671/domains/api.greensparrows.com/uploads",
+    path.resolve("src/uploads"),
+    path.resolve("uploads"),
+    path.resolve("server/src/uploads"),
+    path.resolve("server/uploads"),
+  ];
+  
+  const existingOrValid = candidates.map(c => path.resolve(c));
+  return Array.from(new Set(existingOrValid));
+}
+
 export async function deleteUploadedFile(urlPath) {
-  if (!urlPath || typeof urlPath !== "string" || !urlPath.startsWith("/uploads/")) {
+  if (!urlPath || typeof urlPath !== "string" || !urlPath.includes("/uploads/")) {
     return;
   }
-  const filename = urlPath.substring("/uploads/".length);
+  const filename = path.basename(urlPath);
+  const dirs = getAllUploadsDirs();
 
-  const uploadsDir = process.env.UPLOADS_DIR 
-    ? path.resolve(process.env.UPLOADS_DIR) 
-    : path.resolve("src/uploads");
-
-  const paths = [
-    path.join(uploadsDir, filename),
-    path.join(path.resolve("src/uploads"), filename),
-    path.join(path.resolve("uploads"), filename)
-  ];
-
-  for (const p of paths) {
+  for (const dir of dirs) {
+    const p = path.join(dir, filename);
     try {
-      // Check if file exists first
       await fs.access(p);
       await fs.unlink(p);
       console.log(`Successfully deleted file: ${p}`);
