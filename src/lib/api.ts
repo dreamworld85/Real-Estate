@@ -626,8 +626,7 @@ export function mediaUrl(path: string): string {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const baseUrl = import.meta.env.PROD ? "https://sales.greensparrows.com" : API_URL;
-  return `${baseUrl}${cleanPath}`;
+  return `${API_URL}${cleanPath}`;
 }
 
 export function formatArea(areaSqft: number, propertyType: string): string {
