@@ -30,11 +30,8 @@ dist-ssr
 server/.env
 
 # Server uploads
-server/src/uploads/*
-!server/src/uploads/.gitkeep
-!server/src/uploads/*.apk
-server/uploads/*
-!server/uploads/.gitkeep
+!server/src/uploads/*
+!server/uploads/*
 
 
 # Accidental duplicate/nested project folder
