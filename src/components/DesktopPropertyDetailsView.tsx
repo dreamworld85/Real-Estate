@@ -56,6 +56,7 @@ export default function DesktopPropertyDetailsView({
   const [inquiryLoading, setInquiryLoading] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
 
   const mediaList = property.images && property.images.length > 0
     ? property.images.map((img: string) => img.startsWith("/uploads/") ? mediaUrl(img) : img)
@@ -67,40 +68,36 @@ export default function DesktopPropertyDetailsView({
     gridPhotos.push(FALLBACK_IMAGE);
   }
 
-  // Initialize Map for Property Location
-  useEffect(() => {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-    if (!window.google) {
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
-  }, []);
-
+  // Initialize OpenStreetMap (Leaflet) for Property Location
   useEffect(() => {
     let timer: NodeJS.Timeout;
     const initMap = () => {
-      if (window.google && window.google.maps && mapContainerRef.current) {
+      if (window.L && mapContainerRef.current) {
         const lat = property.latitude ? parseFloat(String(property.latitude)) : 10.850516;
         const lng = property.longitude ? parseFloat(String(property.longitude)) : 76.271080;
-        const pos = { lat, lng };
 
-        const map = new window.google.maps.Map(mapContainerRef.current, {
-          center: pos,
-          zoom: 13,
-          mapTypeControl: false,
-          streetViewControl: false,
+        if (mapRef.current) {
+          mapRef.current.remove();
+          mapRef.current = null;
+        }
+
+        const map = window.L.map(mapContainerRef.current).setView([lat, lng], 13);
+        window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap"
+        }).addTo(map);
+        mapRef.current = map;
+
+        const customIcon = window.L.divIcon({
+          className: "custom-leaflet-detail-marker",
+          html: `<div style="background:#1B5E4F; color:#ffffff; padding:6px 12px; border-radius:20px; font-weight:700; font-size:13px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap;">📍 ${property.title}</div>`,
+          iconSize: [120, 30],
+          iconAnchor: [60, 15]
         });
 
-        new window.google.maps.Marker({
-          position: pos,
-          map,
-          title: property.title,
-        });
+        window.L.marker([lat, lng], { icon: customIcon }).addTo(map);
       } else {
-        timer = setTimeout(initMap, 500);
+        timer = setTimeout(initMap, 300);
       }
     };
     initMap();

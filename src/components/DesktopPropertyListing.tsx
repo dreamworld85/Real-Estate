@@ -58,75 +58,58 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
   // Extract unique available property types from dataset
   const availableTypes = Array.from(new Set(properties.map((p) => p.propertyType))).filter(Boolean);
 
-  // Load Google Maps
-  useEffect(() => {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-    if (!window.google) {
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
-  }, []);
-
-  // Initialize Map
+  // Initialize OpenStreetMap (Leaflet)
   useEffect(() => {
     let timer: NodeJS.Timeout;
     const initMap = () => {
-      if (window.google && window.google.maps && mapContainerRef.current) {
+      if (window.L && mapContainerRef.current) {
         if (!mapRef.current) {
-          const map = new window.google.maps.Map(mapContainerRef.current, {
-            center: KERALA_COORDS,
-            zoom: 8,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-          });
+          const map = window.L.map(mapContainerRef.current).setView([KERALA_COORDS.lat, KERALA_COORDS.lng], 8);
+          window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap"
+          }).addTo(map);
           mapRef.current = map;
         }
 
-        // Clear markers
-        markersRef.current.forEach((m) => m.setMap(null));
+        // Clear existing markers
+        markersRef.current.forEach((m) => {
+          if (m && typeof m.remove === "function") m.remove();
+        });
         markersRef.current = [];
 
-        // Add markers
-        const bounds = new window.google.maps.LatLngBounds();
-        let hasValidCoords = false;
-
+        const bounds: [number, number][] = [];
         properties.forEach((prop) => {
-          const lat = prop.latitude ? parseFloat(String(prop.latitude)) : 10.850516 + (Math.random() - 0.5) * 2;
-          const lng = prop.longitude ? parseFloat(String(prop.longitude)) : 76.271080 + (Math.random() - 0.5) * 2;
-          const pos = { lat, lng };
-          bounds.extend(pos);
-          hasValidCoords = true;
+          const lat = prop.latitude ? parseFloat(String(prop.latitude)) : 10.850516 + (Math.random() - 0.5) * 1.5;
+          const lng = prop.longitude ? parseFloat(String(prop.longitude)) : 76.271080 + (Math.random() - 0.5) * 1.5;
+          bounds.push([lat, lng]);
 
-          const marker = new window.google.maps.Marker({
-            position: pos,
-            map: mapRef.current,
-            title: prop.title,
-            icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 10,
-              fillColor: "#2563EB",
-              fillOpacity: 0.9,
-              strokeColor: "#FFFFFF",
-              strokeWeight: 3,
-            },
+          const priceNum = parseFloat(String(prop.price));
+          const priceText = priceNum >= 10000000 
+            ? `₹${(priceNum / 10000000).toFixed(1)}Cr` 
+            : priceNum >= 100000 
+              ? `₹${(priceNum / 100000).toFixed(0)}L` 
+              : `₹${priceNum.toLocaleString("en-IN")}`;
+
+          const customIcon = window.L.divIcon({
+            className: "custom-leaflet-pill",
+            html: `<div style="background:#1B5E4F; color:#ffffff; padding:4px 10px; border-radius:20px; font-weight:700; font-size:12px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap; cursor:pointer;">${priceText}</div>`,
+            iconSize: [65, 26],
+            iconAnchor: [32, 13]
           });
 
-          marker.addListener("click", () => {
+          const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
+          marker.on("click", () => {
             setSelectedProperty(prop);
           });
-
           markersRef.current.push(marker);
         });
 
-        if (hasValidCoords && properties.length > 0) {
-          mapRef.current.fitBounds(bounds);
+        if (bounds.length > 0 && mapRef.current) {
+          mapRef.current.fitBounds(bounds, { padding: [40, 40] });
         }
       } else {
-        timer = setTimeout(initMap, 400);
+        timer = setTimeout(initMap, 300);
       }
     };
 

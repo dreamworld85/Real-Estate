@@ -69,55 +69,27 @@ export default function MapSearch() {
       .finally(() => {
         setLoading(false);
       });
-
-    // 2. Load Google Maps Script in parallel on mount
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-    if (!existingScript && !window.google) {
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
   }, []);
 
-  // 3. Map Initialization Hook (Runs when properties are loaded and script/DOM ref is ready)
+  // 2. Map Initialization Hook with Leaflet
   useEffect(() => {
     if (loading) return;
 
     let mapInitTimeout: NodeJS.Timeout;
-    let retries = 0;
 
     const checkAndInit = () => {
-      if (window.google && window.google.maps && mapContainerRef.current) {
+      if (window.L && mapContainerRef.current) {
         setMapLoading(false);
         if (!mapRef.current) {
-          const maps = window.google.maps;
-          const map = new maps.Map(mapContainerRef.current, {
-            center: keralaCoords,
-            zoom: 8,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            styles: [
-              {
-                featureType: "poi",
-                elementType: "labels",
-                stylers: [{ visibility: "off" }]
-              }
-            ]
-          });
+          const map = window.L.map(mapContainerRef.current).setView([keralaCoords.lat, keralaCoords.lng], 8);
+          window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap"
+          }).addTo(map);
           mapRef.current = map;
         }
       } else {
-        retries++;
-        if (retries < 100) { // Limit retry duration to 5 seconds max (50ms * 100)
-          mapInitTimeout = setTimeout(checkAndInit, 50);
-        } else {
-          setMapLoading(false);
-          console.error("Google Maps failed to load within 5 seconds.");
-        }
+        mapInitTimeout = setTimeout(checkAndInit, 150);
       }
     };
 
@@ -146,16 +118,14 @@ export default function MapSearch() {
     return true;
   });
 
-  // 4. Keep markers in sync with filtered properties
+  // 3. Keep markers in sync with filtered properties using Leaflet
   useEffect(() => {
-    if (!mapRef.current || !window.google || !window.google.maps) return;
+    if (!mapRef.current || !window.L) return;
 
-    const maps = window.google.maps;
-
-    // Clear existing markers safely by destructuring and checking type
+    // Clear existing markers safely
     markersRef.current.forEach(({ marker }) => {
-      if (marker && typeof marker.setMap === "function") {
-        marker.setMap(null);
+      if (marker && typeof marker.remove === "function") {
+        marker.remove();
       }
     });
     markersRef.current = [];
@@ -175,21 +145,24 @@ export default function MapSearch() {
         lng = fallback.lng + offsetLng;
       }
 
-      const marker = new maps.Marker({
-        position: { lat, lng },
-        map: mapRef.current,
-        title: property.title,
-        icon: {
-          path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-          scale: 6,
-          fillColor: selectedProperty?.id === property.id ? "#FF5A5F" : "#60A963",
-          fillOpacity: 1,
-          strokeWeight: 1.5,
-          strokeColor: "#FFFFFF"
-        }
+      const isSelected = selectedProperty?.id === property.id;
+      const priceNum = parseFloat(String(property.price));
+      const priceText = priceNum >= 10000000 
+        ? `₹${(priceNum / 10000000).toFixed(1)}Cr` 
+        : priceNum >= 100000 
+          ? `₹${(priceNum / 100000).toFixed(0)}L` 
+          : `₹${priceNum.toLocaleString("en-IN")}`;
+
+      const bgColor = isSelected ? "#EF4444" : "#1B5E4F";
+      const customIcon = window.L.divIcon({
+        className: "custom-leaflet-pill",
+        html: `<div style="background:${bgColor}; color:#ffffff; padding:4px 9px; border-radius:20px; font-weight:700; font-size:12px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap; cursor:pointer;">${priceText}</div>`,
+        iconSize: [65, 26],
+        iconAnchor: [32, 13]
       });
 
-      marker.addListener("click", () => {
+      const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
+      marker.on("click", () => {
         handleMarkerClick(property, lat, lng);
       });
 
@@ -199,9 +172,8 @@ export default function MapSearch() {
 
   const handleMarkerClick = (property: ApiProperty, lat: number, lng: number) => {
     setSelectedProperty(property);
-    if (mapRef.current) {
-      mapRef.current.panTo({ lat, lng });
-      mapRef.current.setZoom(13);
+    if (mapRef.current && window.L) {
+      mapRef.current.setView([lat, lng], 13);
     }
   };
 

@@ -30,77 +30,47 @@ export default function MapPickerStep() {
   const markerRef = useRef<any>(null);
   const geocoderRef = useRef<any>(null);
 
-  // Default coordinates (Kerala, India)
   const defaultLat = form.latitude || 10.850516;
   const defaultLng = form.longitude || 76.271080;
 
   useEffect(() => {
-    // Check if script already loaded
-    if (window.google && window.google.maps) {
-      setLoading(false);
-      initializeMap();
-      return;
-    }
+    const timer = setTimeout(() => {
+      if (window.L && mapContainerRef.current) {
+        setLoading(false);
+        initializeMap();
+      } else {
+        setLoading(false);
+      }
+    }, 200);
 
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      setLoading(false);
-      initializeMap();
-    };
-    script.onerror = () => {
-      setLoading(false);
-      setApiError(true);
-    };
-    document.head.appendChild(script);
+    return () => clearTimeout(timer);
   }, []);
 
   const initializeMap = () => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || !window.L) return;
 
-    const maps = window.google.maps;
-    const center = { lat: defaultLat, lng: defaultLng };
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
 
-    const map = new maps.Map(mapContainerRef.current, {
-      center: center,
-      zoom: 12,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      styles: [
-        {
-          featureType: "poi",
-          elementType: "labels",
-          stylers: [{ visibility: "off" }]
-        }
-      ]
-    });
+    const center: [number, number] = [defaultLat, defaultLng];
+    const map = window.L.map(mapContainerRef.current).setView(center, 12);
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
     mapRef.current = map;
 
-    const marker = new maps.Marker({
-      position: center,
-      map: map,
-      draggable: true,
-      animation: maps.Animation.DROP,
-      icon: {
-        path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-        scale: 6,
-        fillColor: "#59AD63",
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: "#FFFFFF"
-      }
+    const customIcon = window.L.divIcon({
+      className: "custom-leaflet-picker-pin",
+      html: `<div style="background:#1B5E4F; color:#ffffff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; border:3px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); cursor:grab;">📍</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
     });
+
+    const marker = window.L.marker(center, { icon: customIcon, draggable: true }).addTo(map);
     markerRef.current = marker;
-
-    geocoderRef.current = new maps.Geocoder();
-
-    if (!form.mapAddress && form.latitude && form.longitude) {
-      reverseGeocode(center);
-    }
 
     map.addListener("click", (e: any) => {
       const clickedPos = e.latLng;
