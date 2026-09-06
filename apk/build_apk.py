@@ -339,8 +339,8 @@ def main():
     create_android_project(
         project_dir="sparrows_user_proj",
         app_name="Sparrows",
-        app_url="https://sales.greensparrows.com",
-        package_name="com.greensparrows.sales",
+        app_url="https://property.greensparrows.com",
+        package_name="com.greensparrows.property",
         icon_src="sparrows.png"
     )
     
@@ -348,8 +348,8 @@ def main():
     create_android_project(
         project_dir="sparrows_admin_proj",
         app_name="Sparrows Admin",
-        app_url="https://sales.greensparrows.com/admin",
-        package_name="com.greensparrows.admin",
+        app_url="https://property.greensparrows.com/admin",
+        package_name="com.greensparrows.property.admin",
         icon_src="sparrows-admin.png"
     )
     

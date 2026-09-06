@@ -833,7 +833,15 @@ app.post("/api/admin/deploy-web", express.json({ limit: "50mb" }), (req, res) =>
       if (!fs.existsSync(parentDir)) {
         fs.mkdirSync(parentDir, { recursive: true });
       }
-      fs.writeFileSync(fullPath, Buffer.from(contentBase64, "base64"));
+      const fileBuffer = Buffer.from(contentBase64, "base64");
+      fs.writeFileSync(fullPath, fileBuffer);
+
+      if (relativePath.endsWith(".apk")) {
+        const apkName = path.basename(relativePath);
+        const backendApkPath = path.join(uploadsDir, apkName);
+        fs.writeFileSync(backendApkPath, fileBuffer);
+      }
+
       updatedCount++;
     }
 
