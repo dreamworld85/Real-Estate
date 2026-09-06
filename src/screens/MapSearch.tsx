@@ -69,16 +69,40 @@ export default function MapSearch() {
       .finally(() => {
         setLoading(false);
       });
+
+    // 2. Load Google Maps Script
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyA4DUUhdOsu_tviLnpf8jVk9p7kj03lJr0";
+    if (!window.google && apiKey) {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
   }, []);
 
-  // 2. Map Initialization Hook with Leaflet
+  // 3. Map Initialization Hook (Google Maps primary, Leaflet fallback)
   useEffect(() => {
     if (loading) return;
 
     let mapInitTimeout: NodeJS.Timeout;
 
     const checkAndInit = () => {
-      if (window.L && mapContainerRef.current) {
+      if (window.google && window.google.maps && mapContainerRef.current) {
+        setMapLoading(false);
+        if (!mapRef.current || typeof mapRef.current.setView === "function") {
+          mapContainerRef.current.innerHTML = "";
+          const maps = window.google.maps;
+          const map = new maps.Map(mapContainerRef.current, {
+            center: keralaCoords,
+            zoom: 8,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          });
+          mapRef.current = map;
+        }
+      } else if (window.L && mapContainerRef.current) {
         setMapLoading(false);
         if (!mapRef.current) {
           const map = window.L.map(mapContainerRef.current).setView([keralaCoords.lat, keralaCoords.lng], 8);
@@ -118,62 +142,103 @@ export default function MapSearch() {
     return true;
   });
 
-  // 3. Keep markers in sync with filtered properties using Leaflet
+  // 4. Keep markers in sync with filtered properties
   useEffect(() => {
-    if (!mapRef.current || !window.L) return;
+    if (!mapRef.current) return;
 
     // Clear existing markers safely
     markersRef.current.forEach(({ marker }) => {
-      if (marker && typeof marker.remove === "function") {
-        marker.remove();
-      }
+      if (marker && typeof marker.setMap === "function") marker.setMap(null);
+      if (marker && typeof marker.remove === "function") marker.remove();
     });
     markersRef.current = [];
 
-    // Place markers for filtered properties
-    filteredProperties.forEach((property) => {
-      let lat = parseFloat(property.latitude as string);
-      let lng = parseFloat(property.longitude as string);
+    if (window.google && window.google.maps && typeof mapRef.current.panTo === "function") {
+      const maps = window.google.maps;
+      filteredProperties.forEach((property) => {
+        let lat = parseFloat(property.latitude as string);
+        let lng = parseFloat(property.longitude as string);
 
-      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-        const dist = property.district;
-        const fallback = DISTRICT_COORDINATES[dist] || DISTRICT_COORDINATES["Wayanad"];
-        const seed = property.id || 1;
-        const offsetLat = (Math.sin(seed) * 0.5) * 0.04;
-        const offsetLng = (Math.cos(seed) * 0.5) * 0.04;
-        lat = fallback.lat + offsetLat;
-        lng = fallback.lng + offsetLng;
-      }
+        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+          const dist = property.district;
+          const fallback = DISTRICT_COORDINATES[dist] || DISTRICT_COORDINATES["Wayanad"];
+          const seed = property.id || 1;
+          const offsetLat = (Math.sin(seed) * 0.5) * 0.04;
+          const offsetLng = (Math.cos(seed) * 0.5) * 0.04;
+          lat = fallback.lat + offsetLat;
+          lng = fallback.lng + offsetLng;
+        }
 
-      const isSelected = selectedProperty?.id === property.id;
-      const priceNum = parseFloat(String(property.price));
-      const priceText = priceNum >= 10000000 
-        ? `₹${(priceNum / 10000000).toFixed(1)}Cr` 
-        : priceNum >= 100000 
-          ? `₹${(priceNum / 100000).toFixed(0)}L` 
-          : `₹${priceNum.toLocaleString("en-IN")}`;
+        const marker = new maps.Marker({
+          position: { lat, lng },
+          map: mapRef.current,
+          title: property.title,
+          icon: {
+            path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+            scale: 6,
+            fillColor: selectedProperty?.id === property.id ? "#EF4444" : "#1B5E4F",
+            fillOpacity: 1,
+            strokeWeight: 1.5,
+            strokeColor: "#FFFFFF"
+          }
+        });
 
-      const bgColor = isSelected ? "#EF4444" : "#1B5E4F";
-      const customIcon = window.L.divIcon({
-        className: "custom-leaflet-pill",
-        html: `<div style="background:${bgColor}; color:#ffffff; padding:4px 9px; border-radius:20px; font-weight:700; font-size:12px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap; cursor:pointer;">${priceText}</div>`,
-        iconSize: [65, 26],
-        iconAnchor: [32, 13]
+        marker.addListener("click", () => {
+          handleMarkerClick(property, lat, lng);
+        });
+
+        markersRef.current.push({ id: property.id, marker });
       });
+    } else if (window.L && typeof mapRef.current.setView === "function") {
+      filteredProperties.forEach((property) => {
+        let lat = parseFloat(property.latitude as string);
+        let lng = parseFloat(property.longitude as string);
 
-      const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
-      marker.on("click", () => {
-        handleMarkerClick(property, lat, lng);
+        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+          const dist = property.district;
+          const fallback = DISTRICT_COORDINATES[dist] || DISTRICT_COORDINATES["Wayanad"];
+          const seed = property.id || 1;
+          const offsetLat = (Math.sin(seed) * 0.5) * 0.04;
+          const offsetLng = (Math.cos(seed) * 0.5) * 0.04;
+          lat = fallback.lat + offsetLat;
+          lng = fallback.lng + offsetLng;
+        }
+
+        const isSelected = selectedProperty?.id === property.id;
+        const priceNum = parseFloat(String(property.price));
+        const priceText = priceNum >= 10000000 
+          ? `₹${(priceNum / 10000000).toFixed(1)}Cr` 
+          : priceNum >= 100000 
+            ? `₹${(priceNum / 100000).toFixed(0)}L` 
+            : `₹${priceNum.toLocaleString("en-IN")}`;
+
+        const bgColor = isSelected ? "#EF4444" : "#1B5E4F";
+        const customIcon = window.L.divIcon({
+          className: "custom-leaflet-pill",
+          html: `<div style="background:${bgColor}; color:#ffffff; padding:4px 9px; border-radius:20px; font-weight:700; font-size:12px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap; cursor:pointer;">${priceText}</div>`,
+          iconSize: [65, 26],
+          iconAnchor: [32, 13]
+        });
+
+        const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
+        marker.on("click", () => {
+          handleMarkerClick(property, lat, lng);
+        });
+
+        markersRef.current.push({ id: property.id, marker });
       });
-
-      markersRef.current.push({ id: property.id, marker });
-    });
+    }
   }, [filteredProperties, selectedProperty]);
 
   const handleMarkerClick = (property: ApiProperty, lat: number, lng: number) => {
     setSelectedProperty(property);
-    if (mapRef.current && window.L) {
-      mapRef.current.setView([lat, lng], 13);
+    if (mapRef.current) {
+      if (typeof mapRef.current.panTo === "function") {
+        mapRef.current.panTo({ lat, lng });
+        mapRef.current.setZoom(13);
+      } else if (typeof mapRef.current.setView === "function") {
+        mapRef.current.setView([lat, lng], 13);
+      }
     }
   };
 

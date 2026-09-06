@@ -58,11 +58,84 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
   // Extract unique available property types from dataset
   const availableTypes = Array.from(new Set(properties.map((p) => p.propertyType))).filter(Boolean);
 
-  // Initialize OpenStreetMap (Leaflet)
+  // Load Google Maps Script
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyA4DUUhdOsu_tviLnpf8jVk9p7kj03lJr0";
+    if (!window.google && apiKey) {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  // Initialize Map (Google Maps primary, Leaflet fallback)
   useEffect(() => {
     let timer: NodeJS.Timeout;
     const initMap = () => {
-      if (window.L && mapContainerRef.current) {
+      if (window.google && window.google.maps && mapContainerRef.current) {
+        if (!mapRef.current || typeof mapRef.current.setView === "function") {
+          mapContainerRef.current.innerHTML = "";
+          const map = new window.google.maps.Map(mapContainerRef.current, {
+            center: KERALA_COORDS,
+            zoom: 8,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          });
+          mapRef.current = map;
+        }
+
+        // Clear existing markers
+        markersRef.current.forEach((m) => {
+          if (m && typeof m.setMap === "function") m.setMap(null);
+          if (m && typeof m.remove === "function") m.remove();
+        });
+        markersRef.current = [];
+
+        const bounds = new window.google.maps.LatLngBounds();
+        let hasValidCoords = false;
+
+        properties.forEach((prop) => {
+          const lat = prop.latitude ? parseFloat(String(prop.latitude)) : 10.850516 + (Math.random() - 0.5) * 1.5;
+          const lng = prop.longitude ? parseFloat(String(prop.longitude)) : 76.271080 + (Math.random() - 0.5) * 1.5;
+          const pos = { lat, lng };
+          bounds.extend(pos);
+          hasValidCoords = true;
+
+          const priceNum = parseFloat(String(prop.price));
+          const priceText = priceNum >= 10000000 
+            ? `₹${(priceNum / 10000000).toFixed(1)}Cr` 
+            : priceNum >= 100000 
+              ? `₹${(priceNum / 100000).toFixed(0)}L` 
+              : `₹${priceNum.toLocaleString("en-IN")}`;
+
+          const marker = new window.google.maps.Marker({
+            position: pos,
+            map: mapRef.current,
+            title: `${prop.title} (${priceText})`,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#1B5E4F",
+              fillOpacity: 1,
+              strokeColor: "#FFFFFF",
+              strokeWeight: 2,
+            },
+          });
+
+          marker.addListener("click", () => {
+            setSelectedProperty(prop);
+          });
+
+          markersRef.current.push(marker);
+        });
+
+        if (hasValidCoords && properties.length > 0 && mapRef.current && typeof mapRef.current.fitBounds === "function") {
+          mapRef.current.fitBounds(bounds);
+        }
+      } else if (window.L && mapContainerRef.current) {
         if (!mapRef.current) {
           const map = window.L.map(mapContainerRef.current).setView([KERALA_COORDS.lat, KERALA_COORDS.lng], 8);
           window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {

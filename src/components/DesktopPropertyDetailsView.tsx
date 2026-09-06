@@ -68,15 +68,45 @@ export default function DesktopPropertyDetailsView({
     gridPhotos.push(FALLBACK_IMAGE);
   }
 
-  // Initialize OpenStreetMap (Leaflet) for Property Location
+  // Load Google Maps Script
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyA4DUUhdOsu_tviLnpf8jVk9p7kj03lJr0";
+    if (!window.google && apiKey) {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  // Initialize Map for Property Location
   useEffect(() => {
     let timer: NodeJS.Timeout;
     const initMap = () => {
-      if (window.L && mapContainerRef.current) {
-        const lat = property.latitude ? parseFloat(String(property.latitude)) : 10.850516;
-        const lng = property.longitude ? parseFloat(String(property.longitude)) : 76.271080;
+      const lat = property.latitude ? parseFloat(String(property.latitude)) : 10.850516;
+      const lng = property.longitude ? parseFloat(String(property.longitude)) : 76.271080;
+      const pos = { lat, lng };
 
-        if (mapRef.current) {
+      if (window.google && window.google.maps && mapContainerRef.current) {
+        if (!mapRef.current || typeof mapRef.current.setView === "function") {
+          mapContainerRef.current.innerHTML = "";
+          const map = new window.google.maps.Map(mapContainerRef.current, {
+            center: pos,
+            zoom: 13,
+            mapTypeControl: false,
+            streetViewControl: false,
+          });
+          mapRef.current = map;
+        }
+
+        new window.google.maps.Marker({
+          position: pos,
+          map: mapRef.current,
+          title: property.title,
+        });
+      } else if (window.L && mapContainerRef.current) {
+        if (mapRef.current && typeof mapRef.current.remove === "function") {
           mapRef.current.remove();
           mapRef.current = null;
         }
