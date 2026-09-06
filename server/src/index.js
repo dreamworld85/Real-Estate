@@ -809,6 +809,38 @@ app.get(["/apk", "/apk/"], (_req, res) => {
 });
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+app.post("/api/admin/deploy-web", express.json({ limit: "50mb" }), (req, res) => {
+  const { secret, files } = req.body;
+  if (secret !== "sparrows-deploy-secret-2026") {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  try {
+    const candidateDirs = [
+      path.resolve(process.cwd(), "../../property.greensparrows.com/public_html"),
+      "/home/u859202671/domains/property.greensparrows.com/public_html"
+    ];
+    const webRootDir = candidateDirs.find(d => fs.existsSync(d)) || candidateDirs[0];
+    if (!fs.existsSync(webRootDir)) {
+      fs.mkdirSync(webRootDir, { recursive: true });
+    }
+    
+    let updatedCount = 0;
+    for (const [relativePath, contentBase64] of Object.entries(files)) {
+      const fullPath = path.join(webRootDir, relativePath);
+      const parentDir = path.dirname(fullPath);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+      fs.writeFileSync(fullPath, Buffer.from(contentBase64, "base64"));
+      updatedCount++;
+    }
+
+    res.json({ ok: true, updatedCount, webRootDir });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.get("/api/debug-files", (_req, res) => {
   try {
     const cwd = process.cwd();
