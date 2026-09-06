@@ -8,6 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import PropertyViewersModal from "@/components/PropertyViewersModal";
 import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
 import AppDownloadInterstitial from "./AppDownloadInterstitial";
+import DesktopPropertyDetailsView from "@/components/DesktopPropertyDetailsView";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -210,7 +211,18 @@ View Details: ${window.location.origin}/property/${property.id}`;
   const waMessage = encodeURIComponent(messageText);
 
   return (
-    <div className="w-full min-h-screen bg-[#FAF8F3] py-4">
+    <>
+      {/* Desktop Web View for width >= 1000px matching user mockup media_1788717151700.png */}
+      <div className="hidden min-[1000px]:block w-full min-h-screen bg-[#FAF8F3]">
+        <DesktopPropertyDetailsView
+          property={property}
+          onToggleSave={handleToggleSave}
+          saving={saving}
+        />
+      </div>
+
+      {/* Mobile App View for width < 1000px */}
+      <div className="min-[1000px]:hidden w-full min-h-screen bg-[#FAF8F3] py-4">
       <div className="app-container w-full max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden pb-28 text-left">
         {/* Top Banner Carousel */}
         <div className="relative px-4 pt-4">
@@ -1125,5 +1137,6 @@ View Details: ${window.location.origin}/property/${property.id}`;
       )}
       </div>
     </div>
+    </>
   );
 }

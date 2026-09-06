@@ -5,6 +5,8 @@ import { api, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import BottomNav from "@/components/BottomNav";
 
+import DesktopPropertyListing from "@/components/DesktopPropertyListing";
+
 const propertyTypes = ["House", "Villa", "Apartment", "Land", "Commercial Space"];
 const purposes = ["For Sale", "For Rent"];
 
@@ -91,8 +93,15 @@ export default function Search() {
   });
 
   return (
-    <div className="min-h-screen pb-28 bg-[#FAF8F3] w-full max-w-md mx-auto overflow-x-hidden">
-      <div className="px-4 pt-6 pb-4 w-full">
+    <>
+      {/* Desktop Layout for width >= 1000px matching Image 1 */}
+      <div className="hidden min-[1000px]:block w-full">
+        <DesktopPropertyListing initialProperties={results} />
+      </div>
+
+      {/* Mobile Layout for width < 1000px */}
+      <div className="min-[1000px]:hidden min-h-screen pb-28 bg-[#FAF8F3] w-full max-w-md mx-auto overflow-x-hidden">
+      <div className="px-4 pt-4 pb-3 w-full sticky top-0 z-30 bg-[#FAF8F3]/95 backdrop-blur-md shadow-xs border-b border-gray-200/50">
         {/* Search Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -241,5 +250,6 @@ export default function Search() {
 
       <BottomNav />
     </div>
+    </>
   );
 }

@@ -4,30 +4,14 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-
-dotenv.config({ override: true });
-
-// Auto-configure persistent UPLOADS_DIR on Hostinger server
-if (process.cwd().includes("api.greensparrows.com") || process.cwd().includes("u859202671")) {
-  const envPath = path.resolve(".env");
-  let envContent = "";
-  if (fs.existsSync(envPath)) {
-    envContent = fs.readFileSync(envPath, "utf8");
-  }
-  if (!envContent.includes("UPLOADS_DIR")) {
-    console.log("Auto-injecting persistent UPLOADS_DIR into .env");
-    envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
-    fs.writeFileSync(envPath, envContent, "utf8");
-    dotenv.config({ override: true });
-  }
-}
-
-import { getUploadDir, getAllCandidateUploadDirs, migrateHistoricalUploads } from "./utils/uploadDir.js";
 import { pool } from "./db.js";
 
-// Ensure uploads directory exists and migrate historical files
-const serverUploadsDir = getUploadDir();
-migrateHistoricalUploads();
+// Ensure uploads directory exists
+const serverUploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(serverUploadsDir)) {
+  console.log("Creating uploads directory...");
+  fs.mkdirSync(serverUploadsDir, { recursive: true });
+}
 
 import { seedPlans } from "./seedPlans.js";
 
@@ -740,25 +724,38 @@ function generateSystemBlueprintFile() {
 }
 generateSystemBlueprintFile();
 
+dotenv.config({ override: true });
+
+// Auto-configure persistent UPLOADS_DIR on Hostinger server
+if (process.cwd().includes("api.greensparrows.com")) {
+  const envPath = path.resolve(".env");
+  let envContent = "";
+  if (fs.existsSync(envPath)) {
+    envContent = fs.readFileSync(envPath, "utf8");
+  }
+  if (!envContent.includes("UPLOADS_DIR")) {
+    console.log("Auto-injecting persistent UPLOADS_DIR into .env");
+    envContent += "\nUPLOADS_DIR=/home/u859202671/domains/api.greensparrows.com/uploads\n";
+    fs.writeFileSync(envPath, envContent, "utf8");
+    // Reload environment variables
+    dotenv.config({ override: true });
+  }
+}
+
 const app = express();
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173,http://localhost:5174,http://localhost:5175,https://property.greensparrows.com,https://greensparrows.com,https://api.greensparrows.com")
-  .split(",")
-  .map(o => o.trim());
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",");
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*") || origin.includes("greensparrows.com")) {
-      return callback(null, true);
-    }
-    return callback(null, true);
-  },
-  credentials: true
-}));
-
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
-const uploadsDir = getUploadDir();
-const candidateUploadDirs = getAllCandidateUploadDirs();
+const uploadsDir = process.env.UPLOADS_DIR 
+  ? path.resolve(process.env.UPLOADS_DIR) 
+  : path.resolve("src/uploads");
+
+// Ensure persistent upload directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Auto-migrate files from Git folder to persistent uploads folder
 const gitUploadsDir = path.resolve("src/uploads");
@@ -778,36 +775,7 @@ if (fs.existsSync(gitUploadsDir) && gitUploadsDir !== uploadsDir) {
   }
 }
 
-// Permissive CORS & Cross-Origin-Resource-Policy headers for static files in /uploads
-app.use("/uploads", (req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  next();
-});
-
-// Serve static files from all candidate upload locations
-candidateUploadDirs.forEach(dir => {
-  if (fs.existsSync(dir)) {
-    app.use("/uploads", express.static(dir));
-  }
-});
-
-// Explicit fallback endpoint for /uploads/:filename to guarantee image file delivery
-app.get("/uploads/:filename", (req, res) => {
-  const filename = path.basename(req.params.filename);
-  for (const dir of candidateUploadDirs) {
-    const filePath = path.join(dir, filename);
-    if (fs.existsSync(filePath)) {
-      return res.sendFile(filePath);
-    }
-  }
-  return res.status(404).send("File not found");
-});
-
+app.use("/uploads", express.static(uploadsDir));
 app.use("/apk", express.static(uploadsDir));
 
 app.get(["/apk", "/apk/"], (_req, res) => {
@@ -844,23 +812,14 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.get("/api/debug-files", (_req, res) => {
   try {
     const cwd = process.cwd();
-    const migratedCount = migrateHistoricalUploads();
-    const primary = getUploadDir();
-    const candidateDirs = getAllCandidateUploadDirs();
-    const dirDetails = candidateDirs.map(d => ({
-      path: d,
-      exists: fs.existsSync(d),
-      filesCount: fs.existsSync(d) ? fs.readdirSync(d).length : 0,
-      files: fs.existsSync(d) ? fs.readdirSync(d).slice(0, 20) : []
-    }));
-    const files = fs.existsSync(primary) ? fs.readdirSync(primary) : [];
+    const exists = fs.existsSync(uploadsDir);
+    const files = exists ? fs.readdirSync(uploadsDir) : [];
     res.json({
       cwd,
-      uploadsDir: primary,
-      migratedCount,
-      totalFilesInPrimary: files.length,
-      primaryFilesSample: files.slice(0, 50),
-      dirDetails
+      uploadsDir,
+      exists,
+      filesCount: files.length,
+      files: files.slice(0, 100),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

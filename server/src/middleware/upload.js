@@ -2,10 +2,14 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import sharp from "sharp";
-import { getUploadDir, syncFileToAllDestinations } from "../utils/uploadDir.js";
+
+const uploadDir = process.env.UPLOADS_DIR 
+  ? path.resolve(process.env.UPLOADS_DIR) 
+  : path.resolve("src/uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, getUploadDir()),
+  destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `${unique}${path.extname(file.originalname)}`);
@@ -58,8 +62,6 @@ export async function optimizeImages(req, res, next) {
         const stats = fs.statSync(webpPath);
         file.size = stats.size;
       }
-      // Guarantee sync to public_html/uploads as well
-      syncFileToAllDestinations(file.filename, file.path);
     }
     next();
   } catch (err) {

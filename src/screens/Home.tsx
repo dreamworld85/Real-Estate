@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/AuthContext";
 import { useNavigate } from "react-router-dom";
+import DesktopPropertyListing from "@/components/DesktopPropertyListing";
 
 import allIcon from "../../header-icons/All.png";
 import landIcon from "../../header-icons/land.png";
@@ -169,7 +170,14 @@ export default function Home() {
     : "Wayanad, Kerala";
 
   return (
-    <div className="min-h-screen pb-28 w-full max-w-md mx-auto bg-cream overflow-x-hidden relative">
+    <>
+      {/* Desktop Layout for width >= 1000px matching Image 1 */}
+      <div className="hidden min-[1000px]:block w-full">
+        <DesktopPropertyListing initialProperties={properties} />
+      </div>
+
+      {/* Mobile Layout for width < 1000px */}
+      <div className="min-[1000px]:hidden min-h-screen pb-28 w-full max-w-md mx-auto bg-cream overflow-x-hidden relative">
       {/* Top curved backdrop decoration */}
       <div className="absolute top-0 left-0 w-[55%] h-[160px] bg-[#60A963] rounded-br-[100px] z-0 pointer-events-none" />
 
@@ -626,5 +634,6 @@ export default function Home() {
 
       <BottomNav />
     </div>
+    </>
   );
 }

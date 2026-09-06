@@ -36,4 +36,6 @@ server/.env
 
 # Accidental duplicate/nested project folder
 RealEstate/
+real-estate-geo-classified-ads-*/
+web/
 

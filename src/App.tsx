@@ -32,7 +32,6 @@ import RefundPolicy from "@/screens/Legal/RefundPolicy";
 import ContactUs from "@/screens/Legal/ContactUs";
 import SubscriptionDetails from "@/screens/SubscriptionDetails";
 import Landing from "@/screens/Landing";
-import ApkDownload from "@/screens/ApkDownload";
 
 // Admin Screens
 import AdminLayout from "@/screens/Admin/AdminLayout";
@@ -54,26 +53,26 @@ export default function App() {
   const location = useLocation();
   const { token } = useAuth();
   const isAdminRoute = location.pathname.startsWith("/admin");
-  const isLandingPage = location.pathname === "/";
-  const isApkRoute = location.pathname.startsWith("/apk");
+  const isHomeRoute = location.pathname === "/" || location.pathname === "/home";
   const isPropertyGuestRoute = location.pathname.startsWith("/property/") && !token;
-  const isFullWidth = isAdminRoute || isLandingPage || isApkRoute || isPropertyGuestRoute;
+  const isFullWidth = isAdminRoute || isHomeRoute || isPropertyGuestRoute;
 
   return (
-    <div className={isFullWidth ? "min-h-screen w-full bg-[#FAF8F3] relative" : "app-container w-full max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden"}>
+    <div className={isFullWidth ? "min-h-screen w-full bg-[#FAF8F3] relative" : "app-container w-full min-[1000px]:max-w-none min-[1000px]:shadow-none min-[1000px]:bg-[#FAF8F3] max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden"}>
       <AddPropertyProvider>
         <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/apk" element={<ApkDownload />} />
-        <Route path="/apk/*" element={<ApkDownload />} />
 
-        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-        <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
-        <Route path="/map-search" element={<ProtectedRoute><MapSearch /></ProtectedRoute>} />
-        <Route path="/map_search" element={<ProtectedRoute><MapSearch /></ProtectedRoute>} />
-        <Route path="/top-locations" element={<ProtectedRoute><TopLocations /></ProtectedRoute>} />
-        <Route path="/location/:locationName" element={<ProtectedRoute><LocationProperties /></ProtectedRoute>} />
+        {/* Search & Browse — Publicly accessible */}
+        <Route path="/home" element={<Home />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/map-search" element={<MapSearch />} />
+        <Route path="/map_search" element={<MapSearch />} />
+        <Route path="/top-locations" element={<TopLocations />} />
+        <Route path="/location/:locationName" element={<LocationProperties />} />
+
+        {/* User Account & Management — Protected */}
         <Route path="/saved" element={<ProtectedRoute><Saved /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
@@ -85,8 +84,8 @@ export default function App() {
         <Route path="/my-properties" element={<ProtectedRoute><MyProperties /></ProtectedRoute>} />
         <Route path="/my-properties/:id" element={<ProtectedRoute><OwnerPropertyDetails /></ProtectedRoute>} />
 
-        {/* Public — no auth required to browse */}
-        <Route path="/property/:id" element={<PublicPropertyDetails />} />
+        {/* Property Detail Page — Must be logged in to view details */}
+        <Route path="/property/:id" element={<ProtectedRoute><PublicPropertyDetails /></ProtectedRoute>} />
         <Route path="/property/:id/report" element={<ProtectedRoute><ReportProperty /></ProtectedRoute>} />
         <Route path="/property/:id/reviews" element={<ProtectedRoute><PropertyReviews /></ProtectedRoute>} />
         <Route path="/agency/:id" element={<AgencyProfile />} />
