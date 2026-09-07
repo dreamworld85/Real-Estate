@@ -132,9 +132,14 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
 
           const purposeShort = (prop.purpose || "For Sale").replace("For ", "");
 
+          const isSelectedPin = selectedProperty?.id === prop.id;
+          const bgStyle = isSelectedPin ? "#0F3D3E" : "#1B5E4F";
+          const borderStyle = isSelectedPin ? "3px solid #E5C158" : "2px solid #ffffff";
+          const scaleStyle = isSelectedPin ? "transform: scale(1.15); z-index: 99999;" : "";
+
           const customIcon = window.L.divIcon({
-            className: "custom-leaflet-pill",
-            html: `<div style="background:#1B5E4F; color:#ffffff; padding:4px 10px; border-radius:18px; font-weight:700; border:2px solid #ffffff; box-shadow:0 4px 8px rgba(0,0,0,0.35); white-space:nowrap; cursor:pointer; text-align:center; line-height:1.2;">
+            className: `custom-leaflet-pill ${isSelectedPin ? "active-pill" : ""}`,
+            html: `<div style="background:${bgStyle}; color:#ffffff; padding:4px 10px; border-radius:18px; font-weight:700; border:${borderStyle}; ${scaleStyle} box-shadow:0 4px 12px rgba(0,0,0,0.4); white-space:nowrap; cursor:pointer; text-align:center; line-height:1.2; transition:all 0.2s ease;">
               <div style="font-size:12px; font-weight:800; color:#FFFFFF;">${priceText}</div>
               <div style="font-size:9.5px; font-weight:600; color:#E8F0EA; text-transform:capitalize; margin-top:1px;">${typeShort} • ${purposeShort}</div>
             </div>`,
@@ -143,13 +148,14 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
           });
 
           const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
-          marker.on("click", () => {
+          marker.on("click", (e: any) => {
+            window.L.DomEvent.stopPropagation(e);
             setSelectedProperty(prop);
           });
           markersRef.current.push(marker);
         });
 
-        if (bounds.length > 0 && mapRef.current) {
+        if (bounds.length > 0 && mapRef.current && !selectedProperty) {
           mapRef.current.fitBounds(bounds, { padding: [40, 40] });
         }
       } else {
@@ -159,7 +165,17 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
 
     initMap();
     return () => clearTimeout(timer);
-  }, [properties]);
+  }, [properties, selectedProperty]);
+
+  // Smoothly scroll selected property card into view when selected from map
+  useEffect(() => {
+    if (selectedProperty) {
+      const cardEl = document.getElementById(`property-card-${selectedProperty.id}`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [selectedProperty]);
 
   const handlePropertyClick = (propId: number) => {
     if (!token) {
@@ -250,12 +266,19 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
                 const firstImg = prop.images && prop.images.length > 0 ? prop.images[0] : null;
                 const img = firstImg ? (firstImg.startsWith("/uploads/") ? mediaUrl(firstImg) : firstImg) : FALLBACK_IMAGE;
                 const priceText = formatPrice(prop.price);
+                const isSelected = selectedProperty?.id === prop.id;
 
                 return (
                   <div
                     key={prop.id}
+                    id={`property-card-${prop.id}`}
                     onClick={() => handlePropertyClick(prop.id)}
-                    className="group bg-white rounded-2xl border border-gray-200/80 overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col"
+                    onMouseEnter={() => setSelectedProperty(prop)}
+                    className={`group bg-white rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer flex flex-col ${
+                      isSelected
+                        ? "border-2 border-[#1B5E4F] ring-4 ring-[#1B5E4F]/25 shadow-2xl scale-[1.01] z-10"
+                        : "border border-gray-200/80 shadow-xs hover:shadow-xl"
+                    }`}
                   >
                     {/* Media Container */}
                     <div className="relative h-48 w-full overflow-hidden bg-gray-100">
