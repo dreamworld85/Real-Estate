@@ -47,6 +47,7 @@ export interface AdminProperty {
   price: number;
   areaSqft: number;
   address: string;
+  state?: string;
   district: string;
   status: "Draft" | "Pending" | "Active" | "Inactive" | "Rejected";
   images: string[];

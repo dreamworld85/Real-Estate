@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft } from "lucide-react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { api, mediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -20,11 +20,7 @@ const countries = [
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
   const { login, token, user } = useAuth();
-
-  const redirectTo = (location.state as any)?.from?.pathname || searchParams.get("redirect") || "/home";
 
   const [mode, setMode] = useState<"loading" | "login" | "register" | "forgot_email" | "reset_password">("loading");
   const [showPassword, setShowPassword] = useState(false);
@@ -55,7 +51,7 @@ export default function Login() {
 
   useEffect(() => {
     if (token && user) {
-      navigate(redirectTo, { replace: true });
+      navigate("/home", { replace: true });
       return;
     }
 
@@ -65,7 +61,7 @@ export default function Login() {
       }, 1800);
       return () => clearTimeout(timer);
     }
-  }, [token, user, navigate, mode, redirectTo]);
+  }, [token, user, navigate, mode]);
 
   useEffect(() => {
     api.fetchSetting("login_banner_url")
@@ -181,7 +177,7 @@ export default function Login() {
         localStorage.removeItem("pending_deep_link");
         navigate(pendingLink);
       } else {
-        navigate(redirectTo);
+        navigate("/home");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -238,7 +234,7 @@ export default function Login() {
         login(token, user);
       }
       setSocialModal(null);
-      navigate(redirectTo);
+      navigate("/home");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Social login failed");
     } finally {

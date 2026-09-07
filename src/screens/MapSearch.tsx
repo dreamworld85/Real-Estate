@@ -70,28 +70,29 @@ export default function MapSearch() {
         setLoading(false);
       });
 
-    // 2. Load Google Maps Script
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyA4DUUhdOsu_tviLnpf8jVk9p7kj03lJr0";
-    if (!window.google && apiKey) {
+    // 2. Load Google Maps Script in parallel on mount
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (!existingScript && !window.google) {
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
     }
   }, []);
 
-  // 3. Map Initialization Hook (Google Maps primary, Leaflet fallback)
+  // 3. Map Initialization Hook (Runs when properties are loaded and script/DOM ref is ready)
   useEffect(() => {
     if (loading) return;
 
     let mapInitTimeout: NodeJS.Timeout;
+    let retries = 0;
 
     const checkAndInit = () => {
       if (window.google && window.google.maps && mapContainerRef.current) {
         setMapLoading(false);
-        if (!mapRef.current || typeof mapRef.current.setView === "function") {
-          mapContainerRef.current.innerHTML = "";
+        if (!mapRef.current) {
           const maps = window.google.maps;
           const map = new maps.Map(mapContainerRef.current, {
             center: keralaCoords,
@@ -99,21 +100,24 @@ export default function MapSearch() {
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: false,
+            styles: [
+              {
+                featureType: "poi",
+                elementType: "labels",
+                stylers: [{ visibility: "off" }]
+              }
+            ]
           });
           mapRef.current = map;
         }
-      } else if (window.L && mapContainerRef.current) {
-        setMapLoading(false);
-        if (!mapRef.current) {
-          const map = window.L.map(mapContainerRef.current).setView([keralaCoords.lat, keralaCoords.lng], 8);
-          window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            maxZoom: 19,
-            attribution: "&copy; OpenStreetMap"
-          }).addTo(map);
-          mapRef.current = map;
-        }
       } else {
-        mapInitTimeout = setTimeout(checkAndInit, 150);
+        retries++;
+        if (retries < 100) { // Limit retry duration to 5 seconds max (50ms * 100)
+          mapInitTimeout = setTimeout(checkAndInit, 50);
+        } else {
+          setMapLoading(false);
+          console.error("Google Maps failed to load within 5 seconds.");
+        }
       }
     };
 
@@ -135,8 +139,9 @@ export default function MapSearch() {
       const matchTitle = p.title.toLowerCase().includes(q);
       const matchAddress = p.address.toLowerCase().includes(q);
       const matchDistrict = p.district.toLowerCase().includes(q);
+      const matchState = p.state ? p.state.toLowerCase().includes(q) : false;
       const matchType = p.propertyType.toLowerCase().includes(q);
-      return matchTitle || matchAddress || matchDistrict || matchType;
+      return matchTitle || matchAddress || matchDistrict || matchState || matchType;
     }
 
     return true;
@@ -144,101 +149,60 @@ export default function MapSearch() {
 
   // 4. Keep markers in sync with filtered properties
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !window.google || !window.google.maps) return;
 
-    // Clear existing markers safely
+    const maps = window.google.maps;
+
+    // Clear existing markers safely by destructuring and checking type
     markersRef.current.forEach(({ marker }) => {
-      if (marker && typeof marker.setMap === "function") marker.setMap(null);
-      if (marker && typeof marker.remove === "function") marker.remove();
+      if (marker && typeof marker.setMap === "function") {
+        marker.setMap(null);
+      }
     });
     markersRef.current = [];
 
-    if (window.google && window.google.maps && typeof mapRef.current.panTo === "function") {
-      const maps = window.google.maps;
-      filteredProperties.forEach((property) => {
-        let lat = parseFloat(property.latitude as string);
-        let lng = parseFloat(property.longitude as string);
+    // Place markers for filtered properties
+    filteredProperties.forEach((property) => {
+      let lat = parseFloat(property.latitude as string);
+      let lng = parseFloat(property.longitude as string);
 
-        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-          const dist = property.district;
-          const fallback = DISTRICT_COORDINATES[dist] || DISTRICT_COORDINATES["Wayanad"];
-          const seed = property.id || 1;
-          const offsetLat = (Math.sin(seed) * 0.5) * 0.04;
-          const offsetLng = (Math.cos(seed) * 0.5) * 0.04;
-          lat = fallback.lat + offsetLat;
-          lng = fallback.lng + offsetLng;
+      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+        const dist = property.district;
+        const fallback = DISTRICT_COORDINATES[dist] || DISTRICT_COORDINATES["Wayanad"];
+        const seed = property.id || 1;
+        const offsetLat = (Math.sin(seed) * 0.5) * 0.04;
+        const offsetLng = (Math.cos(seed) * 0.5) * 0.04;
+        lat = fallback.lat + offsetLat;
+        lng = fallback.lng + offsetLng;
+      }
+
+      const marker = new maps.Marker({
+        position: { lat, lng },
+        map: mapRef.current,
+        title: property.title,
+        icon: {
+          path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+          scale: 6,
+          fillColor: selectedProperty?.id === property.id ? "#FF5A5F" : "#60A963",
+          fillOpacity: 1,
+          strokeWeight: 1.5,
+          strokeColor: "#FFFFFF"
         }
-
-        const marker = new maps.Marker({
-          position: { lat, lng },
-          map: mapRef.current,
-          title: property.title,
-          icon: {
-            path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-            scale: 6,
-            fillColor: selectedProperty?.id === property.id ? "#EF4444" : "#1B5E4F",
-            fillOpacity: 1,
-            strokeWeight: 1.5,
-            strokeColor: "#FFFFFF"
-          }
-        });
-
-        marker.addListener("click", () => {
-          handleMarkerClick(property, lat, lng);
-        });
-
-        markersRef.current.push({ id: property.id, marker });
       });
-    } else if (window.L && typeof mapRef.current.setView === "function") {
-      filteredProperties.forEach((property) => {
-        let lat = parseFloat(property.latitude as string);
-        let lng = parseFloat(property.longitude as string);
 
-        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-          const dist = property.district;
-          const fallback = DISTRICT_COORDINATES[dist] || DISTRICT_COORDINATES["Wayanad"];
-          const seed = property.id || 1;
-          const offsetLat = (Math.sin(seed) * 0.5) * 0.04;
-          const offsetLng = (Math.cos(seed) * 0.5) * 0.04;
-          lat = fallback.lat + offsetLat;
-          lng = fallback.lng + offsetLng;
-        }
-
-        const isSelected = selectedProperty?.id === property.id;
-        const priceNum = parseFloat(String(property.price));
-        const priceText = priceNum >= 10000000 
-          ? `₹${(priceNum / 10000000).toFixed(1)}Cr` 
-          : priceNum >= 100000 
-            ? `₹${(priceNum / 100000).toFixed(0)}L` 
-            : `₹${priceNum.toLocaleString("en-IN")}`;
-
-        const bgColor = isSelected ? "#EF4444" : "#1B5E4F";
-        const customIcon = window.L.divIcon({
-          className: "custom-leaflet-pill",
-          html: `<div style="background:${bgColor}; color:#ffffff; padding:4px 9px; border-radius:20px; font-weight:700; font-size:12px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap; cursor:pointer;">${priceText}</div>`,
-          iconSize: [65, 26],
-          iconAnchor: [32, 13]
-        });
-
-        const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
-        marker.on("click", () => {
-          handleMarkerClick(property, lat, lng);
-        });
-
-        markersRef.current.push({ id: property.id, marker });
+      marker.addListener("click", () => {
+        handleMarkerClick(property, lat, lng);
       });
-    }
+
+      markersRef.current.push({ id: property.id, marker });
+    });
   }, [filteredProperties, selectedProperty]);
 
   const handleMarkerClick = (property: ApiProperty, lat: number, lng: number) => {
     setSelectedProperty(property);
     if (mapRef.current) {
-      if (typeof mapRef.current.panTo === "function") {
-        mapRef.current.panTo({ lat, lng });
-        mapRef.current.setZoom(13);
-      } else if (typeof mapRef.current.setView === "function") {
-        mapRef.current.setView([lat, lng], 13);
-      }
+      mapRef.current.panTo({ lat, lng });
+      mapRef.current.setZoom(13);
     }
   };
 
@@ -378,7 +342,7 @@ export default function MapSearch() {
 
                 <p className="text-[10px] text-slate font-semibold flex items-center gap-1 mt-1 truncate">
                   <MapPin size={10} className="text-slate/60 shrink-0" />
-                  {selectedProperty.address}, {selectedProperty.district}
+                  {[selectedProperty.address, selectedProperty.district, selectedProperty.state].filter(Boolean).join(", ")}
                 </p>
               </div>
 

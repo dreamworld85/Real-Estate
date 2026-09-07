@@ -40,6 +40,7 @@ export interface ApiProperty {
   price: number;
   areaSqft: number;
   address: string;
+  state?: string;
   district: string;
   bedrooms: number;
   bathrooms: number;

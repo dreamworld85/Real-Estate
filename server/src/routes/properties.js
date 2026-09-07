@@ -28,6 +28,7 @@ function toPublicProperty(row, media = [], isSaved = false) {
     price: Number(row.price),
     areaSqft: row.area_sqft,
     address: row.address,
+    state: row.state || "Kerala",
     district: row.district,
     bedrooms: row.bedrooms,
     bathrooms: row.bathrooms,
@@ -76,10 +77,11 @@ async function fetchMediaByPropertyIds(ids) {
 // Performs JOIN with users table to fetch live user role dynamically.
 router.get("/", optionalAuth, async (req, res) => {
   try {
-    const { district, propertyType, purpose, status = "Active", ownerId, search } = req.query;
+    const { state, district, propertyType, purpose, status = "Active", ownerId, search } = req.query;
     const clauses = ["p.status = ?"];
     const params = [status];
 
+    if (state) { clauses.push("p.state = ?"); params.push(state); }
     if (district) { clauses.push("p.district = ?"); params.push(district); }
     if (propertyType) {
       const rawTypes = (Array.isArray(propertyType) ? propertyType : String(propertyType).split(","))
@@ -113,10 +115,10 @@ router.get("/", optionalAuth, async (req, res) => {
     
     if (search) {
       clauses.push(
-        `(p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.description LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?)`
+        `(p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ? OR p.description LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR p.contact_number LIKE ? OR p.whatsapp_number LIKE ?)`
       );
       const searchWild = `%${search}%`;
-      params.push(searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild);
+      params.push(searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild, searchWild);
     }
 
     const [rows] = await pool.query(
@@ -644,7 +646,7 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
   const conn = await pool.getConnection();
   try {
     const {
-      title, propertyType, purpose, price, areaSqft, address, district,
+      title, propertyType, purpose, price, areaSqft, address, state, district,
       bedrooms, bathrooms, furnishing, facing, propertyAge, description, listingRole,
       contactNumber, whatsappNumber, ownerName, brokerName, agencyName, youtubeUrl,
       isBrokerPersonalProperty, isPriceNegotiable, latitude, longitude,
@@ -706,14 +708,14 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
 
     const [result] = await conn.query(
       `INSERT INTO properties
-        (owner_id, title, property_type, purpose, price, area_sqft, address, district,
+        (owner_id, title, property_type, purpose, price, area_sqft, address, state, district,
          bedrooms, bathrooms, furnishing, facing, property_age, description, listing_role,
          contact_number, whatsapp_number, owner_name, broker_name, agency_name, agency_logo_url, youtube_url, status, is_broker_personal_property, is_price_negotiable, latitude, longitude)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.userId,
         title || `${propertyType} in ${district}`,
-        propertyType, purpose, price, areaSqft, address, district,
+        propertyType, purpose, price, areaSqft, address, state || "Kerala", district,
         bedrooms || 0, bathrooms || 0, furnishing || null, facing || null,
         propertyAge || null, description || null, finalRole,
         contactNumber || null, whatsappNumber || null,
@@ -894,7 +896,7 @@ router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) =
   const conn = await pool.getConnection();
   try {
     const {
-      title, propertyType, purpose, price, areaSqft, address, district,
+      title, propertyType, purpose, price, areaSqft, address, state, district,
       bedrooms, bathrooms, furnishing, facing, propertyAge, description, listingRole,
       contactNumber, whatsappNumber, ownerName, brokerName, agencyName, youtubeUrl,
       isBrokerPersonalProperty, isPriceNegotiable, latitude, longitude,
@@ -922,14 +924,14 @@ router.put("/:id", requireAuth, upload.any(), optimizeImages, async (req, res) =
 
     await conn.query(
       `UPDATE properties SET
-        title = ?, property_type = ?, purpose = ?, price = ?, area_sqft = ?, address = ?, district = ?,
+        title = ?, property_type = ?, purpose = ?, price = ?, area_sqft = ?, address = ?, state = ?, district = ?,
         bedrooms = ?, bathrooms = ?, furnishing = ?, facing = ?, property_age = ?, description = ?, listing_role = ?,
         contact_number = ?, whatsapp_number = ?, owner_name = ?, broker_name = ?, agency_name = ?, agency_logo_url = ?, youtube_url = ?, is_broker_personal_property = ?, is_price_negotiable = ?,
         latitude = ?, longitude = ?
        WHERE id = ?`,
       [
         title || `${propertyType} in ${district}`,
-        propertyType, purpose, price, areaSqft, address, district,
+        propertyType, purpose, price, areaSqft, address, state || "Kerala", district,
         bedrooms || 0, bathrooms || 0, furnishing || null, facing || null,
         propertyAge || null, description || null, listingRole,
         contactNumber || null, whatsappNumber || null,

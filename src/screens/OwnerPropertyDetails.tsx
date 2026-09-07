@@ -323,7 +323,7 @@ export default function OwnerPropertyDetails() {
               )}
             </div>
             <p className="font-display font-medium text-charcoal mt-1 text-[14px]">{property.title}</p>
-            <p className="text-xs text-slate mt-0.5">{formatArea(property.areaSqft, property.propertyType)} &middot; {property.district}</p>
+            <p className="text-xs text-slate mt-0.5">{formatArea(property.areaSqft, property.propertyType)} &middot; {[property.address, property.district, property.state].filter(Boolean).join(", ")}</p>
           </div>
           
           <div className="flex items-center gap-1.5 border-t border-charcoal/5 pt-2">

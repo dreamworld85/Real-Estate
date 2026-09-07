@@ -4,8 +4,7 @@ import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw, Heart,
 import { api, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import BottomNav from "@/components/BottomNav";
-
-import DesktopPropertyListing from "@/components/DesktopPropertyListing";
+import { INDIAN_STATES, getDistrictsForState, getAllDistricts } from "@/lib/indiaLocationData";
 
 const propertyTypes = ["House", "Villa", "Apartment", "Land", "Commercial Space"];
 const purposes = ["For Sale", "For Rent"];
@@ -15,6 +14,7 @@ export default function Search() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const showFeaturedOnly = searchParams.get("featured") === "true";
+  const [selectedState, setSelectedState] = useState("");
   const [district, setDistrict] = useState("");
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
   const [propertyType, setPropertyType] = useState("");
@@ -53,6 +53,7 @@ export default function Search() {
     setSearched(true);
 
     const params: Record<string, string> = {};
+    if (selectedState) params.state = selectedState;
     if (district) params.district = district;
     if (propertyType) params.propertyType = propertyType;
     if (purpose) params.purpose = purpose;
@@ -64,7 +65,7 @@ export default function Search() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [district, propertyType, purpose, query]);
+  }, [selectedState, district, propertyType, purpose, query]);
 
   // Local filter by search query
   const results = rawResults.filter((p) => {
@@ -86,6 +87,7 @@ export default function Search() {
       p.title.toLowerCase().includes(q) ||
       p.address.toLowerCase().includes(q) ||
       p.district.toLowerCase().includes(q) ||
+      (p.state && p.state.toLowerCase().includes(q)) ||
       (p.ownerName && p.ownerName.toLowerCase().includes(q)) ||
       (p.contactNumber && p.contactNumber.toLowerCase().includes(q)) ||
       (p.whatsappNumber && p.whatsappNumber.toLowerCase().includes(q))
@@ -93,24 +95,18 @@ export default function Search() {
   });
 
   return (
-    <>
-      {/* Desktop Layout for width >= 1000px matching Image 1 */}
-      <div className="hidden min-[1000px]:block w-full">
-        <DesktopPropertyListing initialProperties={results} />
-      </div>
-
-      {/* Mobile Layout for width < 1000px */}
-      <div className="min-[1000px]:hidden min-h-screen pb-28 bg-[#FAF8F3] w-full max-w-md mx-auto overflow-x-hidden">
-      <div className="px-4 pt-4 pb-3 w-full sticky top-0 z-30 bg-[#FAF8F3]/95 backdrop-blur-md shadow-xs border-b border-gray-200/50">
+    <div className="min-h-screen pb-28 bg-[#FAF8F3] w-full max-w-md mx-auto overflow-x-hidden">
+      <div className="px-4 pt-6 pb-4 w-full">
         {/* Search Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-display font-extrabold text-2xl text-ink">Search Properties</h1>
-            <p className="text-xs text-slate mt-0.5 font-medium">Find properties across Kerala</p>
+            <p className="text-xs text-slate mt-0.5 font-medium">Find properties across India</p>
           </div>
-          {(district || propertyType || purpose || query) && (
+          {(selectedState || district || propertyType || purpose || query) && (
             <button
               onClick={() => {
+                setSelectedState("");
                 setDistrict("");
                 setPropertyType("");
                 setPurpose("");
@@ -168,21 +164,63 @@ export default function Search() {
           </div>
         )}
 
-        {/* 3-Column Pill Dropdowns */}
-        <div className="grid grid-cols-3 gap-1.5 mb-2">
+        {/* Row 1: State & District Dropdowns */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          {/* State Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedState}
+              onChange={(e) => {
+                const newState = e.target.value;
+                setSelectedState(newState);
+                if (newState) {
+                  const dists = getDistrictsForState(newState);
+                  if (district && !dists.includes(district)) {
+                    setDistrict("");
+                  }
+                }
+              }}
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2.5 pr-6 py-2.5 text-[11px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm truncate"
+            >
+              <option value="">All States (India)</option>
+              {INDIAN_STATES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+          </div>
+
+          {/* District Dropdown (Dynamic based on State) */}
+          <div className="relative">
+            <select
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2.5 pr-6 py-2.5 text-[11px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm truncate"
+            >
+              <option value="">{selectedState ? `All in ${selectedState}` : "All Districts"}</option>
+              {(selectedState ? getDistrictsForState(selectedState) : (availableDistricts.length > 0 ? availableDistricts : getAllDistricts())).map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Row 2: Property Type & Purpose */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
           {/* Property Type Dropdown */}
           <div className="relative">
             <select
               value={propertyType}
               onChange={(e) => setPropertyType(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2 pr-5.5 py-2.5 text-[10.5px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2.5 pr-6 py-2.5 text-[11px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm truncate"
             >
               <option value="">All Types</option>
               {propertyTypes.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
           </div>
 
           {/* Purpose Dropdown */}
@@ -190,29 +228,14 @@ export default function Search() {
             <select
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2 pr-5.5 py-2.5 text-[10.5px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
+              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2.5 pr-6 py-2.5 text-[11px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm truncate"
             >
               <option value="">All Purpose</option>
               {purposes.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
-          </div>
-
-          {/* District Dropdown (Renamed to Locations and Dynamic) */}
-          <div className="relative">
-            <select
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-charcoal/12 bg-white pl-2 pr-5.5 py-2.5 text-[10.5px] font-semibold text-charcoal outline-none focus:border-black transition-colors cursor-pointer shadow-sm"
-            >
-              <option value="">All Locations</option>
-              {availableDistricts.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
           </div>
         </div>
       </div>
@@ -250,6 +273,5 @@ export default function Search() {
 
       <BottomNav />
     </div>
-    </>
   );
 }

@@ -35,6 +35,7 @@ interface Property {
   title: string;
   price: number;
   district: string;
+  state?: string;
   address: string;
   propertyType: string;
   bedrooms: number;
@@ -106,6 +107,7 @@ export default function Landing() {
           title: p.title,
           price: Number(p.price),
           district: p.district,
+          state: p.state,
           address: p.address,
           propertyType: p.propertyType,
           bedrooms: Number(p.bedrooms || 0),
@@ -273,7 +275,7 @@ export default function Landing() {
                   <h4 className="font-display font-bold text-xs text-charcoal leading-snug truncate">{p.title}</h4>
                   <p className="text-[11px] text-slate flex items-center gap-1 mt-0.5 truncate">
                     <MapPin size={11} className="shrink-0" />
-                    <span>{p.address ? `${p.address}, ${p.district}` : p.district}</span>
+                    <span>{[p.address, p.district, p.state].filter(Boolean).join(", ")}</span>
                   </p>
                   <div className="flex gap-4 text-[10px] text-slate/85 font-semibold mt-3 pt-3 border-t border-charcoal/5">
                     <span>Type: {p.propertyType}</span>

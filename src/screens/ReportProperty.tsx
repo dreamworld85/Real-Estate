@@ -82,7 +82,7 @@ export default function ReportProperty() {
             <div className="min-w-0">
               <p className="text-[10px] text-slate uppercase font-bold tracking-wider">You are reporting</p>
               <p className="font-display font-bold text-sm text-ink truncate mt-0.5">{property.title}</p>
-              <p className="text-xs text-slate font-semibold mt-0.5">{property.district}</p>
+              <p className="text-xs text-slate font-semibold mt-0.5">{[property.address, property.district, property.state].filter(Boolean).join(", ")}</p>
             </div>
           </div>
         )}

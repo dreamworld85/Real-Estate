@@ -33,7 +33,7 @@ export default function ReviewStep4() {
     ["Purpose", form.purpose || "—"],
     ["Price", formatPrice(form.price) + (form.isPriceNegotiable ? " (Negotiable)" : "")],
     ["Area", form.areaSqft ? `${form.areaSqft} ${isLand ? form.areaUnit : "sq.ft"}` : "—"],
-    ["Location", form.mapAddress || `${form.address || "—"}, ${form.district || "—"}`],
+    ["Location", [form.address || form.mapAddress, form.district, form.state || "Kerala"].filter(Boolean).join(", ")],
     ...(!isLand
       ? ([
           ...(showBedrooms ? [["Bedrooms", form.bedrooms || "—"]] : []),
@@ -73,6 +73,7 @@ export default function ReviewStep4() {
       }
       fd.append("areaSqft", String(sqftVal));
       fd.append("address", form.mapAddress || form.address);
+      fd.append("state", form.state || "Kerala");
       
       let districtVal = form.district;
       if (!districtVal) {

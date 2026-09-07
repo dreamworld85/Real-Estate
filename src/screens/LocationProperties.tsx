@@ -62,77 +62,86 @@ export default function LocationProperties() {
   }, [decodedLocation]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (window.L && mapContainerRef.current) {
-        setMapLoading(false);
-        initializeMap();
-      } else {
-        setMapLoading(false);
-      }
-    }, 200);
+    // 2. Load Google Maps Script
+    if (window.google && window.google.maps) {
+      setMapLoading(false);
+      initializeMap();
+      return;
+    }
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      setMapLoading(false);
+      initializeMap();
+    };
+    script.onerror = () => {
+      setMapLoading(false);
+      console.error("Failed to load Google Maps");
+    };
+    document.head.appendChild(script);
 
     return () => {
-      clearTimeout(timer);
-      markersRef.current.forEach(m => {
-        if (m && typeof m.remove === "function") m.remove();
-      });
+      // Clear markers on unmount
+      markersRef.current.forEach(m => m.setMap(null));
       markersRef.current = [];
     };
   }, [properties]);
 
   const initializeMap = () => {
-    if (!mapContainerRef.current || !window.L) return;
+    if (!mapContainerRef.current || !window.google || !window.google.maps) return;
 
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
+    const maps = window.google.maps;
 
-    const map = window.L.map(mapContainerRef.current).setView([coords.lat, coords.lng], 11);
-    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap"
-    }).addTo(map);
+    // Create Map
+    const map = new maps.Map(mapContainerRef.current, {
+      center: coords,
+      zoom: 11,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      styles: [
+        {
+          featureType: "poi",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        }
+      ]
+    });
     mapRef.current = map;
 
     // Remove existing markers
-    markersRef.current.forEach(m => {
-      if (m && typeof m.remove === "function") m.remove();
-    });
+    markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
 
-    // Place markers for each property
+    // Place markers for each property that has coordinates
     properties.forEach((property) => {
-      let lat = parseFloat(property.latitude as string);
-      let lng = parseFloat(property.longitude as string);
+      if (!property.latitude || !property.longitude) return;
 
-      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-        const seed = property.id || 1;
-        lat = coords.lat + (Math.sin(seed) * 0.03);
-        lng = coords.lng + (Math.cos(seed) * 0.03);
-      }
+      const markerCoords = { lat: Number(property.latitude), lng: Number(property.longitude) };
 
-      const priceNum = parseFloat(String(property.price));
-      const priceText = priceNum >= 10000000 
-        ? `₹${(priceNum / 10000000).toFixed(1)}Cr` 
-        : priceNum >= 100000 
-          ? `₹${(priceNum / 100000).toFixed(0)}L` 
-          : `₹${priceNum.toLocaleString("en-IN")}`;
-
-      const customIcon = window.L.divIcon({
-        className: "custom-leaflet-pill",
-        html: `<div style="background:#1B5E4F; color:#ffffff; padding:4px 9px; border-radius:20px; font-weight:700; font-size:12px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap; cursor:pointer;">${priceText}</div>`,
-        iconSize: [65, 26],
-        iconAnchor: [32, 13]
+      const marker = new maps.Marker({
+        position: markerCoords,
+        map: map,
+        title: property.title,
+        icon: {
+          path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+          scale: 6,
+          fillColor: selectedProperty?.id === property.id ? "#FF5A5F" : "#59AD63",
+          fillOpacity: 1,
+          strokeWeight: 1.5,
+          strokeColor: "#FFFFFF"
+        }
       });
 
-      const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(map);
-      marker.on("click", () => {
-        setSelectedProperty(property);
-        map.setView([lat, lng], 13);
+      marker.addListener("click", () => {
+        handleMarkerClick(property);
       });
 
-      markersRef.current.push(marker);
+      markersRef.current.push({ id: property.id, marker });
     });
   };
 
@@ -222,7 +231,7 @@ export default function LocationProperties() {
                 </div>
                 <p className="text-[10px] text-slate/60 truncate flex items-center gap-1 mt-0.5">
                   <MapPin size={10} className="shrink-0" />
-                  {selectedProperty.address}
+                  {[selectedProperty.address, selectedProperty.district, selectedProperty.state].filter(Boolean).join(", ")}
                 </p>
               </div>
 

@@ -466,7 +466,7 @@ router.get("/users/:id", async (req, res) => {
     const [[{ count: reviews }]] = await pool.query("SELECT COUNT(*) as count FROM property_reviews WHERE user_id = ?", [id]);
 
     const [userProperties] = await pool.query(
-      "SELECT id, title, price, district AS location, status, updated_at FROM properties WHERE owner_id = ? ORDER BY updated_at DESC",
+      "SELECT id, title, price, CONCAT_WS(', ', NULLIF(address, ''), NULLIF(district, ''), NULLIF(state, '')) AS location, status, updated_at FROM properties WHERE owner_id = ? ORDER BY updated_at DESC",
       [id]
     );
 
@@ -653,9 +653,9 @@ router.get("/properties", async (req, res) => {
     const params = [];
 
     if (search) {
-      query += " AND (p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ?)";
+      query += " AND (p.title LIKE ? OR p.address LIKE ? OR p.district LIKE ? OR p.state LIKE ?)";
       const wild = `%${search}%`;
-      params.push(wild, wild, wild);
+      params.push(wild, wild, wild, wild);
     }
 
     if (status !== "All") {

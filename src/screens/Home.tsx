@@ -7,7 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/AuthContext";
 import { useNavigate } from "react-router-dom";
-import DesktopPropertyListing from "@/components/DesktopPropertyListing";
+import { INDIAN_STATES, getDistrictsForState, getAllDistricts } from "@/lib/indiaLocationData";
 
 import allIcon from "../../header-icons/All.png";
 import landIcon from "../../header-icons/land.png";
@@ -121,11 +121,13 @@ export default function Home() {
   // Filter Drawer Temp State
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
   const [filterPurpose, setFilterPurpose] = useState("");
+  const [filterState, setFilterState] = useState("");
   const [filterDistrict, setFilterDistrict] = useState("");
 
   // Applied Filter State (triggers API fetch)
   const [appliedTypes, setAppliedTypes] = useState<string[]>([]);
   const [appliedPurpose, setAppliedPurpose] = useState("");
+  const [appliedState, setAppliedState] = useState("");
   const [appliedDistrict, setAppliedDistrict] = useState("");
 
   useEffect(() => {
@@ -142,6 +144,7 @@ export default function Home() {
     }
     
     if (appliedPurpose) params.purpose = appliedPurpose;
+    if (appliedState) params.state = appliedState;
     if (appliedDistrict) params.district = appliedDistrict;
 
     api
@@ -151,7 +154,7 @@ export default function Home() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [activeCategory, appliedTypes, appliedPurpose, appliedDistrict]);
+  }, [activeCategory, appliedTypes, appliedPurpose, appliedState, appliedDistrict]);
 
   const filteredProperties = properties.filter((p) => {
     if (!searchQuery) return true;
@@ -159,25 +162,21 @@ export default function Home() {
     return (
       p.title.toLowerCase().includes(q) ||
       p.address.toLowerCase().includes(q) ||
-      p.district.toLowerCase().includes(q)
+      p.district.toLowerCase().includes(q) ||
+      (p.state && p.state.toLowerCase().includes(q))
     );
   });
 
   const displayLocation = appliedDistrict 
-    ? `${appliedDistrict}, Kerala` 
+    ? `${appliedDistrict}, ${appliedState || "India"}` 
+    : appliedState
+    ? appliedState
     : user?.location 
     ? `${user.location}, Kerala` 
-    : "Wayanad, Kerala";
+    : "Kerala, India";
 
   return (
-    <>
-      {/* Desktop Layout for width >= 1000px matching Image 1 */}
-      <div className="hidden min-[1000px]:block w-full">
-        <DesktopPropertyListing initialProperties={properties} />
-      </div>
-
-      {/* Mobile Layout for width < 1000px */}
-      <div className="min-[1000px]:hidden min-h-screen pb-28 w-full max-w-md mx-auto bg-cream overflow-x-hidden relative">
+    <div className="min-h-screen pb-28 w-full max-w-md mx-auto bg-cream overflow-x-hidden relative">
       {/* Top curved backdrop decoration */}
       <div className="absolute top-0 left-0 w-[55%] h-[160px] bg-[#60A963] rounded-br-[100px] z-0 pointer-events-none" />
 
@@ -500,17 +499,35 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* District - Kept as same dropdown */}
-              <Select
-                label="District"
-                options={[
-                  "Wayanad", "Kozhikode", "Kannur", "Kasaragod", "Malappuram", "Palakkad",
-                  "Thrissur", "Ernakulam", "Idukki", "Kottayam", "Alappuzha", "Pathanamthitta",
-                  "Kollam", "Thiruvananthapuram",
-                ]}
-                value={filterDistrict}
-                onChange={(e) => setFilterDistrict(e.target.value)}
-              />
+              {/* State & District in One Row */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <Select
+                  label="State"
+                  options={[...INDIAN_STATES]}
+                  value={filterState}
+                  placeholder="All States"
+                  className="text-xs sm:text-[13.5px] pr-8 truncate"
+                  onChange={(e) => {
+                    const newState = e.target.value;
+                    setFilterState(newState);
+                    if (newState) {
+                      const validDistricts = getDistrictsForState(newState);
+                      if (filterDistrict && !validDistricts.includes(filterDistrict)) {
+                        setFilterDistrict("");
+                      }
+                    }
+                  }}
+                />
+
+                <Select
+                  label="District"
+                  options={filterState ? getDistrictsForState(filterState) : getAllDistricts()}
+                  value={filterDistrict}
+                  placeholder={filterState ? `All in ${filterState}` : "All Districts"}
+                  className="text-xs sm:text-[13.5px] pr-8 truncate"
+                  onChange={(e) => setFilterDistrict(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mt-6">
@@ -518,9 +535,11 @@ export default function Home() {
                 onClick={() => {
                   setFilterTypes([]);
                   setFilterPurpose("");
+                  setFilterState("");
                   setFilterDistrict("");
                   setAppliedTypes([]);
                   setAppliedPurpose("");
+                  setAppliedState("");
                   setAppliedDistrict("");
                   setIsFilterOpen(false);
                 }}
@@ -532,6 +551,7 @@ export default function Home() {
                 onClick={() => {
                   setAppliedTypes(filterTypes);
                   setAppliedPurpose(filterPurpose);
+                  setAppliedState(filterState);
                   setAppliedDistrict(filterDistrict);
                   setIsFilterOpen(false);
                 }}
@@ -634,6 +654,5 @@ export default function Home() {
 
       <BottomNav />
     </div>
-    </>
   );
 }

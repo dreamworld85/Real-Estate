@@ -8,7 +8,6 @@ import BottomNav from "@/components/BottomNav";
 import PropertyViewersModal from "@/components/PropertyViewersModal";
 import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
 import AppDownloadInterstitial from "./AppDownloadInterstitial";
-import DesktopPropertyDetailsView from "@/components/DesktopPropertyDetailsView";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
@@ -192,7 +191,7 @@ export default function PublicPropertyDetails() {
   }
 
   const priceStr = formatPrice(property.price);
-  const locationStr = `${property.address}, ${property.district}`;
+  const locationStr = [property.address, property.district, property.state].filter(Boolean).join(", ");
   const listedByStr = property.listingRole === "Agency"
     ? (property.agencyName || "Agency")
     : property.listingRole === "Broker"
@@ -211,18 +210,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
   const waMessage = encodeURIComponent(messageText);
 
   return (
-    <>
-      {/* Desktop Web View for width >= 1000px matching user mockup media_1788717151700.png */}
-      <div className="hidden min-[1000px]:block w-full min-h-screen bg-[#FAF8F3]">
-        <DesktopPropertyDetailsView
-          property={property}
-          onToggleSave={handleToggleSave}
-          saving={saving}
-        />
-      </div>
-
-      {/* Mobile App View for width < 1000px */}
-      <div className="min-[1000px]:hidden w-full min-h-screen bg-[#FAF8F3] py-4">
+    <div className="w-full min-h-screen bg-[#FAF8F3] py-4">
       <div className="app-container w-full max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden pb-28 text-left">
         {/* Top Banner Carousel */}
         <div className="relative px-4 pt-4">
@@ -404,7 +392,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
               </h1>
               <p className="flex items-center gap-1.5 text-[11px] xs:text-[11.5px] text-slate mt-1 font-semibold">
                 <MapPin size={13.5} className="text-[#25D366] shrink-0" /> 
-                <span>{property.address}, {property.district}</span>
+                <span>{[property.address, property.district, property.state].filter(Boolean).join(", ")}</span>
               </p>
             </div>
 
@@ -1137,6 +1125,5 @@ View Details: ${window.location.origin}/property/${property.id}`;
       )}
       </div>
     </div>
-    </>
   );
 }

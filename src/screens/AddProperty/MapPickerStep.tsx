@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Crosshair, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronDown, Crosshair, MapPin } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import BottomNav from "@/components/BottomNav";
+import { INDIAN_STATES, getDistrictsForState } from "@/lib/indiaLocationData";
 
 declare global {
   interface Window {
@@ -18,8 +19,8 @@ export default function MapPickerStep() {
   const [apiError, setApiError] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   
-  const [fetchedAddress, setFetchedAddress] = useState(form.mapAddress || "");
-  const [manualAddress, setManualAddress] = useState(form.mapAddress || "");
+  const [fetchedAddress, setFetchedAddress] = useState(form.address || form.mapAddress || "");
+  const [manualAddress, setManualAddress] = useState(form.address || form.mapAddress || "");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -30,47 +31,77 @@ export default function MapPickerStep() {
   const markerRef = useRef<any>(null);
   const geocoderRef = useRef<any>(null);
 
+  // Default coordinates (Kerala, India)
   const defaultLat = form.latitude || 10.850516;
   const defaultLng = form.longitude || 76.271080;
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (window.L && mapContainerRef.current) {
-        setLoading(false);
-        initializeMap();
-      } else {
-        setLoading(false);
-      }
-    }, 200);
+    // Check if script already loaded
+    if (window.google && window.google.maps) {
+      setLoading(false);
+      initializeMap();
+      return;
+    }
 
-    return () => clearTimeout(timer);
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      setLoading(false);
+      initializeMap();
+    };
+    script.onerror = () => {
+      setLoading(false);
+      setApiError(true);
+    };
+    document.head.appendChild(script);
   }, []);
 
   const initializeMap = () => {
-    if (!mapContainerRef.current || !window.L) return;
+    if (!mapContainerRef.current) return;
 
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
+    const maps = window.google.maps;
+    const center = { lat: defaultLat, lng: defaultLng };
 
-    const center: [number, number] = [defaultLat, defaultLng];
-    const map = window.L.map(mapContainerRef.current).setView(center, 12);
-    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap"
-    }).addTo(map);
+    const map = new maps.Map(mapContainerRef.current, {
+      center: center,
+      zoom: 12,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      styles: [
+        {
+          featureType: "poi",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        }
+      ]
+    });
     mapRef.current = map;
 
-    const customIcon = window.L.divIcon({
-      className: "custom-leaflet-picker-pin",
-      html: `<div style="background:#1B5E4F; color:#ffffff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; border:3px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); cursor:grab;">📍</div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
+    const marker = new maps.Marker({
+      position: center,
+      map: map,
+      draggable: true,
+      animation: maps.Animation.DROP,
+      icon: {
+        path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+        scale: 6,
+        fillColor: "#59AD63",
+        fillOpacity: 1,
+        strokeWeight: 2,
+        strokeColor: "#FFFFFF"
+      }
     });
-
-    const marker = window.L.marker(center, { icon: customIcon, draggable: true }).addTo(map);
     markerRef.current = marker;
+
+    geocoderRef.current = new maps.Geocoder();
+
+    if (!form.mapAddress && !form.address) {
+      reverseGeocode(center);
+    }
 
     map.addListener("click", (e: any) => {
       const clickedPos = e.latLng;
@@ -99,6 +130,11 @@ export default function MapPickerStep() {
           const displayName = data[0].display_name;
           const addressParts = data[0].address || {};
           const county = addressParts.county || addressParts.state_district || addressParts.district || "";
+          const city = addressParts.city || addressParts.town || addressParts.village || addressParts.suburb || addressParts.locality || "";
+          const state = addressParts.state || "";
+          const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === state.toLowerCase());
+          const cleanDistrict = county.replace(" District", "").trim();
+          const cityOrAddress = city || displayName;
 
           if (window.google && window.google.maps) {
             const maps = window.google.maps;
@@ -116,9 +152,11 @@ export default function MapPickerStep() {
             latitude: lat,
             longitude: lng,
             mapAddress: displayName,
-            ...(county ? { district: county.replace(" District", "") } : {})
+            address: cityOrAddress,
+            ...(cleanDistrict ? { district: cleanDistrict } : {}),
+            ...(matchedState ? { state: matchedState } : {})
           });
-          setFetchedAddress(displayName);
+          setFetchedAddress(cityOrAddress);
         }
       })
       .catch(err => console.error("Nominatim geocoding error:", err));
@@ -147,29 +185,39 @@ export default function MapPickerStep() {
         }
 
         let googleDistrict = "";
+        let googleState = "";
+        let googleCity = "";
         const components = results[0].address_components || [];
         for (const component of components) {
+          if (component.types.includes("administrative_area_level_1")) {
+            googleState = component.long_name;
+          }
           if (component.types.includes("administrative_area_level_2")) {
             googleDistrict = component.long_name;
-            break;
+          }
+          if (component.types.includes("locality") || component.types.includes("sublocality_level_1") || component.types.includes("sublocality") || component.types.includes("neighborhood")) {
+            if (!googleCity) googleCity = component.long_name;
           }
         }
+        const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === googleState.toLowerCase());
+        const cleanDistrict = googleDistrict.replace(" District", "").trim();
+        const cityOrAddress = googleCity || results[0].formatted_address;
 
         update({
           latitude: coords.lat,
           longitude: coords.lng,
           mapAddress: results[0].formatted_address,
-          ...(googleDistrict ? { district: googleDistrict } : {})
+          address: cityOrAddress,
+          ...(cleanDistrict ? { district: cleanDistrict } : {}),
+          ...(matchedState ? { state: matchedState } : {})
         });
-        setFetchedAddress(results[0].formatted_address);
+        setFetchedAddress(cityOrAddress);
       } else {
         console.warn("Google Geocoder failed. Falling back to Nominatim: " + status);
         geocodeNominatim(address);
       }
     });
   };
-
-
 
   const reverseGeocodeNominatim = (coords: { lat: number; lng: number }) => {
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`)
@@ -179,11 +227,19 @@ export default function MapPickerStep() {
           const displayName = data.display_name;
           const addressParts = data.address || {};
           const county = addressParts.county || addressParts.state_district || addressParts.district || "";
+          const city = addressParts.city || addressParts.town || addressParts.village || addressParts.suburb || addressParts.locality || "";
+          const state = addressParts.state || "";
+          const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === state.toLowerCase());
+          const cleanDistrict = county.replace(" District", "").trim();
+          const cityOrAddress = city || displayName;
+
           update({
             mapAddress: displayName,
-            ...(county ? { district: county.replace(" District", "") } : {})
+            address: cityOrAddress,
+            ...(cleanDistrict ? { district: cleanDistrict } : {}),
+            ...(matchedState ? { state: matchedState } : {})
           });
-          setFetchedAddress(displayName);
+          setFetchedAddress(cityOrAddress);
         }
       })
       .catch(err => console.error("Nominatim reverse geocoding error:", err));
@@ -202,18 +258,31 @@ export default function MapPickerStep() {
       if (status === "OK" && results[0]) {
         const formattedAddress = results[0].formatted_address;
         let googleDistrict = "";
+        let googleState = "";
+        let googleCity = "";
         const components = results[0].address_components || [];
         for (const component of components) {
+          if (component.types.includes("administrative_area_level_1")) {
+            googleState = component.long_name;
+          }
           if (component.types.includes("administrative_area_level_2")) {
             googleDistrict = component.long_name;
-            break;
+          }
+          if (component.types.includes("locality") || component.types.includes("sublocality_level_1") || component.types.includes("sublocality") || component.types.includes("neighborhood")) {
+            if (!googleCity) googleCity = component.long_name;
           }
         }
+        const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === googleState.toLowerCase());
+        const cleanDistrict = googleDistrict.replace(" District", "").trim();
+        const cityOrAddress = googleCity || formattedAddress;
+
         update({
           mapAddress: formattedAddress,
-          ...(googleDistrict ? { district: googleDistrict } : {})
+          address: cityOrAddress,
+          ...(cleanDistrict ? { district: cleanDistrict } : {}),
+          ...(matchedState ? { state: matchedState } : {})
         });
-        setFetchedAddress(formattedAddress);
+        setFetchedAddress(cityOrAddress);
       } else {
         console.warn("Google reverse geocoding failed. Falling back to Nominatim: " + status);
         reverseGeocodeNominatim(coords);
@@ -256,8 +325,15 @@ export default function MapPickerStep() {
   };
 
   const handleNext = () => {
+    const selectedState = form.state || "Kerala";
+    const dists = getDistrictsForState(selectedState);
+    const selectedDistrict = form.district || (dists.length > 0 ? dists[0] : "Wayanad");
+
     update({
-      mapAddress: manualAddress
+      mapAddress: manualAddress,
+      address: manualAddress || form.address,
+      state: selectedState,
+      district: selectedDistrict,
     });
     navigate("/add-property/review");
   };
@@ -382,10 +458,53 @@ export default function MapPickerStep() {
           <textarea
             value={manualAddress}
             onChange={(e) => setManualAddress(e.target.value)}
-            placeholder="Type property address here..."
+            placeholder="Enter city or property address here..."
             rows={2}
             className="w-full text-[13px] font-semibold text-charcoal placeholder:text-slate/40 outline-none bg-transparent resize-none leading-relaxed"
           />
+        </div>
+
+        {/* State & District Selection */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* State */}
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[12px] font-bold text-[#091F40]">State</label>
+            <div className="relative">
+              <select
+                value={form.state || "Kerala"}
+                onChange={(e) => {
+                  const newState = e.target.value;
+                  const dists = getDistrictsForState(newState);
+                  const newDistrict = dists.includes(form.district) ? form.district : (dists[0] || "");
+                  update({ state: newState, district: newDistrict });
+                }}
+                className="w-full appearance-none rounded-[8px] border border-[#59AD63]/30 bg-white px-3 py-2.5 text-[12.5px] font-semibold text-charcoal outline-none focus:border-[#59AD63] focus:ring-1 focus:ring-[#59AD63]/30 transition-all cursor-pointer shadow-sm pr-7 truncate"
+              >
+                {INDIAN_STATES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            </div>
+          </div>
+
+          {/* District */}
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[12px] font-bold text-[#091F40]">District</label>
+            <div className="relative">
+              <select
+                value={form.district}
+                onChange={(e) => update({ district: e.target.value })}
+                className="w-full appearance-none rounded-[8px] border border-[#59AD63]/30 bg-white px-3 py-2.5 text-[12.5px] font-semibold text-charcoal outline-none focus:border-[#59AD63] focus:ring-1 focus:ring-[#59AD63]/30 transition-all cursor-pointer shadow-sm pr-7 truncate"
+              >
+                <option value="">Select District</option>
+                {getDistrictsForState(form.state || "Kerala").map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate pointer-events-none" />
+            </div>
+          </div>
         </div>
 
         {/* Actions Button */}

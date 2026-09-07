@@ -164,7 +164,8 @@ async function checkDbMigration() {
         description_quote VARCHAR(500) NOT NULL,
         button_text VARCHAR(150) NOT NULL,
         google_play_url VARCHAR(255) NOT NULL,
-        app_store_url VARCHAR(255) NOT NULL
+        app_store_url VARCHAR(255) NOT NULL,
+        trust_text VARCHAR(255) NOT NULL
       )
     `);
 
@@ -410,6 +411,11 @@ async function checkDbMigration() {
     if (!propColNames.includes("is_broker_personal_property")) {
       console.log("Adding is_broker_personal_property column to properties...");
       await pool.query("ALTER TABLE properties ADD COLUMN is_broker_personal_property TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
+    if (!propColNames.includes("state")) {
+      console.log("Adding state column to properties...");
+      await pool.query("ALTER TABLE properties ADD COLUMN state VARCHAR(100) NOT NULL DEFAULT 'Kerala'");
     }
 
     // Run role migration: User -> user, Owner -> owner, etc.
@@ -746,8 +752,7 @@ const app = express();
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",");
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.json());
 
 const uploadsDir = process.env.UPLOADS_DIR 
   ? path.resolve(process.env.UPLOADS_DIR) 
@@ -810,46 +815,6 @@ app.get(["/apk", "/apk/"], (_req, res) => {
 });
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
-
-app.post("/api/admin/deploy-web", express.json({ limit: "50mb" }), (req, res) => {
-  const { secret, files } = req.body;
-  if (secret !== "sparrows-deploy-secret-2026") {
-    return res.status(403).json({ error: "Forbidden" });
-  }
-  try {
-    const candidateDirs = [
-      path.resolve(process.cwd(), "../../property.greensparrows.com/public_html"),
-      "/home/u859202671/domains/property.greensparrows.com/public_html"
-    ];
-    const webRootDir = candidateDirs.find(d => fs.existsSync(d)) || candidateDirs[0];
-    if (!fs.existsSync(webRootDir)) {
-      fs.mkdirSync(webRootDir, { recursive: true });
-    }
-    
-    let updatedCount = 0;
-    for (const [relativePath, contentBase64] of Object.entries(files)) {
-      const fullPath = path.join(webRootDir, relativePath);
-      const parentDir = path.dirname(fullPath);
-      if (!fs.existsSync(parentDir)) {
-        fs.mkdirSync(parentDir, { recursive: true });
-      }
-      const fileBuffer = Buffer.from(contentBase64, "base64");
-      fs.writeFileSync(fullPath, fileBuffer);
-
-      if (relativePath.endsWith(".apk")) {
-        const apkName = path.basename(relativePath);
-        const backendApkPath = path.join(uploadsDir, apkName);
-        fs.writeFileSync(backendApkPath, fileBuffer);
-      }
-
-      updatedCount++;
-    }
-
-    res.json({ ok: true, updatedCount, webRootDir });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 app.get("/api/debug-files", (_req, res) => {
   try {
     const cwd = process.cwd();

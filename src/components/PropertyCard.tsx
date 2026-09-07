@@ -133,7 +133,7 @@ export default function PropertyCard({
         {/* Location Row */}
         <div className="flex items-center gap-1 text-[8.5px] text-white/80 mt-0.5 select-none truncate">
           <MapPin size={11} className="shrink-0 text-white/80" />
-          <span>{compact ? property.district : `${property.address}, ${property.district}`}</span>
+          <span>{compact ? [property.district, property.state].filter(Boolean).join(", ") : [property.address, property.district, property.state].filter(Boolean).join(", ")}</span>
         </div>
       </div>
     </button>

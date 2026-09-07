@@ -174,7 +174,7 @@ export default function PropertyDetails() {
               <h3 className="font-display font-extrabold text-base text-ink leading-snug">{property.title}</h3>
               <div className="flex items-center gap-1.5 text-[10px] text-slate mt-1.5">
                 <MapPin size={13} className="text-slate/60 shrink-0" />
-                <span>{property.address}, {property.district}</span>
+                <span>{[property.address, property.district, property.state].filter(Boolean).join(", ")}</span>
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-charcoal/5 pt-4 mt-2 flex-wrap gap-2">

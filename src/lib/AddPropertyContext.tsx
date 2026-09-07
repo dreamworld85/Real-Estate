@@ -11,6 +11,7 @@ export interface NewPropertyForm {
   areaSqft: string;
   areaUnit: string;
   address: string;
+  state: string;
   district: string;
   images: File[];
   video: File | null;
@@ -60,6 +61,7 @@ const initialForm: NewPropertyForm = {
   areaSqft: "",
   areaUnit: "Cents",
   address: "",
+  state: "Kerala",
   district: "",
   images: [],
   video: null,
@@ -152,6 +154,7 @@ export function AddPropertyProvider({ children }: { children: ReactNode }) {
       areaSqft: String(property.areaSqft || ""),
       areaUnit: property.areaUnit || "Cents",
       address: property.address || "",
+      state: property.state || "Kerala",
       district: property.district || "",
       images: [], // New images to upload
       video: null,
