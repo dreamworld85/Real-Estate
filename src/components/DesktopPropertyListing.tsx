@@ -63,8 +63,32 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
   // Initialize OpenStreetMap (Leaflet)
   useEffect(() => {
     let timer: NodeJS.Timeout;
+
+    const loadLeaflet = () => {
+      if (!document.getElementById("leaflet-css")) {
+        const link = document.createElement("link");
+        link.id = "leaflet-css";
+        link.rel = "stylesheet";
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+        document.head.appendChild(link);
+      }
+      if (!document.getElementById("leaflet-js")) {
+        const script = document.createElement("script");
+        script.id = "leaflet-js";
+        script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+        script.onload = () => initMap();
+        document.head.appendChild(script);
+      }
+    };
+
     const initMap = () => {
-      if (window.L && mapContainerRef.current) {
+      if (!window.L) {
+        loadLeaflet();
+        timer = setTimeout(initMap, 300);
+        return;
+      }
+
+      if (mapContainerRef.current) {
         if (!mapRef.current) {
           const map = window.L.map(mapContainerRef.current).setView([KERALA_COORDS.lat, KERALA_COORDS.lng], 8);
           window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -81,9 +105,17 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
         markersRef.current = [];
 
         const bounds: [number, number][] = [];
-        properties.forEach((prop) => {
-          const lat = prop.latitude ? parseFloat(String(prop.latitude)) : 10.850516 + (Math.random() - 0.5) * 1.5;
-          const lng = prop.longitude ? parseFloat(String(prop.longitude)) : 76.271080 + (Math.random() - 0.5) * 1.5;
+        properties.forEach((prop, idx) => {
+          const rawLat = prop.latitude ? parseFloat(String(prop.latitude)) : null;
+          const rawLng = prop.longitude ? parseFloat(String(prop.longitude)) : null;
+          
+          const lat = (rawLat && !isNaN(rawLat) && rawLat !== 0) 
+            ? rawLat 
+            : 10.850516 + ((idx % 5) * 0.15) - 0.3;
+          const lng = (rawLng && !isNaN(rawLng) && rawLng !== 0) 
+            ? rawLng 
+            : 76.271080 + ((idx % 4) * 0.15) - 0.2;
+
           bounds.push([lat, lng]);
 
           const priceNum = parseFloat(String(prop.price));
