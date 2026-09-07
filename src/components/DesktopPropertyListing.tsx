@@ -125,11 +125,21 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
               ? `₹${(priceNum / 100000).toFixed(0)}L` 
               : `₹${priceNum.toLocaleString("en-IN")}`;
 
+          const typeShort = (prop.propertyType || "Property")
+            .replace("Independent House / ", "")
+            .replace("Plot / ", "")
+            .replace(" Commercial", "");
+
+          const purposeShort = (prop.purpose || "For Sale").replace("For ", "");
+
           const customIcon = window.L.divIcon({
             className: "custom-leaflet-pill",
-            html: `<div style="background:#1B5E4F; color:#ffffff; padding:4px 10px; border-radius:20px; font-weight:700; font-size:12px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap; cursor:pointer;">${priceText}</div>`,
-            iconSize: [65, 26],
-            iconAnchor: [32, 13]
+            html: `<div style="background:#1B5E4F; color:#ffffff; padding:4px 10px; border-radius:18px; font-weight:700; border:2px solid #ffffff; box-shadow:0 4px 8px rgba(0,0,0,0.35); white-space:nowrap; cursor:pointer; text-align:center; line-height:1.2;">
+              <div style="font-size:12px; font-weight:800; color:#FFFFFF;">${priceText}</div>
+              <div style="font-size:9.5px; font-weight:600; color:#E8F0EA; text-transform:capitalize; margin-top:1px;">${typeShort} • ${purposeShort}</div>
+            </div>`,
+            iconSize: [85, 34],
+            iconAnchor: [42, 17]
           });
 
           const marker = window.L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
