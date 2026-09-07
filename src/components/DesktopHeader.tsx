@@ -24,6 +24,24 @@ const TYPE_ICON_MAP: Record<string, { label: string; icon: any }> = {
   "Commercial Space": { label: "Commercial", icon: Store },
 };
 
+const STATES = [
+  "All States (India)",
+  "Kerala",
+  "Tamil Nadu",
+  "Karnataka",
+  "Maharashtra",
+  "Delhi",
+  "Telangana",
+  "Andhra Pradesh",
+  "Goa",
+  "Gujarat",
+  "West Bengal",
+  "Rajasthan",
+  "Punjab",
+  "Haryana",
+  "Uttar Pradesh",
+];
+
 const DISTRICTS = [
   "All Kerala",
   "Kochi",
@@ -43,9 +61,10 @@ const DISTRICTS = [
 ];
 
 interface DesktopHeaderProps {
-  onSearchChange?: (filters: { purpose: string; location: string; district: string; propertyType: string }) => void;
+  onSearchChange?: (filters: { purpose: string; location: string; state: string; district: string; propertyType: string }) => void;
   initialPurpose?: string;
   initialLocation?: string;
+  initialState?: string;
   initialDistrict?: string;
   initialType?: string;
   availableTypes?: string[];
@@ -55,6 +74,7 @@ export default function DesktopHeader({
   onSearchChange,
   initialPurpose = "",
   initialLocation = "",
+  initialState = "All States (India)",
   initialDistrict = "All Kerala",
   initialType = "All Types",
   availableTypes,
@@ -64,6 +84,7 @@ export default function DesktopHeader({
 
   const [purpose, setPurpose] = useState(initialPurpose);
   const [locationInput, setLocationInput] = useState(initialLocation);
+  const [selectedState, setSelectedState] = useState(initialState);
   const [district, setDistrict] = useState(initialDistrict);
   const [propertyType, setPropertyType] = useState(initialType);
   const [activeCategory, setActiveCategory] = useState<string>("All");
@@ -93,14 +114,15 @@ export default function DesktopHeader({
     }
   }, [availableTypes]);
 
-  const handleSearch = (newPurpose = purpose, newType = propertyType) => {
+  const handleSearch = (newPurpose = purpose, newType = propertyType, newState = selectedState, newDistrict = district) => {
     if (onSearchChange) {
-      onSearchChange({ purpose: newPurpose, location: locationInput, district, propertyType: newType });
+      onSearchChange({ purpose: newPurpose, location: locationInput, state: newState, district: newDistrict, propertyType: newType });
     } else {
       const params = new URLSearchParams();
       if (newPurpose) params.set("purpose", newPurpose);
       if (locationInput) params.set("search", locationInput);
-      if (district && district !== "All Kerala") params.set("district", district);
+      if (newState && newState !== "All States (India)") params.set("state", newState);
+      if (newDistrict && newDistrict !== "All Kerala") params.set("district", newDistrict);
       if (newType && newType !== "All Types") params.set("propertyType", newType);
       navigate(`/search?${params.toString()}`);
     }
@@ -256,13 +278,32 @@ export default function DesktopHeader({
             />
           </div>
 
+          {/* State Dropdown */}
+          <div className="relative min-w-[160px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs">
+            <select
+              value={selectedState}
+              onChange={(e) => {
+                const newSt = e.target.value;
+                setSelectedState(newSt);
+                if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: newSt, district, propertyType });
+              }}
+              className="w-full bg-transparent outline-none appearance-none pr-6 cursor-pointer font-medium text-gray-700"
+            >
+              {STATES.map((s, i) => (
+                <option key={i} value={s}>{s}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" />
+          </div>
+
           {/* District Dropdown */}
-          <div className="relative min-w-[150px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs">
+          <div className="relative min-w-[140px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs">
             <select
               value={district}
               onChange={(e) => {
-                setDistrict(e.target.value);
-                if (onSearchChange) onSearchChange({ purpose, location: locationInput, district: e.target.value, propertyType });
+                const newDist = e.target.value;
+                setDistrict(newDist);
+                if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district: newDist, propertyType });
               }}
               className="w-full bg-transparent outline-none appearance-none pr-6 cursor-pointer font-medium text-gray-700"
             >
@@ -274,13 +315,14 @@ export default function DesktopHeader({
           </div>
 
           {/* Property Type Dropdown */}
-          <div className="relative min-w-[150px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs">
+          <div className="relative min-w-[140px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs">
             <select
               value={propertyType}
               onChange={(e) => {
-                setPropertyType(e.target.value);
-                setActiveCategory(e.target.value === "All Types" ? "All" : e.target.value);
-                if (onSearchChange) onSearchChange({ purpose, location: locationInput, district, propertyType: e.target.value });
+                const newType = e.target.value;
+                setPropertyType(newType);
+                setActiveCategory(newType === "All Types" ? "All" : newType);
+                if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district, propertyType: newType });
               }}
               className="w-full bg-transparent outline-none appearance-none pr-6 cursor-pointer font-medium text-gray-700"
             >

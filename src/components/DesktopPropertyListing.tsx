@@ -33,6 +33,7 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
   const [filters, setFilters] = useState({
     purpose: "",
     location: "",
+    state: "All States (India)",
     district: "All Kerala",
     propertyType: "All Types"
   });
@@ -46,6 +47,7 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
     const queryParams: Record<string, string> = {};
     if (filters.purpose) queryParams.purpose = filters.purpose;
     if (filters.location) queryParams.search = filters.location;
+    if (filters.state && filters.state !== "All States (India)") queryParams.state = filters.state;
     if (filters.district && filters.district !== "All Kerala") queryParams.district = filters.district;
     if (filters.propertyType && filters.propertyType !== "All Types") queryParams.propertyType = filters.propertyType;
 
@@ -131,6 +133,7 @@ export default function DesktopPropertyListing({ initialProperties }: DesktopPro
       <DesktopHeader
         initialPurpose={filters.purpose}
         initialLocation={filters.location}
+        initialState={filters.state}
         initialDistrict={filters.district}
         initialType={filters.propertyType}
         availableTypes={availableTypes}
