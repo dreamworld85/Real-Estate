@@ -748,10 +748,20 @@ if (process.cwd().includes("api.greensparrows.com")) {
   }
 }
 
-const app = express();
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",");
+const defaultOrigins = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "https://property.greensparrows.com"];
+const envOrigins = (process.env.CLIENT_ORIGIN || "").split(",").filter(Boolean);
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.includes("localhost") || origin.endsWith(".greensparrows.com")) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 const uploadsDir = process.env.UPLOADS_DIR 
