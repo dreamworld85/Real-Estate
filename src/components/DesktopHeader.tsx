@@ -333,14 +333,14 @@ export default function DesktopHeader({
             <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" />
           </div>
 
-          {/* Advanced Search Button */}
+          {/* Advanced Search Button (Icon Only) */}
           <button
             type="button"
             onClick={() => handleSearch()}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-xs transition"
+            title="Search Advanced"
+            className="flex items-center justify-center p-2.5 bg-white border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 shadow-xs transition"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Search advanced</span>
+            <SlidersHorizontal className="w-4 h-4" />
           </button>
 
           {/* Submit Search Button */}
