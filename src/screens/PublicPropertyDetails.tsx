@@ -7,6 +7,7 @@ import RoleBadge from "@/components/RoleBadge";
 import BottomNav from "@/components/BottomNav";
 import PropertyViewersModal from "@/components/PropertyViewersModal";
 import SubscriptionPaywallModal from "@/components/SubscriptionPaywallModal";
+import DesktopPropertyDetailsView from "@/components/DesktopPropertyDetailsView";
 import AppDownloadInterstitial from "./AppDownloadInterstitial";
 
 const FALLBACK_IMAGE =
@@ -61,9 +62,12 @@ export default function PublicPropertyDetails() {
     }
   };
 
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
+      setIsDesktop(window.innerWidth >= 1000);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -208,6 +212,10 @@ export default function PublicPropertyDetails() {
 View Details: ${window.location.origin}/property/${property.id}`;
 
   const waMessage = encodeURIComponent(messageText);
+
+  if (isDesktop && property) {
+    return <DesktopPropertyDetailsView property={property} />;
+  }
 
   return (
     <div className="w-full min-h-screen bg-[#FAF8F3] py-4">

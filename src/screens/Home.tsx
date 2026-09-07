@@ -3,6 +3,7 @@ import { Bell, Search, SlidersHorizontal, ChevronDown, ChevronRight, X, Heart, S
 import { api, ApiProperty, mediaUrl, ApiNotification, ApiUser } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import FeaturedPropertyCard from "@/components/FeaturedPropertyCard";
+import DesktopPropertyListing from "@/components/DesktopPropertyListing";
 import BottomNav from "@/components/BottomNav";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/AuthContext";
@@ -31,6 +32,13 @@ const MOCK_AGENTS = [
 
 export default function Home() {
   const { user } = useAuth();
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1000);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
   const [properties, setProperties] = useState<ApiProperty[]>([]);
   const [agents, setAgents] = useState<ApiUser[]>([]);
   const [topLocations, setTopLocations] = useState<{ id: number; name: string; image_url: string }[]>([]);
@@ -174,6 +182,10 @@ export default function Home() {
     : user?.location 
     ? `${user.location}, Kerala` 
     : "Kerala, India";
+
+  if (isDesktop) {
+    return <DesktopPropertyListing />;
+  }
 
   return (
     <div className="min-h-screen pb-28 w-full max-w-md mx-auto bg-cream overflow-x-hidden relative">

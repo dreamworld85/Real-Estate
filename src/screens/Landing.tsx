@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { api, mediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
+import DesktopPropertyListing from "@/components/DesktopPropertyListing";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1000&q=80";
 
@@ -42,6 +43,12 @@ interface Property {
   bathrooms: number;
   images: string[];
   isFeatured: boolean;
+}
+
+function formatPrice(price: number): string {
+  if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
+  if (price >= 100000) return `₹${(price / 100000).toFixed(1)} L`;
+  return `₹${price.toLocaleString("en-IN")}`;
 }
 
 export default function Landing() {
@@ -129,11 +136,9 @@ export default function Landing() {
     return <Navigate to="/login" replace />;
   }
 
-  const formatPrice = (price: number) => {
-    if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
-    if (price >= 100000) return `₹${(price / 100000).toFixed(1)} L`;
-    return `₹${price.toLocaleString("en-IN")}`;
-  };
+  if (!isMobile) {
+    return <DesktopPropertyListing />;
+  }
 
   return (
     <div className="min-h-screen bg-cream font-body text-charcoal w-full overflow-x-hidden selection:bg-gold/20 select-none">

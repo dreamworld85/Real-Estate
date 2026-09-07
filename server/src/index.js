@@ -748,6 +748,7 @@ if (process.cwd().includes("api.greensparrows.com")) {
   }
 }
 
+const app = express();
 const defaultOrigins = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "https://property.greensparrows.com"];
 const envOrigins = (process.env.CLIENT_ORIGIN || "").split(",").filter(Boolean);
 const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));

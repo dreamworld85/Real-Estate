@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AddPropertyProvider } from "@/lib/AddPropertyContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -52,10 +53,20 @@ import Subscriptions from "@/screens/Admin/Subscriptions";
 export default function App() {
   const location = useLocation();
   const { token } = useAuth();
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1000);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const isAdminRoute = location.pathname.startsWith("/admin");
-  const isLandingPage = location.pathname === "/";
+  const isLandingPage = location.pathname === "/" || location.pathname === "/home";
   const isPropertyGuestRoute = location.pathname.startsWith("/property/") && !token;
-  const isFullWidth = isAdminRoute || isLandingPage || isPropertyGuestRoute;
+  const isFullWidth = isAdminRoute || isLandingPage || isPropertyGuestRoute || isDesktop;
 
   return (
     <div className={isFullWidth ? "min-h-screen w-full bg-[#FAF8F3] relative" : "app-container w-full max-w-[420px] mx-auto bg-cream min-h-screen relative shadow-md overflow-x-hidden"}>
