@@ -848,6 +848,26 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/payments", paymentRoutes);
 
+// Serve frontend static build assets from dist if present
+const rootDistDir = path.resolve(process.cwd(), "..", "dist");
+const localDistDir = path.resolve(process.cwd(), "dist");
+const activeDistDir = fs.existsSync(rootDistDir) ? rootDistDir : (fs.existsSync(localDistDir) ? localDistDir : null);
+
+if (activeDistDir) {
+  console.log(`Serving static frontend build from: ${activeDistDir}`);
+  app.use(express.static(activeDistDir));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/") || req.path.startsWith("/uploads/") || req.path.startsWith("/apk/")) {
+      return next();
+    }
+    const indexHtmlPath = path.join(activeDistDir, "index.html");
+    if (fs.existsSync(indexHtmlPath)) {
+      return res.sendFile(indexHtmlPath);
+    }
+    next();
+  });
+}
+
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: "Internal server error" });
