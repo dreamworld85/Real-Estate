@@ -62,6 +62,8 @@ const DISTRICTS = [
 
 interface DesktopHeaderProps {
   onSearchChange?: (filters: { purpose: string; location: string; state: string; district: string; propertyType: string }) => void;
+  onToggleMap?: () => void;
+  isMapOpen?: boolean;
   initialPurpose?: string;
   initialLocation?: string;
   initialState?: string;
@@ -72,6 +74,8 @@ interface DesktopHeaderProps {
 
 export default function DesktopHeader({
   onSearchChange,
+  onToggleMap,
+  isMapOpen = false,
   initialPurpose = "",
   initialLocation = "",
   initialState = "All States (India)",
@@ -333,14 +337,28 @@ export default function DesktopHeader({
             <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" />
           </div>
 
-          {/* Advanced Search Button (Icon Only) */}
+          {/* Google Maps Icon Toggle Button matching user mockup */}
           <button
             type="button"
-            onClick={() => handleSearch()}
-            title="Search Advanced"
-            className="flex items-center justify-center p-2.5 bg-white border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 shadow-xs transition"
+            onClick={() => {
+              if (onToggleMap) {
+                onToggleMap();
+              } else {
+                navigate("/search?map=true");
+              }
+            }}
+            title={isMapOpen ? "Hide Google Map" : "Show Google Map"}
+            className={`flex items-center justify-center p-1.5 rounded-full border transition-all duration-300 shadow-xs cursor-pointer shrink-0 active:scale-95 ${
+              isMapOpen
+                ? "bg-blue-50 border-blue-500 ring-4 ring-blue-400/30 scale-105 shadow-md"
+                : "bg-white border-gray-300 hover:border-blue-400 hover:bg-blue-50/50"
+            }`}
           >
-            <SlidersHorizontal className="w-4 h-4" />
+            <img 
+              src="/google_maps_icon.png" 
+              alt="Google Maps" 
+              className="w-7 h-7 object-contain pointer-events-none rounded-full"
+            />
           </button>
 
           {/* Submit Search Button */}

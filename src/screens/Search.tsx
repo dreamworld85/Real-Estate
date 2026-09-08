@@ -4,6 +4,7 @@ import { Search as SearchIcon, ChevronDown, SlidersHorizontal, RefreshCw, Heart,
 import { api, ApiProperty } from "@/lib/api";
 import PropertyCard from "@/components/PropertyCard";
 import BottomNav from "@/components/BottomNav";
+import DesktopPropertyListing from "@/components/DesktopPropertyListing";
 import { INDIAN_STATES, getDistrictsForState, getAllDistricts } from "@/lib/indiaLocationData";
 
 const propertyTypes = ["House", "Villa", "Apartment", "Land", "Commercial Space"];
@@ -14,6 +15,14 @@ export default function Search() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const showFeaturedOnly = searchParams.get("featured") === "true";
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1000);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const [selectedState, setSelectedState] = useState("");
   const [district, setDistrict] = useState("");
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
@@ -94,6 +103,10 @@ export default function Search() {
     );
   });
 
+  if (isDesktop) {
+    return <DesktopPropertyListing initialShowMap={searchParams.get("map") === "true"} />;
+  }
+
   return (
     <div className="min-h-screen pb-28 bg-[#FAF8F3] w-full max-w-md mx-auto overflow-x-hidden">
       <div className="px-4 pt-6 pb-4 w-full">
@@ -132,14 +145,14 @@ export default function Search() {
             />
           </div>
           
-          {/* Dedicated Map Search Button */}
+          {/* Dedicated Map Search Button with Google Maps Icon */}
           <button
             onClick={() => navigate("/map-search")}
-            className="w-11 h-11 rounded-2xl border border-[#60A963]/25 bg-[#60A963]/10 text-emerald-700 hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center shrink-0"
+            className="w-11 h-11 rounded-2xl border border-blue-200 bg-white hover:bg-blue-50 text-emerald-700 transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center shrink-0 p-1.5"
             aria-label="Map Search"
             title="Map Search"
           >
-            <MapPin size={18} className="shrink-0" />
+            <img src="/google_maps_icon.png" alt="Google Maps" className="w-6 h-6 object-contain" />
           </button>
 
           <button

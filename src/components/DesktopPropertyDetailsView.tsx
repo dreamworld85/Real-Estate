@@ -90,9 +90,8 @@ export default function DesktopPropertyDetailsView({
 
         const customIcon = window.L.divIcon({
           className: "custom-leaflet-detail-marker",
-          html: `<div style="background:#1B5E4F; color:#ffffff; padding:6px 12px; border-radius:20px; font-weight:700; font-size:13px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap;">📍 ${property.title}</div>`,
-          iconSize: [120, 30],
-          iconAnchor: [60, 15]
+          html: `<div style="background:#1B5E4F; color:#ffffff; padding:6px 12px; border-radius:20px; font-weight:500; font-size:13px; border:2px solid #ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3); white-space:nowrap;">📍 ${property.title}</div>`,
+          iconSize: null,
         });
 
         window.L.marker([lat, lng], { icon: customIcon }).addTo(map);

@@ -67,6 +67,21 @@ textarea:focus-visible {
   animation: slideDown 0.2s ease-out forwards;
 }
 
+@keyframes fadeInDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @keyframes bellRing {
   0%, 100% { transform: rotate(0); }
   10%, 30%, 50%, 70%, 90% { transform: rotate(10deg); }
@@ -128,4 +143,21 @@ textarea:focus-visible {
 }
 .rounded-2xl {
   border-radius: 10px !important;
+}
+
+/* Leaflet Detail Marker Box Fixes */
+.leaflet-marker-icon.custom-leaflet-detail-marker,
+.custom-leaflet-detail-marker {
+  width: auto !important;
+  height: auto !important;
+  font-weight: 500 !important;
+}
+
+.custom-leaflet-detail-marker > div {
+  font-weight: 500 !important;
+}
+
+/* Ensure Leaflet container internal panes don't bleed above top dropdowns */
+.leaflet-container {
+  z-index: 1 !important;
 }
