@@ -2,7 +2,7 @@
 $id = $_GET['id'] ?? '';
 $title = "Kerala Realty - Find Your Dream Home";
 $desc = "Discover amazing properties, villas, lands and apartments in the best locations of Kerala.";
-$image = "https://sales.greensparrows.com/kerala_house_banner.jpg";
+$image = "https://property.greensparrows.com/kerala_house_banner.jpg";
 
 if ($id) {
     // Call the local backend API to fetch property details
@@ -53,7 +53,7 @@ $metaTags = '
     <meta property="og:description" content="' . htmlspecialchars($desc) . '" />
     <meta property="og:image" content="' . htmlspecialchars($image) . '" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://sales.greensparrows.com/property/' . htmlspecialchars($id) . '" />
+    <meta property="og:url" content="https://property.greensparrows.com/property/' . htmlspecialchars($id) . '" />
 ';
 
 // Replace the existing title tag and inject the meta tags

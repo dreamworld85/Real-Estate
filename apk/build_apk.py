@@ -349,17 +349,20 @@ def build_project(project_dir, output_apk_name):
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
+    parent_dir = os.path.dirname(script_dir)
 
     # Clean old project folders completely to prevent stale domain caching
     shutil.rmtree("sparrows_user_proj", ignore_errors=True)
     shutil.rmtree("sparrows_admin_proj", ignore_errors=True)
+    shutil.rmtree(os.path.join(parent_dir, "sparrows_user_proj"), ignore_errors=True)
+    shutil.rmtree(os.path.join(parent_dir, "sparrows_admin_proj"), ignore_errors=True)
 
-    # User App
+    # User App (com.greensparrows.sales package so Android replaces the installed app)
     create_android_project(
         project_dir="sparrows_user_proj",
         app_name="Sparrows",
         app_url="https://property.greensparrows.com",
-        package_name="com.greensparrows.property",
+        package_name="com.greensparrows.sales",
         icon_src="sparrows.png"
     )
     
