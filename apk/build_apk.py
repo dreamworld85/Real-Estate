@@ -311,7 +311,7 @@ def build_project(project_dir, output_apk_name):
     # Run Gradle
     try:
         res = subprocess.run(
-            [GRADLE_PATH, "assembleDebug"],
+            [GRADLE_PATH, "clean", "assembleDebug"],
             cwd=project_dir,
             env=env,
             capture_output=True,
@@ -349,6 +349,10 @@ def build_project(project_dir, output_apk_name):
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
+
+    # Clean old project folders completely to prevent stale domain caching
+    shutil.rmtree("sparrows_user_proj", ignore_errors=True)
+    shutil.rmtree("sparrows_admin_proj", ignore_errors=True)
 
     # User App
     create_android_project(
