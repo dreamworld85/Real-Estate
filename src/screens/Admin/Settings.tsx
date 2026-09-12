@@ -19,7 +19,7 @@ import { api, mediaUrl } from "@/lib/api";
 
 export default function Settings() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<"menu" | "site" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial" | "locations">("menu");
+  const [activeTab, setActiveTab] = useState<"menu" | "site" | "payment" | "trials" | "profile" | "database" | "landing" | "interstitial" | "locations" | "pages">("menu");
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -32,6 +32,8 @@ export default function Settings() {
       setActiveTab("trials");
     } else if (tabParam === "locations") {
       setActiveTab("locations");
+    } else if (tabParam === "pages") {
+      setActiveTab("pages");
     } else {
       setActiveTab("menu");
     }
@@ -84,6 +86,79 @@ export default function Settings() {
   const [heroPreview, setHeroPreview] = useState<string | null>(null);
   const [qrFile, setQrFile] = useState<File | null>(null);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
+
+  const [selectedPageId, setSelectedPageId] = useState<"privacy" | "terms" | "data_deletion" | "refund" | "contact">("privacy");
+  const [pageTitle, setPageTitle] = useState("");
+  const [pageContent, setPageContent] = useState("");
+  const [pageContactEmail, setPageContactEmail] = useState("");
+  const [pageContactPhone, setPageContactPhone] = useState("");
+  const [pageContactAddress, setPageContactAddress] = useState("");
+  const [loadingPageSetting, setLoadingPageSetting] = useState(false);
+
+  const loadPageSetting = async (pageId: string) => {
+    setLoadingPageSetting(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      if (pageId === "contact") {
+        const emailRes = await fetch(`${apiUrl}/api/settings/contact_email`).then(r => r.json()).catch(() => ({}));
+        const phoneRes = await fetch(`${apiUrl}/api/settings/contact_phone`).then(r => r.json()).catch(() => ({}));
+        const addressRes = await fetch(`${apiUrl}/api/settings/contact_address`).then(r => r.json()).catch(() => ({}));
+        
+        setPageContactEmail(emailRes.value || "support@greensparrows.com");
+        setPageContactPhone(phoneRes.value || "+91 484 2901234 (10 AM - 6 PM)");
+        setPageContactAddress(addressRes.value || "GreenSparrows Ventures Private Limited,\nSkyline Signature Heights, Kakkanad,\nKochi, Kerala - 682030");
+      } else {
+        const titleKey = `page_${pageId}_title`;
+        const contentKey = `page_${pageId}_content`;
+
+        const titleRes = await fetch(`${apiUrl}/api/settings/${titleKey}`).then(r => r.json()).catch(() => ({}));
+        const contentRes = await fetch(`${apiUrl}/api/settings/${contentKey}`).then(r => r.json()).catch(() => ({}));
+
+        const defaultTitles: Record<string, string> = {
+          privacy: "Privacy Policy",
+          terms: "Terms & Conditions",
+          data_deletion: "User Data Deletion",
+          refund: "Cancellation & Refund"
+        };
+
+        setPageTitle(titleRes.value || defaultTitles[pageId] || "");
+        setPageContent(contentRes.value || "");
+      }
+    } catch (err) {
+      console.error("Error loading page settings:", err);
+    } finally {
+      setLoadingPageSetting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "pages") {
+      loadPageSetting(selectedPageId);
+    }
+  }, [activeTab, selectedPageId]);
+
+  const handleSavePageSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      if (selectedPageId === "contact") {
+        await adminApi.updateSetting("contact_email", pageContactEmail);
+        await adminApi.updateSetting("contact_phone", pageContactPhone);
+        await adminApi.updateSetting("contact_address", pageContactAddress);
+      } else {
+        const titleKey = `page_${selectedPageId}_title`;
+        const contentKey = `page_${selectedPageId}_content`;
+        await adminApi.updateSetting(titleKey, pageTitle);
+        await adminApi.updateSetting(contentKey, pageContent);
+      }
+      alert("Page settings saved successfully!");
+      loadPageSetting(selectedPageId);
+    } catch (err: any) {
+      alert(err.message || "Failed to save page settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const loadLandingContent = async () => {
     setLoadingLanding(true);
@@ -586,6 +661,7 @@ export default function Settings() {
         { key: "landing", label: "Landing Manager", desc: "Manage desktop landing text, app QR, and feature cards", icon: FileText, color: "text-amber-600 bg-amber-50" },
         { key: "interstitial", label: "Share Interstitial Settings", desc: "Manage logo, store links, headlines and footers for shared links", icon: Sliders, color: "text-teal-600 bg-teal-50" },
         { key: "locations", label: "Top Locations", desc: "Manage popular top locations and preview graphics", icon: MapPin, color: "text-indigo-600 bg-indigo-50" },
+        { key: "pages", label: "Page Settings", desc: "Manage legal and public page titles, contents, and contact info", icon: FileText, color: "text-purple-600 bg-purple-50" },
       ],
     },
     {
@@ -1817,6 +1893,136 @@ export default function Settings() {
     );
   }
 
+  function renderPagesTab() {
+    const pageTabs: { id: "privacy" | "terms" | "data_deletion" | "refund" | "contact"; label: string }[] = [
+      { id: "privacy", label: "Privacy Policy" },
+      { id: "terms", label: "Terms & Conditions" },
+      { id: "data_deletion", label: "Data Deletion" },
+      { id: "refund", label: "Cancellation & Refund" },
+      { id: "contact", label: "Contact Us" },
+    ];
+
+    return (
+      <div className="flex flex-col gap-4 text-left">
+        <div className="flex items-center gap-2 lg:hidden px-1">
+          <button 
+            onClick={() => setActiveTab("menu")}
+            className="p-1 hover:bg-slate-100 rounded-full transition-all text-slate cursor-pointer"
+            aria-label="Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="font-display font-bold text-sm text-ink">Back to Menu</h3>
+        </div>
+
+        <div className="bg-white border border-charcoal/5 rounded-3xl p-5 shadow-sm flex flex-col gap-5">
+          <div>
+            <h2 className="font-display font-extrabold text-base text-black">Page Settings</h2>
+            <p className="text-[10px] text-slate mt-0.5">Manage and edit title, text content, and contact details displayed on public legal and support pages.</p>
+          </div>
+
+          {/* Sub-tab navigation */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-charcoal/5">
+            {pageTabs.map((ptab) => (
+              <button
+                key={ptab.id}
+                type="button"
+                onClick={() => setSelectedPageId(ptab.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  selectedPageId === ptab.id
+                    ? "bg-purple-600 text-white shadow-sm"
+                    : "bg-slate-100/70 text-slate hover:bg-slate-200/70"
+                }`}
+              >
+                {ptab.label}
+              </button>
+            ))}
+          </div>
+
+          {loadingPageSetting ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600" />
+              <span className="text-xs text-slate font-medium">Loading page data...</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSavePageSettings} className="flex flex-col gap-4">
+              {selectedPageId === "contact" ? (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-ink">Contact Email</label>
+                    <input
+                      type="email"
+                      value={pageContactEmail}
+                      onChange={(e) => setPageContactEmail(e.target.value)}
+                      placeholder="e.g. support@greensparrows.com"
+                      className="w-full rounded-xl border border-charcoal/10 bg-white px-3.5 py-2.5 text-xs text-charcoal outline-none focus:border-purple-600 shadow-sm font-semibold"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-ink">Contact Phone Number & Working Hours</label>
+                    <input
+                      type="text"
+                      value={pageContactPhone}
+                      onChange={(e) => setPageContactPhone(e.target.value)}
+                      placeholder="e.g. +91 484 2901234 (10 AM - 6 PM)"
+                      className="w-full rounded-xl border border-charcoal/10 bg-white px-3.5 py-2.5 text-xs text-charcoal outline-none focus:border-purple-600 shadow-sm font-semibold"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-ink">Physical / Corporate Address</label>
+                    <textarea
+                      rows={4}
+                      value={pageContactAddress}
+                      onChange={(e) => setPageContactAddress(e.target.value)}
+                      placeholder="Enter company address..."
+                      className="w-full rounded-xl border border-charcoal/10 bg-white p-3 text-xs text-charcoal outline-none focus:border-purple-600 shadow-sm font-medium leading-relaxed"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-ink">Page Display Title</label>
+                    <input
+                      type="text"
+                      value={pageTitle}
+                      onChange={(e) => setPageTitle(e.target.value)}
+                      placeholder="e.g. Privacy Policy"
+                      className="w-full rounded-xl border border-charcoal/10 bg-white px-3.5 py-2.5 text-xs text-charcoal outline-none focus:border-purple-600 shadow-sm font-semibold"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-ink">Page Content (HTML / Markdown supported)</label>
+                    <textarea
+                      rows={14}
+                      value={pageContent}
+                      onChange={(e) => setPageContent(e.target.value)}
+                      placeholder="Enter page content here..."
+                      className="w-full rounded-xl border border-charcoal/10 bg-white p-3.5 text-xs text-charcoal outline-none focus:border-purple-600 shadow-sm font-normal leading-relaxed font-mono"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.98] disabled:bg-slate/30 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                >
+                  {saving ? "Saving Changes..." : "Save Page Settings"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 py-5 flex flex-col gap-5">
       <div>
@@ -1856,6 +2062,8 @@ export default function Settings() {
                           setActiveTab("interstitial");
                         } else if (item.key === "locations") {
                           setActiveTab("locations");
+                        } else if (item.key === "pages") {
+                          setActiveTab("pages");
                         } else {
                           alert(`${item.label} configurations loaded successfully.`);
                         }
@@ -1904,6 +2112,7 @@ export default function Settings() {
           {activeTab === "landing" && renderLandingTab()}
           {activeTab === "interstitial" && renderInterstitialTab()}
           {activeTab === "locations" && renderLocationsTab()}
+          {activeTab === "pages" && renderPagesTab()}
         </div>
       </div>
     </div>

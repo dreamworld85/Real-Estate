@@ -842,6 +842,21 @@ app.get(["/apk", "/apk/"], (_req, res) => {
 });
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+// GET /api/settings/:key (Public settings getter)
+app.get("/api/settings/:key", async (req, res) => {
+  try {
+    const { key } = req.params;
+    const [rows] = await pool.query("SELECT `value` FROM settings WHERE `key` = ?", [key]);
+    if (rows.length === 0) {
+      return res.json({ key, value: null });
+    }
+    res.json({ key, value: rows[0].value });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/debug-files", (_req, res) => {
   try {
     const cwd = process.cwd();
