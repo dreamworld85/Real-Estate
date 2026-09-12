@@ -423,12 +423,14 @@ router.post("/facebook", async (req, res) => {
     let email = reqEmail;
     let name = reqName || "Facebook User";
     let picture = avatarUrl || null;
+    let fbProfileId = null;
 
     if (accessToken) {
       try {
         const fbRes = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${accessToken}`);
         if (fbRes.ok) {
           const fbProfile = await fbRes.json();
+          fbProfileId = fbProfile.id;
           email = fbProfile.email || email;
           name = fbProfile.name || name;
           if (fbProfile.picture && fbProfile.picture.data && fbProfile.picture.data.url) {
@@ -440,39 +442,20 @@ router.post("/facebook", async (req, res) => {
       }
     }
 
-    if (!email || !email.trim()) {
-      return res.status(400).json({ error: "Email address is required for Facebook login" });
-    }
-
-    const trimmedEmail = email.trim().toLowerCase();
-    let [rows] = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [trimmedEmail]);
-
-    let userRow;
-    if (rows.length === 0) {
-      const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
-      const [insertResult] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES (?, ?, ?, 'user', ?)",
-        [name, trimmedEmail, randomPassword, picture]
-      );
-      const [newRows] = await pool.query("SELECT * FROM users WHERE id = ?", [insertResult.insertId]);
-      userRow = newRows[0];
-    } else {
-      userRow = rows[0];
-      if (!userRow.avatar_url && picture) {
-        await pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [picture, userRow.id]);
-        userRow.avatar_url = picture;
-      }
-    }
-
-    await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [userRow.id]);
+    const userRow = await resolveSocialUser("facebook", fbProfileId || email || "fb_user", name, email, picture);
     const token = signToken(userRow.id);
     setAuthCookie(res, token);
 
     res.json({
-      success: true,
       message: "Successfully authenticated with Facebook",
       token,
-      user: toPublicUser(userRow),
+      user: {
+        id: userRow.id,
+        name: userRow.name,
+        email: userRow.email,
+        role: userRow.role,
+        avatar_url: userRow.avatar_url,
+      },
     });
   } catch (err) {
     console.error("Facebook authentication error:", err);
@@ -602,7 +585,7 @@ router.get("/facebook", (req, res) => {
   const fbAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?` + new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,
-    scope: "email,public_profile",
+    scope: "public_profile",
     state: state,
   }).toString();
 
