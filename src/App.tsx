@@ -31,6 +31,7 @@ import PrivacyPolicy from "@/screens/Legal/PrivacyPolicy";
 import TermsConditions from "@/screens/Legal/TermsConditions";
 import RefundPolicy from "@/screens/Legal/RefundPolicy";
 import ContactUs from "@/screens/Legal/ContactUs";
+import DataDeletion from "@/screens/Legal/DataDeletion";
 import SubscriptionDetails from "@/screens/SubscriptionDetails";
 import Landing from "@/screens/Landing";
 
@@ -100,7 +101,11 @@ export default function App() {
         
         {/* Legal & Compliance Routes */}
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsConditions />} />
+        <Route path="/terms-of-service" element={<TermsConditions />} />
+        <Route path="/data-deletion" element={<DataDeletion />} />
+        <Route path="/data-deletion-instructions" element={<DataDeletion />} />
         <Route path="/refund" element={<RefundPolicy />} />
         <Route path="/contact-us" element={<ContactUs />} />
 
