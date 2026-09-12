@@ -582,7 +582,7 @@ router.get("/google/callback", async (req, res) => {
 
 // GET /api/auth/facebook - Initiate Facebook OAuth Redirect Flow
 router.get("/facebook", (req, res) => {
-  const appId = process.env.FACEBOOK_APP_ID;
+  const appId = process.env.FACEBOOK_APP_ID || "1793278805029823";
   const redirectUri = process.env.FACEBOOK_CALLBACK_URL || `${req.protocol}://${req.get("host")}/api/auth/facebook/callback`;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -635,8 +635,8 @@ router.get("/facebook/callback", async (req, res) => {
   }
 
   try {
-    const appId = process.env.FACEBOOK_APP_ID;
-    const appSecret = process.env.FACEBOOK_APP_SECRET;
+    const appId = process.env.FACEBOOK_APP_ID || "1793278805029823";
+    const appSecret = process.env.FACEBOOK_APP_SECRET || "e310c814c2b3207084adbe0a07b3786a";
     const redirectUri = process.env.FACEBOOK_CALLBACK_URL || `${req.protocol}://${req.get("host")}/api/auth/facebook/callback`;
 
     const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?` + new URLSearchParams({
