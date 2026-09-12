@@ -188,6 +188,14 @@ export const api = {
     return handle<{ success: boolean; token: string; user: ApiUser }>(res);
   },
 
+  getGoogleOAuthUrl() {
+    return `${API_URL}/api/auth/google`;
+  },
+
+  getFacebookOAuthUrl() {
+    return `${API_URL}/api/auth/facebook`;
+  },
+
   async loginWithGoogle(data: { credential?: string; token?: string; email?: string; name?: string; avatarUrl?: string }) {
     const res = await fetch(`${API_URL}/api/auth/google`, {
       method: "POST",

@@ -181,7 +181,7 @@ export default function DesktopPropertyListing({
         }
 
         const bounds: [number, number][] = [];
-        const mapList = allProperties.length > 0 ? allProperties : properties;
+        const mapList = mapFilteredProperties;
 
         mapList.forEach((prop, idx) => {
           const rawLat = prop.latitude ? parseFloat(String(prop.latitude)) : null;
@@ -266,7 +266,7 @@ export default function DesktopPropertyListing({
 
     initMap();
     return () => clearTimeout(timer);
-  }, [properties, allProperties, selectedProperty, showMap, activeLocationQuery]);
+  }, [properties, mapFilteredProperties, selectedProperty, showMap, activeLocationQuery]);
 
   // Smoothly scroll selected property card into view when selected from map
   useEffect(() => {

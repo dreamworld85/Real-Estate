@@ -15,14 +15,24 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { api } from "@/lib/api";
+import CustomFilterDropdown from "./CustomFilterDropdown";
 
-const TYPE_ICON_MAP: Record<string, { label: string; icon: any }> = {
-  "House": { label: "House", icon: Home },
-  "Villa": { label: "Villa", icon: Home },
-  "Apartment": { label: "Apartment", icon: Building2 },
-  "Land": { label: "Land", icon: Trees },
-  "Commercial Space": { label: "Commercial", icon: Store },
+const TYPE_ICON_MAP: Record<string, { label: string; icon: string }> = {
+  "All": { label: "All Properties", icon: "/images/all-properties.svg" },
+  "Villa": { label: "Independent House / Villa", icon: "/images/villa.svg" },
+  "Land": { label: "Plot / Land", icon: "/images/land-plot.svg" },
+  "Apartment": { label: "Apartment", icon: "/images/Apartment.svg" },
+  "House": { label: "House", icon: "/images/house.svg" },
+  "Commercial Space": { label: "Commercial", icon: "/images/Apartment.svg" },
 };
+
+const CATEGORY_ITEMS = [
+  { key: "All", label: "All Properties", icon: "/images/all-properties.svg", type: "All Types" },
+  { key: "Villa", label: "Independent House / Villa", icon: "/images/villa.svg", type: "Villa" },
+  { key: "Land", label: "Plot / Land", icon: "/images/land-plot.svg", type: "Land" },
+  { key: "Apartment", label: "Apartment", icon: "/images/Apartment.svg", type: "Apartment" },
+  { key: "House", label: "House", icon: "/images/house.svg", type: "House" },
+];
 
 const STATES = [
   "All States (India)",
@@ -166,40 +176,34 @@ export default function DesktopHeader({
 
           {/* Category Icons Horizontal Bar */}
           <div className="hidden min-[1150px]:flex items-center gap-3 overflow-x-auto py-1 px-2 no-scrollbar">
-            {/* "All" Category Icon */}
-            <button
-              onClick={() => handleCategoryClick("All")}
-              className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-xl transition-all whitespace-nowrap group border ${
-                activeCategory === "All" || propertyType === "All Types"
-                  ? "bg-[#E8F0EA] border-[#1B5E4F] text-[#1B5E4F] shadow-sm"
-                  : "border-gray-100 hover:border-gray-200 text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              <div className={`p-1.5 rounded-lg ${activeCategory === "All" || propertyType === "All Types" ? "bg-white text-[#1B5E4F]" : "bg-gray-100 text-gray-500 group-hover:text-[#1B5E4F] group-hover:bg-white"}`}>
-                <LayoutGrid className="w-4 h-4" />
-              </div>
-              <span className="text-[11px] font-medium tracking-tight">All Properties</span>
-            </button>
-
-            {/* Dynamic Available Property Type Icons */}
-            {dynamicTypes.map((type, idx) => {
-              const config = TYPE_ICON_MAP[type] || { label: type, icon: Building2 };
-              const Icon = config.icon;
-              const isSelected = activeCategory === type || propertyType === type;
+            {CATEGORY_ITEMS.map((cat) => {
+              const isSelected =
+                activeCategory === cat.key ||
+                activeCategory === cat.label ||
+                propertyType === cat.type ||
+                (cat.key === "All" && (propertyType === "All Types" || !propertyType || propertyType === "All"));
               return (
                 <button
-                  key={idx}
-                  onClick={() => handleCategoryClick(type)}
-                  className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-xl transition-all whitespace-nowrap group border ${
+                  key={cat.key}
+                  onClick={() => handleCategoryClick(cat.key === "All" ? "All" : cat.type)}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-1.5 transition-all whitespace-nowrap group cursor-pointer ${
                     isSelected
-                      ? "bg-[#E8F0EA] border-[#1B5E4F] text-[#1B5E4F] shadow-sm"
-                      : "border-gray-100 hover:border-gray-200 text-gray-600 hover:bg-gray-50"
+                      ? "bg-[#E8F0EA] text-[#1B5E4F] font-semibold"
+                      : "text-gray-700 hover:bg-gray-50 font-medium"
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg ${isSelected ? "bg-white text-[#1B5E4F]" : "bg-gray-100 text-gray-500 group-hover:text-[#1B5E4F] group-hover:bg-white"}`}>
-                    <Icon className="w-4 h-4" />
+                  <div
+                    className={`p-0 flex items-center justify-center transition-colors ${
+                      isSelected ? "text-[#1B5E4F]" : "text-gray-600"
+                    }`}
+                  >
+                    <img
+                      src={cat.icon}
+                      alt={cat.label}
+                      className="w-7 h-7 object-contain"
+                    />
                   </div>
-                  <span className="text-[11px] font-medium tracking-tight">{config.label}</span>
+                  <span className="text-[11px] tracking-tight">{cat.label}</span>
                 </button>
               );
             })}
@@ -283,59 +287,43 @@ export default function DesktopHeader({
           </div>
 
           {/* State Dropdown */}
-          <div className="relative min-w-[160px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs">
-            <select
-              value={selectedState}
-              onChange={(e) => {
-                const newSt = e.target.value;
-                setSelectedState(newSt);
-                if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: newSt, district, propertyType });
-              }}
-              className="w-full bg-transparent outline-none appearance-none pr-6 cursor-pointer font-medium text-gray-700"
-            >
-              {STATES.map((s, i) => (
-                <option key={i} value={s}>{s}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" />
-          </div>
+          <CustomFilterDropdown
+            value={selectedState}
+            defaultValue="All States (India)"
+            options={STATES}
+            maxHeight="150px"
+            onChange={(newSt) => {
+              setSelectedState(newSt);
+              if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: newSt, district, propertyType });
+            }}
+          />
 
           {/* District Dropdown */}
-          <div className="relative min-w-[140px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs">
-            <select
-              value={district}
-              onChange={(e) => {
-                const newDist = e.target.value;
-                setDistrict(newDist);
-                if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district: newDist, propertyType });
-              }}
-              className="w-full bg-transparent outline-none appearance-none pr-6 cursor-pointer font-medium text-gray-700"
-            >
-              {DISTRICTS.map((d, i) => (
-                <option key={i} value={d}>{d}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" />
-          </div>
+          <CustomFilterDropdown
+            value={district}
+            defaultValue="All Kerala"
+            options={DISTRICTS}
+            isMultiSelect={true}
+            maxHeight="150px"
+            onChange={(newDist) => {
+              setDistrict(newDist);
+              if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district: newDist, propertyType });
+            }}
+          />
 
           {/* Property Type Dropdown */}
-          <div className="relative min-w-[140px] flex items-center bg-white border border-gray-300 rounded-full px-4 py-2 text-sm shadow-xs">
-            <select
-              value={propertyType}
-              onChange={(e) => {
-                const newType = e.target.value;
-                setPropertyType(newType);
-                setActiveCategory(newType === "All Types" ? "All" : newType);
-                if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district, propertyType: newType });
-              }}
-              className="w-full bg-transparent outline-none appearance-none pr-6 cursor-pointer font-medium text-gray-700"
-            >
-              {dropdownTypes.map((t, i) => (
-                <option key={i} value={t}>{t}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" />
-          </div>
+          <CustomFilterDropdown
+            value={propertyType}
+            defaultValue="All Types"
+            options={dropdownTypes}
+            isMultiSelect={true}
+            maxHeight="150px"
+            onChange={(newType) => {
+              setPropertyType(newType);
+              setActiveCategory(newType === "All Types" ? "All" : newType);
+              if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district, propertyType: newType });
+            }}
+          />
 
           {/* Google Maps Icon Toggle Button matching user mockup */}
           <button

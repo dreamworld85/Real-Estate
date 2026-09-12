@@ -10,17 +10,12 @@ import { useAuth } from "@/lib/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { INDIAN_STATES, getDistrictsForState, getAllDistricts } from "@/lib/indiaLocationData";
 
-import allIcon from "../../header-icons/All.png";
-import landIcon from "../../header-icons/land.png";
-import houseIcon from "../../header-icons/house.png";
-import villaIcon from "../../header-icons/villa.png";
-import apartmentsIcon from "../../header-icons/Apartments.png";
-
 const categories = [
-  { label: "All", icon: allIcon },
-  { label: "Land", icon: landIcon },
-  { label: "House", icon: houseIcon },
-  { label: "Apartment", icon: apartmentsIcon },
+  { label: "All", type: "All", icon: "/images/all-properties.svg" },
+  { label: "Villa", type: "Villa", icon: "/images/villa.svg" },
+  { label: "Land", type: "Land", icon: "/images/land-plot.svg" },
+  { label: "Apartment", type: "Apartment", icon: "/images/Apartment.svg" },
+  { label: "House", type: "House", icon: "/images/house.svg" },
 ];
 
 const MOCK_AGENTS = [
@@ -282,12 +277,12 @@ export default function Home() {
       {/* Categories Horizontal Rounded Card Blocks */}
       <div className="px-5 mt-5 flex gap-2.5 overflow-x-auto no-scrollbar select-none z-10 relative">
         {categories.map((cat) => {
-          const isActive = activeCategory === cat.label;
+          const isActive = activeCategory === cat.label || activeCategory === cat.type;
           return (
             <button
               key={cat.label}
-              onClick={() => setActiveCategory(cat.label)}
-              className={`flex-1 min-w-[60px] h-[60px] rounded-[14px] flex flex-col items-center justify-center gap-1 shadow-[0_2px_6px_rgba(0,0,0,0.015)] transition-all active:scale-95 cursor-pointer border ${
+              onClick={() => setActiveCategory(cat.type || cat.label)}
+              className={`flex-1 min-w-[60px] h-[60px] rounded-[14px] flex flex-col items-center justify-center gap-0.5 shadow-[0_2px_6px_rgba(0,0,0,0.015)] transition-all active:scale-95 cursor-pointer border ${
                 isActive 
                   ? "bg-[#3F8F4B] text-white border-[#3F8F4B] shadow-md shadow-[#3F8F4B]/10 font-bold" 
                   : "bg-white text-charcoal border-charcoal/5 hover:bg-slate-50 font-medium"
@@ -296,7 +291,7 @@ export default function Home() {
               <img 
                 src={cat.icon} 
                 alt={cat.label} 
-                className={`w-5 h-5 object-contain ${isActive ? "brightness-0 invert" : ""}`}
+                className={`w-7 h-7 object-contain ${isActive ? "brightness-0 invert" : ""}`}
               />
               <span className="text-[9.5px] tracking-wide font-semibold block">{cat.label}</span>
             </button>

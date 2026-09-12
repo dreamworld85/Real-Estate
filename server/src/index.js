@@ -83,6 +83,21 @@ async function checkDbMigration() {
       )
     `);
 
+    // Verify social_accounts table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS social_accounts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        provider VARCHAR(20) NOT NULL,
+        provider_user_id VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_provider_user (provider, provider_user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    console.log("Database social_accounts table verified.");
+
     // Seed default landing page settings if they don't exist
     const defaultSettings = [
       { key: "landing_hero_title", value: "Find Your Perfect Kerala Nest & Escape" },

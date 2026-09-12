@@ -26,7 +26,7 @@ export default function EditProfile() {
     try {
       const updated = await api.updateMyProfile({ name, phone, email, location });
       if (token) login(token, updated);
-      navigate("/profile");
+      navigate("/home");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save changes");
     } finally {
@@ -181,10 +181,10 @@ export default function EditProfile() {
           
           <button
             type="button"
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate("/home")}
             className="w-full h-11 bg-white hover:bg-slate-50 border border-slate-300 text-charcoal rounded-xl text-[14px] font-medium transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center shadow-sm"
           >
-            Cancel
+            Skip to Home
           </button>
         </div>
 
