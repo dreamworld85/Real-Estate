@@ -23,7 +23,7 @@ except ImportError:
 
 ANDROID_SDK_PATH = "C:\\Users\\prave\\AppData\\Local\\Android\\Sdk"
 JAVA_HOME_PATH = "C:\\Program Files\\Android\\Android Studio\\jbr"
-GRADLE_PATH = os.path.abspath("gradle-8.5\\bin\\gradle.bat")
+GRADLE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "gradle-8.5", "bin", "gradle.bat"))
 
 def create_android_project(project_dir, app_name, app_url, package_name, icon_src):
     print(f"Creating Android project for {app_name}...")
@@ -279,6 +279,7 @@ public class MainActivity extends AppCompatActivity {
     }
 }
 """
+    icon_full_path = os.path.join(os.path.dirname(__file__), icon_src)
     with open(os.path.join(java_dir, "MainActivity.java"), "w") as f:
         f.write(java_template.replace("{package_name}", package_name).replace("{app_url}", app_url))
 
@@ -291,7 +292,7 @@ public class MainActivity extends AppCompatActivity {
         "mipmap-xxxhdpi": 192
     }
     
-    img = Image.open(icon_src)
+    img = Image.open(icon_full_path)
     for name, size in sizes.items():
         mipmap_path = os.path.join(res_dir, name)
         os.makedirs(mipmap_path, exist_ok=True)
@@ -324,23 +325,37 @@ def build_project(project_dir, output_apk_name):
             
         print("Gradle build successful.")
         
-        # Copy compiled APK to target location
+        # Copy compiled APK to target locations
         src_apk = os.path.join(project_dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
-        dest_apk = os.path.join(os.path.abspath("."), output_apk_name)
-        shutil.copy(src_apk, dest_apk)
-        print(f"Copied APK to {dest_apk}")
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        targets = [
+            os.path.join(base_dir, output_apk_name),
+            os.path.join(base_dir, "public", output_apk_name),
+            os.path.join(base_dir, "dist", output_apk_name),
+            os.path.join(base_dir, "server", "src", "uploads", output_apk_name),
+        ]
+        
+        for target in targets:
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            shutil.copy(src_apk, target)
+            print(f"Copied APK to {target}")
+            
         return True
     except Exception as e:
         print(f"Exception during build: {e}")
         return False
 
 def main():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+
     # User App
     create_android_project(
         project_dir="sparrows_user_proj",
         app_name="Sparrows",
-        app_url="https://sales.greensparrows.com",
-        package_name="com.greensparrows.sales",
+        app_url="https://property.greensparrows.com",
+        package_name="com.greensparrows.property",
         icon_src="sparrows.png"
     )
     
@@ -348,7 +363,7 @@ def main():
     create_android_project(
         project_dir="sparrows_admin_proj",
         app_name="Sparrows Admin",
-        app_url="https://sales.greensparrows.com/admin",
+        app_url="https://property.greensparrows.com/admin",
         package_name="com.greensparrows.admin",
         icon_src="sparrows-admin.png"
     )
@@ -364,7 +379,7 @@ def main():
     shutil.rmtree("sparrows_admin_proj", ignore_errors=True)
     
     if user_success and admin_success:
-        print("ALL APKS COMPILED AND SAVED IN TARGET FOLDER!")
+        print("ALL APKS COMPILED AND SAVED IN TARGET FOLDERS!")
     else:
         print("One or more builds failed.")
 
