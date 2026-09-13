@@ -415,7 +415,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
                       <button
                         key={`thumb-${idx}`}
                         onClick={() => handleThumbnailClick(idx)}
-                        className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                        className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
                           isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
                         }`}
                       >
@@ -435,7 +435,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
                         <button
                           key={`thumb-${idx}`}
                           onClick={() => handleThumbnailClick(idx)}
-                          className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                          className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
                             isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
                           }`}
                         >
@@ -454,7 +454,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
                       return (
                         <button
                           onClick={() => handleThumbnailClick(idx)}
-                          className={`w-9 h-9 rounded-xl overflow-hidden relative flex-shrink-0 transition-all border-2 cursor-pointer ${
+                          className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden relative flex-shrink-0 transition-all border-2 cursor-pointer ${
                             isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-85 hover:opacity-100"
                           }`}
                         >
