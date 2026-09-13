@@ -535,7 +535,7 @@ View Details: ${window.location.origin}/property/${property.id}`;
             </div>
 
             {/* Specs Horizontal Box Row */}
-            <div className="grid grid-cols-4 border border-charcoal/8 bg-slate-50/20 select-none">
+            <div className="grid grid-cols-4 bg-slate-50/20 select-none">
               {property.propertyType === "Plot / Land" || property.propertyType === "Land" ? (
                 <>
                   {/* Purpose */}
