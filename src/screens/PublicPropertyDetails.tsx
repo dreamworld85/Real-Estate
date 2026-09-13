@@ -13,6 +13,108 @@ import AppDownloadInterstitial from "./AppDownloadInterstitial";
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
 
+const DISTRICT_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  Wayanad: { lat: 11.6854, lng: 76.1320 },
+  Kozhikode: { lat: 11.2588, lng: 75.7804 },
+  Kannur: { lat: 11.8745, lng: 75.3704 },
+  Kasaragod: { lat: 12.5102, lng: 74.9852 },
+  Malappuram: { lat: 11.0735, lng: 76.0740 },
+  Palakkad: { lat: 10.7867, lng: 76.6547 },
+  Thrissur: { lat: 10.5276, lng: 76.2144 },
+  Ernakulam: { lat: 9.9816, lng: 76.2999 },
+  Idukki: { lat: 9.9189, lng: 77.1025 },
+  Kottayam: { lat: 9.5916, lng: 76.5221 },
+  Alappuzha: { lat: 9.4981, lng: 76.3388 },
+  Pathanamthitta: { lat: 9.2648, lng: 76.7870 },
+  Kollam: { lat: 8.8932, lng: 76.6141 },
+  Thiruvananthapuram: { lat: 8.5241, lng: 76.9366 }
+};
+
+function PropertyLocationMap({ latitude, longitude, title, address, district }: { latitude?: number | string | null; longitude?: number | string | null; title: string; address: string; district: string }) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+
+  const lat = latitude ? parseFloat(String(latitude)) : (DISTRICT_COORDINATES[district]?.lat || 10.850516);
+  const lng = longitude ? parseFloat(String(longitude)) : (DISTRICT_COORDINATES[district]?.lng || 76.271080);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    const initMap = () => {
+      if (window.L && mapContainerRef.current) {
+        if (mapRef.current && typeof mapRef.current.remove === "function") {
+          mapRef.current.remove();
+          mapRef.current = null;
+        }
+
+        const map = window.L.map(mapContainerRef.current, {
+          center: [lat, lng],
+          zoom: 13,
+          zoomControl: false,
+        });
+
+        window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap"
+        }).addTo(map);
+
+        const customIcon = window.L.divIcon({
+          className: "custom-leaflet-property-detail-pin",
+          html: `<div style="
+            background: #1B5E4F;
+            color: #ffffff;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 11px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            white-space: nowrap;
+          ">📍 ${title.slice(0, 22)}</div>`,
+          iconSize: null,
+        });
+
+        window.L.marker([lat, lng], { icon: customIcon }).addTo(map);
+        mapRef.current = map;
+      } else {
+        timer = setTimeout(initMap, 200);
+      }
+    };
+
+    initMap();
+    return () => clearTimeout(timer);
+  }, [lat, lng, title]);
+
+  const googleMapsDirectionsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+  return (
+    <div className="bg-white rounded-3xl border border-charcoal/5 p-4 shadow-sm flex flex-col gap-3 text-left">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-display font-extrabold text-sm text-ink flex items-center gap-1.5">
+            <MapPin size={15} className="text-[#25D366]" />
+            <span>Property Location Map</span>
+          </h3>
+          <p className="text-[10px] text-slate font-semibold mt-0.5">
+            {[address, district].filter(Boolean).join(", ")}
+          </p>
+        </div>
+        <a
+          href={googleMapsDirectionsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[9.5px] font-extrabold rounded-xl border border-emerald-500/15 transition-all flex items-center gap-1 cursor-pointer"
+        >
+          <span>Open Directions</span>
+        </a>
+      </div>
+
+      <div className="relative w-full h-52 rounded-2xl overflow-hidden border border-charcoal/8 bg-slate-100 shadow-inner">
+        <div ref={mapContainerRef} className="w-full h-full z-0" />
+      </div>
+    </div>
+  );
+}
+
 function formatPrice(price: number): string {
   if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
   if (price >= 100000) return `₹${(price / 100000).toFixed(1)} L`;
@@ -754,6 +856,15 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 <span>Enquire Now</span>
               </button>
             </div>
+
+            {/* Property Location Map Section */}
+            <PropertyLocationMap
+              latitude={property.latitude}
+              longitude={property.longitude}
+              title={property.title}
+              address={property.address}
+              district={property.district}
+            />
 
             {/* Features / Value Badges Grid */}
             <div className="grid grid-cols-4 border border-charcoal/8 bg-slate-50/50 rounded-2xl py-3.5 mt-1 shadow-sm select-none text-[8.5px] text-charcoal font-medium">
