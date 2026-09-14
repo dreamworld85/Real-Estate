@@ -299,26 +299,28 @@ export default function SubscriptionDetails() {
           </div>
         )}
 
-        {/* Links to billing & policies */}
-        <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-xs space-y-4">
-          <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-2">
-            Billing Information & Terms
-          </span>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-bold text-gray-800">
-            <Link to="/privacy" className="hover:text-[#0078D4] transition flex items-center gap-1.5 py-1">
-              <span>Privacy Policy</span>
-            </Link>
-            <Link to="/terms" className="hover:text-[#0078D4] transition flex items-center gap-1.5 py-1">
-              <span>Terms of Use</span>
-            </Link>
-            <Link to="/refund" className="hover:text-[#0078D4] transition flex items-center gap-1.5 py-1">
-              <span>Refund Policy</span>
-            </Link>
-            <Link to="/contact-us" className="hover:text-[#0078D4] transition flex items-center gap-1.5 py-1">
-              <span>Contact Us</span>
-            </Link>
+        {/* Links to billing & policies - Mobile only */}
+        {!isDesktop && (
+          <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-xs space-y-4">
+            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-2">
+              Billing Information & Terms
+            </span>
+            <div className="grid grid-cols-2 gap-4 text-xs font-bold text-gray-800">
+              <Link to="/privacy" className="hover:text-[#0078D4] transition flex items-center gap-1.5 py-1">
+                <span>Privacy Policy</span>
+              </Link>
+              <Link to="/terms" className="hover:text-[#0078D4] transition flex items-center gap-1.5 py-1">
+                <span>Terms of Use</span>
+              </Link>
+              <Link to="/refund" className="hover:text-[#0078D4] transition flex items-center gap-1.5 py-1">
+                <span>Refund Policy</span>
+              </Link>
+              <Link to="/contact-us" className="hover:text-[#0078D4] transition flex items-center gap-1.5 py-1">
+                <span>Contact Us</span>
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Secure payments indicator */}
         <div className="flex items-center justify-center gap-2 text-xs font-medium text-gray-500 py-2">
