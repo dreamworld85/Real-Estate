@@ -242,9 +242,14 @@ export default function DesktopPropertyListing({
           markersRef.current.push(marker);
         });
 
-        // DRAW RED DASHED BOUNDARY MARKER OVERLAY AROUND SEARCHED / SELECTED LOCATION
+        // DRAW RED DASHED BOUNDARY MARKER OVERLAY AROUND SEARCHED / SELECTED LOCATION OR STATE
         const matchedLocationKey = Object.keys(DISTRICT_COORDINATES).find(
           (key) => key.toLowerCase() === activeLocationQuery.toLowerCase()
+        );
+
+        const activeStateName = (filters.state && filters.state !== "All States (India)") ? filters.state : activeLocationQuery;
+        const matchedStateKey = Object.keys(STATE_COORDINATES).find(
+          (key) => key.toLowerCase() === activeStateName.toLowerCase()
         );
 
         if (matchedLocationKey && mapRef.current) {
@@ -262,7 +267,29 @@ export default function DesktopPropertyListing({
           mapRef.current.fitBounds(circle.getBounds(), { padding: [30, 30] });
         } else if (bounds.length > 0 && mapRef.current && !selectedProperty) {
           mapRef.current.fitBounds(bounds, { padding: [40, 40] });
+        } else if (matchedStateKey && STATE_COORDINATES[matchedStateKey] && mapRef.current) {
+          const stCoords = STATE_COORDINATES[matchedStateKey];
+          const circle = window.L.circle([stCoords.lat, stCoords.lng], {
+            radius: 80000,
+            color: "#3B82F6",
+            weight: 2.5,
+            dashArray: "6, 8",
+            fillColor: "#3B82F6",
+            fillOpacity: 0.06
+          }).addTo(mapRef.current);
+
+          boundaryCircleRef.current = circle;
+          mapRef.current.setView([stCoords.lat, stCoords.lng], 7);
+        } else if (mapRef.current) {
+          mapRef.current.setView([KERALA_COORDS.lat, KERALA_COORDS.lng], 8);
         }
+
+        // Invalidate map size so Leaflet map canvas never remains gray/blank
+        setTimeout(() => {
+          if (mapRef.current) {
+            mapRef.current.invalidateSize();
+          }
+        }, 120);
       } else {
         timer = setTimeout(initMap, 300);
       }
@@ -270,7 +297,7 @@ export default function DesktopPropertyListing({
 
     initMap();
     return () => clearTimeout(timer);
-  }, [properties, mapFilteredProperties, selectedProperty, showMap, activeLocationQuery]);
+  }, [properties, mapFilteredProperties, selectedProperty, showMap, activeLocationQuery, filters.state]);
 
   // Smoothly scroll selected property card into view when selected from map
   useEffect(() => {
@@ -327,8 +354,14 @@ export default function DesktopPropertyListing({
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 tracking-tight flex items-center gap-2">
                     Interactive Map Explorer
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase">
-                      {mapFilteredProperties.length} Pins Active
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                      mapFilteredProperties.length > 0
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-900"
+                    }`}>
+                      {mapFilteredProperties.length > 0
+                        ? `${mapFilteredProperties.length} Pins Active`
+                        : `0 Pins Active in ${filters.state !== "All States (India)" ? filters.state : activeLocationQuery || "Area"}`}
                     </span>
                   </h3>
                   <p className="text-[11px] text-gray-500 font-medium">
@@ -456,6 +489,26 @@ export default function DesktopPropertyListing({
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shrink-0 shadow-xs transition cursor-pointer"
                   >
                     View Details
+                  </button>
+                </div>
+              )}
+
+              {/* Empty State Banner Overlay on Map when 0 pins found in location */}
+              {mapFilteredProperties.length === 0 && !selectedProperty && (
+                <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-gray-200 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 duration-300 z-20">
+                  <div className="flex items-center gap-2 text-amber-800 font-extrabold text-xs">
+                    <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Map Centered on {filters.state !== "All States (India)" ? filters.state : activeLocationQuery || "Selected Location"}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-600 leading-relaxed font-medium">
+                    No properties are currently listed in {filters.state !== "All States (India)" ? filters.state : activeLocationQuery || "this region"}.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/add-property")}
+                    className="mt-1 w-full py-2 bg-[#60A963] hover:bg-[#529355] text-white rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer text-center"
+                  >
+                    + Post a Property Listing
                   </button>
                 </div>
               )}
