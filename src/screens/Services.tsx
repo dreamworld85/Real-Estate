@@ -130,14 +130,26 @@ export default function Services() {
           </div>
         </div>
 
-        {/* Section 1: Hero Banner - "New Plans to Contact..." */}
+        {/* Section 1: Hero Banner Image & BOSS Feature Callout */}
         <section className="flex flex-col items-center text-center gap-6">
-          <div className="space-y-2">
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight font-display">
-              New Plans to Contact {activeTab}
-            </h1>
-            <div className="inline-block bg-blue-100/70 text-blue-900 font-extrabold text-sm sm:text-base px-4 py-1 rounded-md">
-              to close deals faster and grow business
+          {/* Main Panoramic Hero Banner Image Card */}
+          <div className="relative w-full h-56 sm:h-72 md:h-80 rounded-3xl overflow-hidden shadow-md group">
+            <img 
+              src="/images/service_property.jpg" 
+              alt="Real Estate Services Hero Banner" 
+              className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+            />
+            {/* Gradient Overlay for Readable Text */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10 flex flex-col justify-end p-6 sm:p-8 text-left">
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 bg-amber-950/60 backdrop-blur-md border border-amber-400/30 px-3 py-1 rounded-full inline-block w-fit mb-2">
+                GROW YOUR REAL ESTATE BUSINESS
+              </span>
+              <h1 className="text-xl sm:text-3xl md:text-4xl font-black text-white tracking-tight font-display drop-shadow-md">
+                New Plans to Contact {activeTab}
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-200 font-medium mt-1.5 max-w-xl leading-relaxed">
+                Close deals faster and reach thousands of verified property buyers, owners, and developers across Kerala.
+              </p>
             </div>
           </div>
 
