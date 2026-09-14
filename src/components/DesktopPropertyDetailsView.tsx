@@ -372,24 +372,32 @@ export default function DesktopPropertyDetailsView({
               <h2 className="text-xl font-bold text-gray-900 font-display">Contact Sellers</h2>
 
               {/* Seller Avatar & Information */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                <img
-                  src={property.agencyLogoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(property.ownerName || "Seller")}`}
-                  alt="Seller Avatar"
-                  className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm"
-                />
-                <div>
-                  <h3 className="font-bold text-base text-gray-900">
+              <div 
+                onClick={() => {
+                  if (property.ownerId) {
+                    navigate(`/agency/${property.ownerId}`);
+                  }
+                }}
+                className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 hover:bg-gray-100/80 border border-gray-100 cursor-pointer transition-colors group select-none"
+              >
+                {property.ownerAvatarUrl || property.agencyLogoUrl ? (
+                  <img
+                    src={mediaUrl(property.ownerAvatarUrl || property.agencyLogoUrl!)}
+                    alt="Seller Avatar"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm group-hover:scale-105 transition-transform shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xl flex items-center justify-center border-2 border-white shadow-sm group-hover:scale-105 transition-transform shrink-0">
+                    {property.ownerName ? property.ownerName.charAt(0).toUpperCase() : "S"}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-base text-gray-900 group-hover:text-blue-600 transition-colors truncate">
                     {property.ownerName || property.agencyName || property.brokerName || "Seller"}
                   </h3>
-                  <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                    <Phone className="w-3 h-3 text-blue-600" />
-                    <span>{property.contactNumber || property.ownerPhone || "+91 98765 43210"}</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1 truncate max-w-[180px]">
-                    <Mail className="w-3 h-3 text-blue-600 shrink-0" />
-                    <span className="truncate">{property.whatsappNumber ? `${property.whatsappNumber}@wa` : "seller@keralarealty.com"}</span>
-                  </div>
+                  <p className="text-[11px] font-semibold text-blue-600 hover:underline mt-0.5">
+                    View profile & all listings →
+                  </p>
                 </div>
               </div>
 

@@ -47,6 +47,7 @@ function toPublicProperty(row, media = [], isSaved = false) {
     contactNumber: row.contact_number,
     whatsappNumber: row.whatsapp_number,
     ownerName: row.owner_name,
+    ownerAvatarUrl: row.owner_avatar_url || null,
     brokerName: row.broker_name,
     agencyName: row.agency_name,
     agencyLogoUrl: row.agency_logo_url,
@@ -286,7 +287,7 @@ router.get("/mine", requireAuth, async (req, res) => {
 router.get("/:id", optionalAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT p.*, u.name AS owner_name, u.phone AS owner_phone, u.role AS user_role,
+      `SELECT p.*, u.name AS owner_name, u.phone AS owner_phone, u.avatar_url AS owner_avatar_url, u.role AS user_role,
               u.agency_address, u.agency_district
        FROM properties p JOIN users u ON u.id = p.owner_id
        WHERE p.id = ?`,

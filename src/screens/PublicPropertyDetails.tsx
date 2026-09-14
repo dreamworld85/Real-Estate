@@ -714,18 +714,25 @@ View Details: ${window.location.origin}/property/${property.id}`;
             <>
             {/* 3. OWNER / AGENT CARD SECTION */}
             <div className="flex items-center justify-between p-4 bg-slate-100/55 rounded-3xl border border-charcoal/5 gap-3">
-              <div className="flex items-center gap-3.5 min-w-0">
+              <div 
+                onClick={() => {
+                  if (property.ownerId) {
+                    navigate(`/agency/${property.ownerId}`);
+                  }
+                }}
+                className="flex items-center gap-3.5 min-w-0 cursor-pointer group flex-1"
+              >
                 {/* Avatar with checked verified badge overlay */}
                 <div className="relative shrink-0 select-none">
-                  {property.listingRole === "Agency" && property.agencyLogoUrl ? (
+                  {property.ownerAvatarUrl || (property.listingRole === "Agency" && property.agencyLogoUrl) ? (
                     <img 
-                      src={mediaUrl(property.agencyLogoUrl)} 
-                      alt="Logo" 
-                      className="w-14 h-14 agent-avatar-circle rounded-full object-cover border border-charcoal/8 shrink-0"
+                      src={mediaUrl(property.ownerAvatarUrl || property.agencyLogoUrl!)} 
+                      alt="Profile Avatar" 
+                      className="w-14 h-14 agent-avatar-circle rounded-full object-cover border border-charcoal/8 shrink-0 group-hover:scale-105 transition-transform"
                     />
                   ) : (
-                    <div className="w-14 h-14 agent-avatar-circle rounded-full bg-slate-50 border border-charcoal/8 flex items-center justify-center text-slate-700 font-extrabold text-base agent-avatar-text font-display shrink-0">
-                      {property.listingRole ? property.listingRole.charAt(0) : "O"}
+                    <div className="w-14 h-14 agent-avatar-circle rounded-full bg-slate-50 border border-charcoal/8 flex items-center justify-center text-slate-700 font-extrabold text-base agent-avatar-text font-display shrink-0 group-hover:scale-105 transition-transform">
+                      {property.ownerName ? property.ownerName.charAt(0).toUpperCase() : (property.listingRole ? property.listingRole.charAt(0) : "O")}
                     </div>
                   )}
                   {/* Verified green check badge */}
@@ -735,30 +742,24 @@ View Details: ${window.location.origin}/property/${property.id}`;
                 </div>
 
                 <div className="flex flex-col min-w-0 text-left">
-                  <span className="font-display font-black text-sm text-charcoal truncate max-w-[140px] leading-tight">
+                  <span className="font-display font-black text-sm text-charcoal truncate max-w-[140px] leading-tight group-hover:text-emerald-700 transition-colors">
                     {property.listingRole === "Agency"
-                      ? (property.agencyName || "Agency")
+                      ? (property.agencyName || property.ownerName || "Agency")
                       : property.listingRole === "Broker"
-                      ? (property.brokerName || "Broker")
+                      ? (property.brokerName || property.ownerName || "Broker")
                       : (property.ownerName || "Owner")}
                   </span>
                   <span className="text-[9.5px] font-bold text-[#25D366] mt-0.5">
                     Verified Real Estate Agent
                   </span>
                   <button 
-                    onClick={() => {
-                      if (!token) {
-                        localStorage.setItem("pending_deep_link", `/property/${property.id}`);
-                        navigate("/login");
-                        return;
-                      }
-                      if (!hasAccess) {
-                        setShowPaywall(true);
-                      } else {
-                        setShowContactModal(true);
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (property.ownerId) {
+                        navigate(`/agency/${property.ownerId}`);
                       }
                     }}
-                    className="text-[9.5px] text-slate font-black text-left hover:underline select-none mt-1 uppercase tracking-wider flex items-center gap-0.5"
+                    className="text-[9.5px] text-slate font-black text-left hover:underline select-none mt-1 uppercase tracking-wider flex items-center gap-0.5 hover:text-emerald-700 cursor-pointer"
                   >
                     View agent profile <span className="font-sans text-[8px] opacity-75">{`>`}</span>
                   </button>
@@ -925,51 +926,36 @@ View Details: ${window.location.origin}/property/${property.id}`;
             </button>
 
             {/* Entity Icon / Image Profile Header */}
-            {property.listingRole === "Agency" ? (
-              <div className="flex flex-col items-center gap-2.5 mt-2">
-                {property.agencyLogoUrl ? (
-                  <img 
-                    src={mediaUrl(property.agencyLogoUrl)} 
-                    alt="Agency Logo" 
-                    className="w-16 h-16 rounded-full object-cover border-2 border-charcoal/10 shadow-sm"
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center border-2 border-charcoal/10 shadow-sm text-slate">
-                    <span className="text-xl font-bold text-slate-500">A</span>
-                  </div>
-                )}
-                <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full select-none">
-                  Agency Profile
-                </span>
-                <h3 className="font-display font-extrabold text-lg text-ink leading-snug">
-                  {property.agencyName || "Agency"}
-                </h3>
-              </div>
-            ) : property.listingRole === "Broker" ? (
-              <div className="flex flex-col items-center gap-2.5 mt-2">
-                <div className="w-16 h-16 rounded-full bg-sky-50 flex items-center justify-center border-2 border-sky-500/25 shadow-sm text-sky-600">
-                  <span className="text-xl font-bold">B</span>
+            <div 
+              onClick={() => {
+                if (property.ownerId) {
+                  setShowContactModal(false);
+                  navigate(`/agency/${property.ownerId}`);
+                }
+              }}
+              className="flex flex-col items-center gap-2.5 mt-2 cursor-pointer group select-none"
+            >
+              {property.ownerAvatarUrl || property.agencyLogoUrl ? (
+                <img 
+                  src={mediaUrl(property.ownerAvatarUrl || property.agencyLogoUrl!)} 
+                  alt="Profile Avatar" 
+                  className="w-16 h-16 rounded-full object-cover border-2 border-charcoal/10 shadow-sm group-hover:scale-105 transition-transform"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center border-2 border-charcoal/10 shadow-sm text-slate group-hover:scale-105 transition-transform font-bold text-xl text-emerald-800">
+                  {property.ownerName ? property.ownerName.charAt(0).toUpperCase() : (property.listingRole ? property.listingRole.charAt(0) : "O")}
                 </div>
-                <span className="text-[10px] uppercase font-bold text-sky-600 bg-sky-50 px-2.5 py-0.5 rounded-full select-none">
-                  Broker Profile
-                </span>
-                <h3 className="font-display font-extrabold text-lg text-ink leading-snug">
-                  {property.brokerName || "Broker"}
-                </h3>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2.5 mt-2">
-                <div className="w-16 h-16 rounded-full bg-indigo-50/50 flex items-center justify-center border-2 border-indigo-500/20 shadow-sm text-indigo-600">
-                  <span className="text-xl font-bold">O</span>
-                </div>
-                <span className="text-[10px] uppercase font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full select-none">
-                  Owner Profile
-                </span>
-                <h3 className="font-display font-extrabold text-lg text-ink leading-snug">
-                  {property.ownerName || "Owner"}
-                </h3>
-              </div>
-            )}
+              )}
+              <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                {property.listingRole || "Owner"} Profile
+              </span>
+              <h3 className="font-display font-extrabold text-lg text-ink leading-snug group-hover:text-emerald-700 transition-colors">
+                {property.ownerName || property.agencyName || property.brokerName || "Seller"}
+              </h3>
+              <p className="text-[10px] font-bold text-emerald-700 hover:underline">
+                View profile & all properties →
+              </p>
+            </div>
 
             {/* Contact Buttons with Icon & Label */}
             <div className="w-full flex flex-col gap-2.5 mt-1 border-t border-slate-100 pt-4">
