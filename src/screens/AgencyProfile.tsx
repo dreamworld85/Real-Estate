@@ -130,7 +130,7 @@ export default function AgencyProfile() {
               No active listings posted yet.
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {listings.map((p) => (
                 <PropertyCard key={p.id} property={p} />
               ))}
