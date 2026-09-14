@@ -833,8 +833,8 @@ app.get(["/apk", "/apk/"], (_req, res) => {
         <div class="card">
           <h1>Sparrows Mobile Apps</h1>
           <p>Download the official Android APK files below:</p>
-          <a href="/apk/sparrows.apk" class="btn" download>📱 Download Sparrows App (User)</a>
-          <a href="/apk/sparrows-admin.apk" class="btn btn-admin" download>🛠️ Download Sparrows Admin App</a>
+          <a href="/apk/sparrows.apk?v=2.0" class="btn" download>📱 Download Sparrows App (User)</a>
+          <a href="/apk/sparrows-admin.apk?v=2.0" class="btn btn-admin" download>🛠️ Download Sparrows Admin App</a>
         </div>
       </body>
     </html>

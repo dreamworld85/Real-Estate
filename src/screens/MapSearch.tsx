@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, MapPin, X, Search as SearchIcon, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { api, ApiProperty, mediaUrl } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import PropertyCard from "@/components/PropertyCard";
-import { STATE_COORDINATES } from "@/lib/indiaLocationData";
+import { INDIAN_STATES, STATE_COORDINATES } from "@/lib/indiaLocationData";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
 
@@ -33,14 +33,19 @@ function formatPrice(price: number): string {
 
 export default function MapSearch() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialQ = searchParams.get("q") || searchParams.get("search") || "";
+  const initialLoc = searchParams.get("state") || searchParams.get("district") || "";
+
   const [properties, setProperties] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapLoading, setMapLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState<ApiProperty | null>(null);
   
   // Search query & location dropdown states
-  const [query, setQuery] = useState("");
-  const [district, setDistrict] = useState("");
+  const [query, setQuery] = useState(initialQ);
+  const [district, setDistrict] = useState(initialLoc);
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -60,7 +65,7 @@ export default function MapSearch() {
         if (data) {
           const states = data.map(p => p.state).filter((s): s is string => Boolean(s));
           const districts = data.map(p => p.district).filter((d): d is string => Boolean(d));
-          const unique: string[] = Array.from(new Set([...states, ...districts])).sort();
+          const unique: string[] = Array.from(new Set([...INDIAN_STATES, ...states, ...districts])).sort();
           setAvailableDistricts(unique);
         }
       })

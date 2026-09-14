@@ -32,8 +32,26 @@ export default function Search() {
   
   useEffect(() => {
     const qParam = new URLSearchParams(location.search).get("q") || "";
-    setQuery(qParam);
+    if (qParam) {
+      setQuery(qParam);
+      const qTrim = qParam.trim().toLowerCase();
+      const matchedState = INDIAN_STATES.find((s) => s.toLowerCase() === qTrim);
+      if (matchedState) {
+        setSelectedState(matchedState);
+      }
+    }
   }, [location.search]);
+
+  // Auto-detect state if typed search query matches an Indian state
+  useEffect(() => {
+    if (query) {
+      const qTrim = query.trim().toLowerCase();
+      const matchedState = INDIAN_STATES.find((s) => s.toLowerCase() === qTrim);
+      if (matchedState && selectedState !== matchedState) {
+        setSelectedState(matchedState);
+      }
+    }
+  }, [query]);
   
   const [rawResults, setRawResults] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(false);
@@ -147,7 +165,14 @@ export default function Search() {
           
           {/* Dedicated Map Search Button with Google Maps Icon */}
           <button
-            onClick={() => navigate("/map-search")}
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (selectedState) params.set("state", selectedState);
+              if (district) params.set("district", district);
+              if (query) params.set("q", query);
+              const queryString = params.toString();
+              navigate(queryString ? `/map-search?${queryString}` : "/map-search");
+            }}
             className="w-11 h-11 rounded-2xl border border-blue-200 bg-white hover:bg-blue-50 text-emerald-700 transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center shrink-0 p-1.5"
             aria-label="Map Search"
             title="Map Search"
