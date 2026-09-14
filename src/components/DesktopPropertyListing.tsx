@@ -185,7 +185,9 @@ export default function DesktopPropertyListing({
         }
 
         const bounds: [number, number][] = [];
-        const mapList = mapFilteredProperties;
+        const mapList = allProperties.length > 0 ? allProperties : (properties.length > 0 ? properties : []);
+
+        const activeStateName = (filters.state && filters.state !== "All States (India)") ? filters.state : activeLocationQuery;
 
         mapList.forEach((prop, idx) => {
           const rawLat = prop.latitude ? parseFloat(String(prop.latitude)) : null;
@@ -215,12 +217,14 @@ export default function DesktopPropertyListing({
           const purposeShort = (prop.purpose || "For Sale").replace("For ", "");
 
           const isSelectedPin = selectedProperty?.id === prop.id;
+          const isStateMatch = activeStateName && prop.state && prop.state.toLowerCase() === activeStateName.toLowerCase();
           const isLocMatch = activeLocationQuery && (
             prop.district.toLowerCase().includes(activeLocationQuery.toLowerCase()) ||
-            prop.address.toLowerCase().includes(activeLocationQuery.toLowerCase())
+            prop.address.toLowerCase().includes(activeLocationQuery.toLowerCase()) ||
+            (prop.state && prop.state.toLowerCase().includes(activeLocationQuery.toLowerCase()))
           );
 
-          const bgStyle = isSelectedPin ? "#0F3D3E" : (isLocMatch ? "#1B5E4F" : "#3B82F6");
+          const bgStyle = isSelectedPin ? "#0F3D3E" : ((isStateMatch || isLocMatch) ? "#1B5E4F" : "#3B82F6");
           const borderStyle = isSelectedPin ? "3px solid #E5C158" : "2px solid #ffffff";
           const scaleStyle = isSelectedPin ? "transform: scale(1.15); z-index: 99999;" : "";
 
@@ -247,7 +251,6 @@ export default function DesktopPropertyListing({
           (key) => key.toLowerCase() === activeLocationQuery.toLowerCase()
         );
 
-        const activeStateName = (filters.state && filters.state !== "All States (India)") ? filters.state : activeLocationQuery;
         const matchedStateKey = Object.keys(STATE_COORDINATES).find(
           (key) => key.toLowerCase() === activeStateName.toLowerCase()
         );
@@ -265,21 +268,35 @@ export default function DesktopPropertyListing({
 
           boundaryCircleRef.current = circle;
           mapRef.current.fitBounds(circle.getBounds(), { padding: [30, 30] });
-        } else if (bounds.length > 0 && mapRef.current && !selectedProperty) {
-          mapRef.current.fitBounds(bounds, { padding: [40, 40] });
         } else if (matchedStateKey && STATE_COORDINATES[matchedStateKey] && mapRef.current) {
           const stCoords = STATE_COORDINATES[matchedStateKey];
           const circle = window.L.circle([stCoords.lat, stCoords.lng], {
-            radius: 80000,
-            color: "#3B82F6",
+            radius: 90000,
+            color: "#EF4444",
             weight: 2.5,
             dashArray: "6, 8",
-            fillColor: "#3B82F6",
-            fillOpacity: 0.06
+            fillColor: "#EF4444",
+            fillOpacity: 0.08
           }).addTo(mapRef.current);
 
           boundaryCircleRef.current = circle;
-          mapRef.current.setView([stCoords.lat, stCoords.lng], 7);
+
+          const statePinBounds = mapList
+            .filter(p => p.state && p.state.toLowerCase() === matchedStateKey.toLowerCase())
+            .map(p => {
+              const lat = parseFloat(String(p.latitude));
+              const lng = parseFloat(String(p.longitude));
+              return (!isNaN(lat) && !isNaN(lng) && lat !== 0) ? [lat, lng] as [number, number] : null;
+            })
+            .filter((b): b is [number, number] => Boolean(b));
+
+          if (statePinBounds.length > 0 && !selectedProperty) {
+            mapRef.current.fitBounds(statePinBounds, { padding: [50, 50] });
+          } else {
+            mapRef.current.setView([stCoords.lat, stCoords.lng], 7);
+          }
+        } else if (bounds.length > 0 && mapRef.current && !selectedProperty) {
+          mapRef.current.fitBounds(bounds, { padding: [40, 40] });
         } else if (mapRef.current) {
           mapRef.current.setView([KERALA_COORDS.lat, KERALA_COORDS.lng], 8);
         }
@@ -297,7 +314,7 @@ export default function DesktopPropertyListing({
 
     initMap();
     return () => clearTimeout(timer);
-  }, [properties, mapFilteredProperties, selectedProperty, showMap, activeLocationQuery, filters.state]);
+  }, [allProperties, properties, mapFilteredProperties, selectedProperty, showMap, activeLocationQuery, filters.state]);
 
   // Smoothly scroll selected property card into view when selected from map
   useEffect(() => {

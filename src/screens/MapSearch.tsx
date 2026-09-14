@@ -4,6 +4,7 @@ import { ChevronLeft, MapPin, X, Search as SearchIcon, ChevronDown, SlidersHoriz
 import { api, ApiProperty, mediaUrl } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import PropertyCard from "@/components/PropertyCard";
+import { STATE_COORDINATES } from "@/lib/indiaLocationData";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
 
@@ -135,9 +136,11 @@ export default function MapSearch() {
     markersRef.current = [];
 
     const latLngBounds: any[] = [];
+    const mapList = properties.length > 0 ? properties : [];
+    const activeSearch = district || query;
 
-    // Place markers for filtered properties
-    filteredProperties.forEach((property) => {
+    // Place markers for all properties
+    mapList.forEach((property) => {
       let lat = parseFloat(property.latitude as string);
       let lng = parseFloat(property.longitude as string);
 
@@ -151,15 +154,24 @@ export default function MapSearch() {
         lng = fallback.lng + offsetLng;
       }
 
-      latLngBounds.push([lat, lng]);
-
       const isSelected = selectedProperty?.id === property.id;
+      const isMatched = !activeSearch || (
+        property.district.toLowerCase().includes(activeSearch.toLowerCase()) ||
+        property.address.toLowerCase().includes(activeSearch.toLowerCase()) ||
+        (property.state && property.state.toLowerCase().includes(activeSearch.toLowerCase()))
+      );
+
+      if (isMatched) {
+        latLngBounds.push([lat, lng]);
+      }
+
       const priceText = formatPrice(property.price);
+      const bgStyle = isSelected ? '#FF5A5F' : (isMatched ? '#60A963' : '#3B82F6');
 
       const customIcon = window.L.divIcon({
         className: "custom-leaflet-price-pin",
         html: `<div style="
-          background: ${isSelected ? '#FF5A5F' : '#60A963'};
+          background: ${bgStyle};
           color: #ffffff;
           padding: 5px 11px;
           border-radius: 20px;
@@ -184,14 +196,25 @@ export default function MapSearch() {
       markersRef.current.push(marker);
     });
 
-    if (latLngBounds.length > 0 && mapRef.current && !selectedProperty) {
+    const stateMatchKey = activeSearch ? Object.keys(STATE_COORDINATES).find(
+      (key) => key.toLowerCase() === activeSearch.toLowerCase()
+    ) : null;
+
+    if (stateMatchKey && STATE_COORDINATES[stateMatchKey] && mapRef.current) {
+      const st = STATE_COORDINATES[stateMatchKey];
+      if (latLngBounds.length > 0 && !selectedProperty) {
+        mapRef.current.fitBounds(latLngBounds, { padding: [40, 40] });
+      } else {
+        mapRef.current.setView([st.lat, st.lng], 7);
+      }
+    } else if (latLngBounds.length > 0 && mapRef.current && !selectedProperty) {
       if (latLngBounds.length === 1) {
         mapRef.current.setView(latLngBounds[0], 12);
       } else {
         mapRef.current.fitBounds(latLngBounds, { padding: [40, 40] });
       }
     }
-  }, [filteredProperties, selectedProperty]);
+  }, [properties, filteredProperties, selectedProperty, district, query]);
 
   const handleMarkerClick = (property: ApiProperty, lat: number, lng: number) => {
     setSelectedProperty(property);
