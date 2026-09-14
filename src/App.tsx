@@ -51,6 +51,7 @@ import AdminSettings from "@/screens/Admin/Settings";
 import AdminUserReviews from "@/screens/Admin/UserReviews";
 import RoleUpgrades from "@/screens/Admin/RoleUpgrades";
 import Subscriptions from "@/screens/Admin/Subscriptions";
+import ServiceEnquiries from "@/screens/Admin/ServiceEnquiries";
 
 export default function App() {
   const location = useLocation();
@@ -140,6 +141,7 @@ export default function App() {
           <Route path="properties" element={<AdminProperties />} />
           <Route path="properties/:id" element={<AdminPropertyDetails />} />
           <Route path="reports" element={<AdminReportedListings />} />
+          <Route path="enquiries" element={<ServiceEnquiries />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="logs" element={<AdminActivityLogs />} />
           <Route path="settings" element={<AdminSettings />} />

@@ -1248,4 +1248,35 @@ router.delete("/top-locations/:id", async (req, res) => {
   }
 });
 
+// GET /api/admin/service-enquiries (Admin Protected)
+router.get("/service-enquiries", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM service_enquiries ORDER BY id DESC");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin/service-enquiries/:id/status (Admin Protected)
+router.patch("/service-enquiries/:id/status", async (req, res) => {
+  try {
+    const { status } = req.body;
+    await pool.query("UPDATE service_enquiries SET status = ? WHERE id = ?", [status, req.params.id]);
+    res.json({ success: true, message: "Status updated successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/service-enquiries/:id (Admin Protected)
+router.delete("/service-enquiries/:id", async (req, res) => {
+  try {
+    await pool.query("DELETE FROM service_enquiries WHERE id = ?", [req.params.id]);
+    res.json({ success: true, message: "Enquiry deleted successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

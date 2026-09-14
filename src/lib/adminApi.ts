@@ -252,4 +252,41 @@ export const adminApi = {
     if (!res.ok) throw new Error("Failed to load notifications.");
     return res.json();
   },
+
+  async getServiceEnquiries(): Promise<ServiceEnquiry[]> {
+    const res = await fetch(`${API_URL}/api/admin/service-enquiries`, { headers: getAdminHeaders() });
+    if (!res.ok) throw new Error("Failed to load service enquiries.");
+    return res.json();
+  },
+
+  async updateServiceEnquiryStatus(id: number, status: string): Promise<void> {
+    const res = await fetch(`${API_URL}/api/admin/service-enquiries/${id}/status`, {
+      method: "PATCH",
+      headers: getAdminHeaders(),
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error("Failed to update enquiry status.");
+  },
+
+  async deleteServiceEnquiry(id: number): Promise<void> {
+    const res = await fetch(`${API_URL}/api/admin/service-enquiries/${id}`, {
+      method: "DELETE",
+      headers: getAdminHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to delete service enquiry.");
+  },
 };
+
+export interface ServiceEnquiry {
+  id: number;
+  user_id: number | null;
+  name: string;
+  email: string;
+  city: string;
+  user_class: string;
+  phone: string;
+  service_name: string;
+  status: string;
+  created_at: string;
+}
+

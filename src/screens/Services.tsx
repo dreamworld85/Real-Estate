@@ -21,6 +21,7 @@ import DesktopHeader from "@/components/DesktopHeader";
 import DesktopFooter from "@/components/DesktopFooter";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/lib/AuthContext";
+import RequestInformationModal from "@/components/RequestInformationModal";
 
 type ServiceTab = "Owners" | "Dealers" | "Builders";
 
@@ -63,7 +64,10 @@ export default function Services() {
   
   // Drawer popup state for Know More
   const [selectedServiceKey, setSelectedServiceKey] = useState<string | null>(null);
-  const [callbackRequested, setCallbackRequested] = useState(false);
+
+  // Callback modal state
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [requestServiceName, setRequestServiceName] = useState("General Service");
 
   // Responsive resize handler
   useState(() => {
@@ -74,20 +78,19 @@ export default function Services() {
 
   const handleOpenDrawer = (serviceKey: string) => {
     setSelectedServiceKey(serviceKey);
-    setCallbackRequested(false);
   };
 
   const handleCloseDrawer = () => {
     setSelectedServiceKey(null);
-    setCallbackRequested(false);
   };
 
-  const handleGetCallback = () => {
-    setCallbackRequested(true);
-    setTimeout(() => {
-      setCallbackRequested(false);
-      setSelectedServiceKey(null);
-    }, 2500);
+  const handleGetCallback = (serviceTitle?: string) => {
+    if (serviceTitle) setRequestServiceName(serviceTitle);
+    else if (selectedServiceKey) setRequestServiceName(selectedServiceKey);
+    else setRequestServiceName("General Service");
+
+    setSelectedServiceKey(null); // Close drawer
+    setIsRequestModalOpen(true); // Open modal
   };
 
   const activeService = selectedServiceKey ? SERVICE_DETAILS[selectedServiceKey] : null;
@@ -419,24 +422,26 @@ export default function Services() {
 
             {/* Bottom Footer Action */}
             <div className="border-t border-gray-100 pt-4 flex flex-col gap-3">
-              {callbackRequested ? (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center flex items-center justify-center gap-2 text-emerald-800 font-bold text-xs">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span>Request received! Our team will call you back shortly.</span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleGetCallback}
-                  className="w-full py-3.5 px-6 bg-[#42b85d] hover:bg-[#369a4d] text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer text-center"
-                >
-                  Get a callback
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => handleGetCallback(activeService.title)}
+                className="w-full py-3.5 px-6 bg-[#42b85d] hover:bg-[#369a4d] text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer text-center flex items-center justify-center gap-2"
+              >
+                <PhoneCall className="w-4 h-4" />
+                <span>Get a callback</span>
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* REQUEST INFORMATION Modal Popup */}
+      <RequestInformationModal
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        serviceName={requestServiceName}
+        defaultClass={activeTab}
+      />
 
       {/* Footer for Desktop */}
       <DesktopFooter />

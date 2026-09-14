@@ -697,3 +697,27 @@ export interface ApiMobileShareSettings {
   background_image_url?: string;
 }
 
+export interface ServiceEnquiryData {
+  userId?: number | null;
+  name: string;
+  email: string;
+  city: string;
+  userClass: string;
+  phone: string;
+  serviceName?: string;
+}
+
+export async function submitServiceEnquiry(data: ServiceEnquiryData): Promise<{ success: boolean; id: number }> {
+  const res = await fetch(`${API_URL}/api/service-enquiries`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to submit enquiry request.");
+  }
+  return res.json();
+}
+
+

@@ -479,6 +479,23 @@ async function checkDbMigration() {
     `);
     console.log("Database top_locations table verified.");
 
+    // Create service_enquiries table if it does not exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS service_enquiries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        name VARCHAR(120) NOT NULL,
+        email VARCHAR(120) NOT NULL,
+        city VARCHAR(120) NOT NULL,
+        user_class VARCHAR(50) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        service_name VARCHAR(120) NOT NULL,
+        status VARCHAR(50) DEFAULT 'New',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log("Database service_enquiries table verified.");
+
     // Seed default top locations if empty
     const [locations] = await pool.query("SELECT COUNT(*) AS count FROM top_locations");
     if (locations[0].count === 0) {
@@ -873,6 +890,25 @@ app.get("/api/debug-files", (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// POST /api/service-enquiries
+app.post("/api/service-enquiries", async (req, res) => {
+  try {
+    const { userId, name, email, city, userClass, phone, serviceName } = req.body;
+    if (!name || !email || !city || !userClass || !phone) {
+      return res.status(400).json({ error: "All required fields must be provided" });
+    }
+    const [result] = await pool.query(
+      `INSERT INTO service_enquiries (user_id, name, email, city, user_class, phone, service_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [userId || null, name, email, city, userClass, phone, serviceName || "General Service"]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err) {
+    console.error("Failed to save service enquiry:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/admin", adminRoutes);

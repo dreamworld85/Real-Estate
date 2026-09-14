@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   CreditCard,
   User,
-  Sliders
+  Sliders,
+  PhoneCall
 } from "lucide-react";
 import { adminApi, AdminUser } from "@/lib/adminApi";
 
@@ -66,6 +67,7 @@ export default function AdminLayout() {
     { label: "Users", path: "/admin/users", icon: Users },
     { label: "Properties", path: "/admin/properties", icon: Building2 },
     { label: "Reports", path: "/admin/reports", icon: Flag },
+    { label: "User Enquiry", path: "/admin/enquiries", icon: PhoneCall },
   ];
 
   function handleLogout() {
@@ -81,6 +83,7 @@ export default function AdminLayout() {
   else if (currentPath === "/admin/properties") pageTitle = "Properties";
   else if (currentPath.startsWith("/admin/properties/")) pageTitle = "Property Details";
   else if (currentPath === "/admin/reports") pageTitle = "Reported Listings";
+  else if (currentPath === "/admin/enquiries") pageTitle = "User Enquiries";
   else if (currentPath === "/admin/analytics") pageTitle = "Analytics";
   else if (currentPath === "/admin/logs") pageTitle = "Activity Logs";
   else if (currentPath === "/admin/settings") pageTitle = "Settings";
