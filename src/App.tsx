@@ -33,6 +33,7 @@ import RefundPolicy from "@/screens/Legal/RefundPolicy";
 import ContactUs from "@/screens/Legal/ContactUs";
 import DataDeletion from "@/screens/Legal/DataDeletion";
 import SubscriptionDetails from "@/screens/SubscriptionDetails";
+import Services from "@/screens/Services";
 import Landing from "@/screens/Landing";
 
 // Admin Screens
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/visitors-enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
         <Route path="/enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
         <Route path="/subscription" element={<ProtectedRoute><SubscriptionDetails /></ProtectedRoute>} />
+        <Route path="/services" element={<Services />} />
         <Route path="/settings" element={<ProtectedRoute><ComingSoon title="Settings" /></ProtectedRoute>} />
 
         <Route path="/my-properties" element={<ProtectedRoute><MyProperties /></ProtectedRoute>} />

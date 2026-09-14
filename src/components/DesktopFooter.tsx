@@ -33,6 +33,12 @@ export default function DesktopFooter() {
             </h4>
             <div className="flex flex-col gap-2.5 text-xs font-medium text-gray-300">
               <span 
+                onClick={() => navigate("/services")} 
+                className="text-[#C89B3C] font-bold hover:text-white transition-colors cursor-pointer w-fit"
+              >
+                Our Services (Plans)
+              </span>
+              <span 
                 onClick={() => navigate("/privacy")} 
                 className="hover:text-white transition-colors cursor-pointer w-fit"
               >
