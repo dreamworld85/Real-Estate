@@ -308,7 +308,8 @@ export default function DesktopHeader({
             value={selectedState}
             defaultValue="All States (India)"
             options={STATES}
-            maxHeight="150px"
+            searchPlaceholder="Search state..."
+            maxHeight="180px"
             onChange={(newSt) => {
               setSelectedState(newSt);
               const newDistrictOpts = getDistrictOptionsForState(newSt);
@@ -324,7 +325,8 @@ export default function DesktopHeader({
             defaultValue={currentDistrictOptions[0]}
             options={currentDistrictOptions}
             isMultiSelect={true}
-            maxHeight="150px"
+            searchPlaceholder="Search district..."
+            maxHeight="180px"
             onChange={(newDist) => {
               setDistrict(newDist);
               if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: selectedState, district: newDist, propertyType });
@@ -337,7 +339,8 @@ export default function DesktopHeader({
             defaultValue="All Types"
             options={dropdownTypes}
             isMultiSelect={true}
-            maxHeight="150px"
+            searchPlaceholder="Search type..."
+            maxHeight="180px"
             onChange={(newType) => {
               setPropertyType(newType);
               setActiveCategory(newType === "All Types" ? "All" : newType);
