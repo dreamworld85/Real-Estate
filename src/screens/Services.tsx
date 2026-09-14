@@ -55,8 +55,9 @@ const SERVICE_DETAILS: Record<string, { title: string; bullets: string[] }> = {
   "Premium Plan": {
     title: "Premium Plan",
     bullets: [
-      "Let your property stand out from the crowd with larger display on search results and added animation to attract buyers.",
-      "Enjoy priority listing promoter status, relationship manager support, and verified seller trust badge."
+      "Attract customers with bigger & better listing - Bigger and prominent display on search result page",
+      "Generate more buyer/tenant interest in your listing by highlighting unique property features",
+      "Win customers trust with 2x more free verifications - Customers are ~70-100% more likely to contact a verified listing"
     ]
   }
 };
