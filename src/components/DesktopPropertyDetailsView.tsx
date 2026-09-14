@@ -15,7 +15,11 @@ import {
   Mail, 
   Image as ImageIcon,
   Check,
-  Send
+  Send,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Play
 } from "lucide-react";
 import { ApiPropertyDetail, mediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
@@ -58,8 +62,12 @@ export default function DesktopPropertyDetailsView({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
 
-  const mediaList = property.images && property.images.length > 0
-    ? property.images.map((img: string) => img.startsWith("/uploads/") ? mediaUrl(img) : img)
+  const images = property.images && property.images.length > 0 ? property.images : [];
+  const videos = property.videos || [];
+  const totalMedia = (images.length > 0 ? images.length : 1) + videos.length;
+
+  const mediaList = images.length > 0
+    ? images.map((img: string) => img.startsWith("/uploads/") ? mediaUrl(img) : img)
     : [FALLBACK_IMAGE];
 
   const mainPhoto = mediaList[0] || FALLBACK_IMAGE;
@@ -67,6 +75,24 @@ export default function DesktopPropertyDetailsView({
   while (gridPhotos.length < 4) {
     gridPhotos.push(FALLBACK_IMAGE);
   }
+
+  // Keyboard navigation for Lightbox
+  useEffect(() => {
+    if (!showGalleryModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowGalleryModal(false);
+      } else if (e.key === "ArrowLeft") {
+        setActivePhotoIdx((prev) => (prev > 0 ? prev - 1 : totalMedia - 1));
+      } else if (e.key === "ArrowRight") {
+        setActivePhotoIdx((prev) => (prev < totalMedia - 1 ? prev + 1 : 0));
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showGalleryModal, totalMedia]);
 
   // Initialize OpenStreetMap (Leaflet) for Property Location
   useEffect(() => {
@@ -210,20 +236,29 @@ export default function DesktopPropertyDetailsView({
         {/* 5-Photo Gallery Hero Grid matching Image 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[440px] rounded-3xl overflow-hidden shadow-sm">
           {/* Main Large Photo (7 Columns) */}
-          <div className="lg:col-span-7 relative h-full group bg-gray-100 cursor-pointer overflow-hidden">
+          <div 
+            onClick={() => {
+              setActivePhotoIdx(0);
+              setShowGalleryModal(true);
+            }}
+            className="lg:col-span-7 relative h-full group bg-gray-100 cursor-pointer overflow-hidden"
+          >
             <img
               src={mainPhoto}
               alt={property.title}
-              onClick={() => setShowGalleryModal(true)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
             
             <button
-              onClick={() => setShowGalleryModal(true)}
-              className="absolute bottom-4 right-4 flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-full shadow-lg transition"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActivePhotoIdx(0);
+                setShowGalleryModal(true);
+              }}
+              className="absolute bottom-4 right-4 flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-full shadow-lg transition cursor-pointer z-10"
             >
               <ImageIcon className="w-4 h-4" />
-              <span>View All Photos ({mediaList.length})</span>
+              <span>View All Photos ({totalMedia})</span>
             </button>
           </div>
 
@@ -232,7 +267,10 @@ export default function DesktopPropertyDetailsView({
             {gridPhotos.map((photo: string, i: number) => (
               <div
                 key={i}
-                onClick={() => setShowGalleryModal(true)}
+                onClick={() => {
+                  setActivePhotoIdx(i + 1);
+                  setShowGalleryModal(true);
+                }}
                 className="relative h-full bg-gray-100 rounded-xl overflow-hidden group cursor-pointer"
               >
                 <img
@@ -479,18 +517,134 @@ export default function DesktopPropertyDetailsView({
 
       {/* Gallery Lightbox Modal */}
       {showGalleryModal && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
-          <button
-            onClick={() => setShowGalleryModal(false)}
-            className="absolute top-6 right-6 p-3 bg-white/10 text-white hover:bg-white/20 rounded-full transition"
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-between items-center py-6 px-4 select-none animate-fade-in"
+          onClick={() => setShowGalleryModal(false)}
+        >
+          {/* Top Actions: Counter & Close */}
+          <div 
+            className="w-full max-w-5xl px-4 flex justify-between items-center text-white/90 z-20"
+            onClick={(e) => e.stopPropagation()}
           >
-            ✕
-          </button>
-          <img
-            src={mediaList[activePhotoIdx]}
-            alt="Full view"
-            className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
-          />
+            <span className="font-mono text-xs font-bold uppercase bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
+              {activePhotoIdx + 1} / {totalMedia}
+            </span>
+            <button
+              onClick={() => setShowGalleryModal(false)}
+              className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition cursor-pointer"
+              aria-label="Close Lightbox"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Main Media Preview Area with Navigation Arrows */}
+          <div 
+            className="relative w-full max-w-5xl flex-1 flex items-center justify-center p-2 my-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Left Arrow Button */}
+            {totalMedia > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActivePhotoIdx((prev) => (prev > 0 ? prev - 1 : totalMedia - 1));
+                }}
+                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 backdrop-blur-sm transition-all active:scale-95 cursor-pointer shadow-xl"
+                aria-label="Previous Media"
+              >
+                <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
+              </button>
+            )}
+
+            {/* Media Content */}
+            <div className="w-full h-full flex items-center justify-center">
+              {(() => {
+                const totalImg = images.length > 0 ? images.length : 1;
+                const isVid = activePhotoIdx >= totalImg;
+
+                if (isVid) {
+                  const vidSrc = videos[activePhotoIdx - totalImg];
+                  const fullVidUrl = vidSrc.startsWith("/uploads/") ? mediaUrl(vidSrc) : vidSrc;
+                  return (
+                    <video
+                      src={fullVidUrl}
+                      controls
+                      autoPlay
+                      className="max-h-[75vh] max-w-full rounded-2xl shadow-2xl"
+                    />
+                  );
+                } else {
+                  const imgSrc = images.length > 0 ? images[activePhotoIdx] : FALLBACK_IMAGE;
+                  const fullImgUrl = imgSrc.startsWith("/uploads/") ? mediaUrl(imgSrc) : imgSrc;
+                  return (
+                    <img
+                      src={fullImgUrl}
+                      alt={`Gallery view ${activePhotoIdx + 1}`}
+                      className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl"
+                    />
+                  );
+                }
+              })()}
+            </div>
+
+            {/* Right Arrow Button */}
+            {totalMedia > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActivePhotoIdx((prev) => (prev < totalMedia - 1 ? prev + 1 : 0));
+                }}
+                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 backdrop-blur-sm transition-all active:scale-95 cursor-pointer shadow-xl"
+                aria-label="Next Media"
+              >
+                <ChevronRight className="w-7 h-7 stroke-[2.5]" />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Thumbnails Strip */}
+          <div 
+            className="w-full max-w-5xl px-4 overflow-x-auto no-scrollbar flex gap-2.5 justify-center py-2 z-20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(images.length > 0 ? images : [FALLBACK_IMAGE]).map((img, idx) => {
+              const fullImgUrl = img.startsWith("/uploads/") ? mediaUrl(img) : img;
+              return (
+                <button
+                  key={`lightbox-thumb-${idx}`}
+                  onClick={() => setActivePhotoIdx(idx)}
+                  className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                    activePhotoIdx === idx
+                      ? "border-blue-500 scale-105 shadow-md"
+                      : "border-transparent opacity-50 hover:opacity-100"
+                  }`}
+                >
+                  <img src={fullImgUrl} alt={`thumb ${idx}`} className="w-full h-full object-cover" />
+                </button>
+              );
+            })}
+            {videos.map((vid, idx) => {
+              const videoIdx = (images.length > 0 ? images.length : 1) + idx;
+              const fullVidUrl = vid.startsWith("/uploads/") ? mediaUrl(vid) : vid;
+              return (
+                <button
+                  key={`lightbox-thumb-vid-${idx}`}
+                  onClick={() => setActivePhotoIdx(videoIdx)}
+                  className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 relative transition-all cursor-pointer ${
+                    activePhotoIdx === videoIdx
+                      ? "border-blue-500 scale-105 shadow-md"
+                      : "border-transparent opacity-50 hover:opacity-100"
+                  }`}
+                >
+                  <video src={fullVidUrl} className="w-full h-full object-cover brightness-[0.6]" muted playsInline />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Play className="w-4 h-4 fill-white text-white" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

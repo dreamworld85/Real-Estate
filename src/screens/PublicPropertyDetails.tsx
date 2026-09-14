@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye, Download, Play, Shield, Award, Calendar, Check, Building, Users, CheckCircle2, Tag, Image as ImageIcon } from "lucide-react";
+import { Heart, Share2, Flag, Phone, MessageCircle, ChevronLeft, ChevronRight, MapPin, X, Star, Maximize, BedDouble, Bath, Compass, Eye, Download, Play, Shield, Award, Calendar, Check, Building, Users, CheckCircle2, Tag, Image as ImageIcon } from "lucide-react";
 import { api, ApiPropertyDetail, mediaUrl, formatArea } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import RoleBadge from "@/components/RoleBadge";
@@ -178,6 +178,22 @@ export default function PublicPropertyDetails() {
   const hasAccess = !!property?.contactAccess;
 
   useEffect(() => {
+    if (lightboxIdx === null || !property) return;
+    const total = (property.images?.length || 0) + (property.videos?.length || 0);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setLightboxIdx((prev) => (prev !== null ? (prev > 0 ? prev - 1 : total - 1) : 0));
+      } else if (e.key === "ArrowRight") {
+        setLightboxIdx((prev) => (prev !== null ? (prev < total - 1 ? prev + 1 : 0) : 0));
+      } else if (e.key === "Escape") {
+        setLightboxIdx(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxIdx, property]);
+
+  useEffect(() => {
     if (!id) return;
     setLoading(true);
     api
@@ -340,7 +356,11 @@ View Details: ${window.location.origin}/property/${property.id}`;
               {property.images && property.images.length > 0 ? (
                 <>
                   {property.images.map((img, idx) => (
-                    <div key={`img-${idx}`} className="w-full h-full flex-shrink-0 snap-start">
+                    <div 
+                      key={`img-${idx}`} 
+                      className="w-full h-full flex-shrink-0 snap-start cursor-pointer"
+                      onClick={() => setLightboxIdx(idx)}
+                    >
                       <img
                         src={mediaUrl(img)}
                         alt={`${property.title} - ${idx + 1}`}
@@ -348,15 +368,22 @@ View Details: ${window.location.origin}/property/${property.id}`;
                       />
                     </div>
                   ))}
-                  {property.videos && property.videos.map((vid, idx) => (
-                    <div key={`vid-${idx}`} className="w-full h-full flex-shrink-0 snap-start bg-black flex items-center justify-center">
-                      <video
-                        src={mediaUrl(vid)}
-                        controls
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  ))}
+                  {property.videos && property.videos.map((vid, idx) => {
+                    const videoIdx = (property.images?.length || 0) + idx;
+                    return (
+                      <div 
+                        key={`vid-${idx}`} 
+                        className="w-full h-full flex-shrink-0 snap-start bg-black flex items-center justify-center cursor-pointer relative"
+                        onClick={() => setLightboxIdx(videoIdx)}
+                      >
+                        <video
+                          src={mediaUrl(vid)}
+                          controls
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    );
+                  })}
                 </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate">
@@ -398,7 +425,10 @@ View Details: ${window.location.origin}/property/${property.id}`;
               const total = (property.images?.length || 0) + (property.videos?.length || 0);
               if (total <= 1) return null;
               return (
-                <div className="absolute bottom-4 left-4 z-20 flex gap-1 bg-black/45 backdrop-blur-sm px-2.5 py-1 rounded-full items-center text-white text-[9.5px] font-black select-none shadow-sm">
+                <div 
+                  onClick={() => setLightboxIdx(activeIdx)}
+                  className="absolute bottom-4 left-4 z-20 flex gap-1 bg-black/45 backdrop-blur-sm px-2.5 py-1 rounded-full items-center text-white text-[9.5px] font-black select-none shadow-sm cursor-pointer hover:bg-black/60 transition-colors"
+                >
                   <ImageIcon size={11} className="text-white shrink-0 mr-0.5" />
                   <span>{activeIdx + 1} / {total}</span>
                 </div>
@@ -414,7 +444,10 @@ View Details: ${window.location.origin}/property/${property.id}`;
                     return (
                       <button
                         key={`thumb-${idx}`}
-                        onClick={() => handleThumbnailClick(idx)}
+                        onClick={() => {
+                          handleThumbnailClick(idx);
+                          setLightboxIdx(idx);
+                        }}
                         className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
                           isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
                         }`}
@@ -434,7 +467,10 @@ View Details: ${window.location.origin}/property/${property.id}`;
                       return (
                         <button
                           key={`thumb-${idx}`}
-                          onClick={() => handleThumbnailClick(idx)}
+                          onClick={() => {
+                            handleThumbnailClick(idx);
+                            setLightboxIdx(idx);
+                          }}
                           className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
                             isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-80 hover:opacity-100"
                           }`}
@@ -453,7 +489,10 @@ View Details: ${window.location.origin}/property/${property.id}`;
                       const isActive = activeIdx >= idx;
                       return (
                         <button
-                          onClick={() => handleThumbnailClick(idx)}
+                          onClick={() => {
+                            handleThumbnailClick(idx);
+                            setLightboxIdx(idx);
+                          }}
                           className={`w-[3.25rem] h-[3.25rem] rounded-[0.4rem] overflow-hidden relative flex-shrink-0 transition-all border-2 cursor-pointer ${
                             isActive ? "border-white scale-105 shadow-md" : "border-white/50 opacity-85 hover:opacity-100"
                           }`}
@@ -1027,57 +1066,92 @@ View Details: ${window.location.origin}/property/${property.id}`;
       {/* Interactive Media Lightbox Modal */}
       {lightboxIdx !== null && property && (
         <div 
-          className="fixed inset-0 bg-black/95 z-[100] flex flex-col justify-between items-center py-8 animate-fade-in"
+          className="fixed inset-0 bg-black/95 z-[100] flex flex-col justify-between items-center py-6 animate-fade-in select-none"
           onClick={() => setLightboxIdx(null)}
         >
           {/* Top Actions: Title & Close */}
-          <div className="w-full max-w-[420px] px-6 flex justify-between items-center select-none text-white/90">
-            <span className="font-display font-extrabold text-xs tracking-wider uppercase">
+          <div className="w-full max-w-[420px] sm:max-w-2xl px-6 flex justify-between items-center select-none text-white/90">
+            <span className="font-display font-extrabold text-xs tracking-wider uppercase bg-white/10 px-3 py-1 rounded-full">
               {lightboxIdx + 1} / {((property.images?.length || 0) + (property.videos?.length || 0))}
             </span>
             <button 
               onClick={() => setLightboxIdx(null)}
-              className="p-2 hover:bg-white/10 rounded-full transition-all cursor-pointer"
+              className="p-2 hover:bg-white/10 rounded-full transition-all cursor-pointer text-white"
+              aria-label="Close Lightbox"
             >
               <X size={20} />
             </button>
           </div>
 
-          {/* Main Media Swiper Box */}
-          <div className="w-full flex-1 flex items-center justify-center p-4">
-            {(() => {
-              const images = property.images || [];
-              const videos = property.videos || [];
-              const totalImg = images.length;
-              const isVid = lightboxIdx >= totalImg;
-              
-              if (isVid) {
-                const vidSrc = videos[lightboxIdx - totalImg];
-                return (
-                  <video 
-                    src={mediaUrl(vidSrc)} 
-                    controls 
-                    autoPlay 
-                    className="max-h-[70vh] max-w-full rounded-2xl shadow-2xl" 
-                    onClick={(e) => e.stopPropagation()} 
-                  />
-                );
-              } else {
-                const imgSrc = images[lightboxIdx] || FALLBACK_IMAGE;
-                return (
-                  <img 
-                    src={mediaUrl(imgSrc)} 
-                    alt="Gallery Preview" 
-                    className="max-h-[70vh] max-w-full object-contain rounded-2xl shadow-2xl" 
-                    onClick={(e) => e.stopPropagation()} 
-                  />
-                );
-              }
-            })()}
+          {/* Main Media Swiper Box with Left & Right Arrow buttons */}
+          <div className="relative w-full max-w-[420px] sm:max-w-2xl flex-1 flex items-center justify-center p-2 my-2">
+            {/* Left Navigation Arrow */}
+            {((property.images?.length || 0) + (property.videos?.length || 0)) > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const total = (property.images?.length || 0) + (property.videos?.length || 0);
+                  setLightboxIdx((prev) => (prev !== null ? (prev > 0 ? prev - 1 : total - 1) : 0));
+                }}
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 backdrop-blur-sm transition-all active:scale-95 cursor-pointer shadow-xl"
+                aria-label="Previous image"
+              >
+                <ChevronLeft size={24} className="stroke-[2.5]" />
+              </button>
+            )}
+
+            {/* Media Image or Video */}
+            <div 
+              className="w-full h-full flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {(() => {
+                const images = property.images || [];
+                const videos = property.videos || [];
+                const totalImg = images.length;
+                const isVid = lightboxIdx >= totalImg;
+                
+                if (isVid) {
+                  const vidSrc = videos[lightboxIdx - totalImg];
+                  return (
+                    <video 
+                      src={mediaUrl(vidSrc)} 
+                      controls 
+                      autoPlay 
+                      className="max-h-[70vh] max-w-full rounded-2xl shadow-2xl" 
+                    />
+                  );
+                } else {
+                  const imgSrc = images[lightboxIdx] || FALLBACK_IMAGE;
+                  return (
+                    <img 
+                      src={mediaUrl(imgSrc)} 
+                      alt={`Gallery Preview ${lightboxIdx + 1}`} 
+                      className="max-h-[70vh] max-w-full object-contain rounded-2xl shadow-2xl" 
+                    />
+                  );
+                }
+              })()}
+            </div>
+
+            {/* Right Navigation Arrow */}
+            {((property.images?.length || 0) + (property.videos?.length || 0)) > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const total = (property.images?.length || 0) + (property.videos?.length || 0);
+                  setLightboxIdx((prev) => (prev !== null ? (prev < total - 1 ? prev + 1 : 0) : 0));
+                }}
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 backdrop-blur-sm transition-all active:scale-95 cursor-pointer shadow-xl"
+                aria-label="Next image"
+              >
+                <ChevronRight size={24} className="stroke-[2.5]" />
+              </button>
+            )}
           </div>
 
           {/* Bottom Thumbnails Navigation Strip */}
-          <div className="w-full max-w-[420px] px-6 overflow-x-auto no-scrollbar flex gap-2 justify-center py-2 select-none">
+          <div className="w-full max-w-[420px] sm:max-w-2xl px-4 overflow-x-auto no-scrollbar flex gap-2 justify-center py-2 select-none">
             {property.images?.map((img, idx) => (
               <button
                 key={`lightbox-nav-${idx}`}
