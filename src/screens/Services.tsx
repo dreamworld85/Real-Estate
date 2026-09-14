@@ -36,15 +36,20 @@ const SERVICE_DETAILS: Record<string, { title: string; bullets: string[] }> = {
   "Featured Listing": {
     title: "Featured Listing",
     bullets: [
-      "Provides guaranteed prominence and exposure in preferred locality on top search results pages.",
-      "Attract up to 5x more direct buyer inquiries and property views with eye-catching featured badges."
+      "First/second position in the search results page of a locality",
+      "Distinction through different colour and \"Featured\" tag",
+      "Custom options for Res/Comm, Buy/Rent, Locality",
+      "Available for two advertisers per week per locality on first come first served basis"
     ]
   },
   "Featured Project": {
     title: "Featured Project",
     bullets: [
-      "Recommended product for getting new booking buyer leads for primary clients and builders.",
-      "Includes dedicated project showcase banner, virtual walkthrough links, and direct promoter contact options."
+      "Extremely high visibility on Sparrows desktop & mobile home pages",
+      "Ability to advertise special offers to a large audience",
+      "Presence on Sparrows search with significant number of users in 'New Bookings' segment",
+      "Unlimited slots and opportunity to promote on project pages",
+      "Suitable for clients with large number of units to sell in a given project"
     ]
   },
   "Premium Plan": {
