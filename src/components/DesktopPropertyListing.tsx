@@ -585,8 +585,8 @@ export default function DesktopPropertyListing({
 
         {/* Cards Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-pulse">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-pulse">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div key={i} className="h-72 bg-gray-200 rounded-2xl"></div>
             ))}
           </div>
@@ -597,9 +597,7 @@ export default function DesktopPropertyListing({
         ) : (
           <div className={
             viewMode === "grid" 
-              ? showMap
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-                : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
               : "flex flex-col gap-4"
           }>
             {sortedProperties.map((prop) => {
