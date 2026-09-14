@@ -5,6 +5,7 @@ import { ApiProperty, mediaUrl, api } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import DesktopHeader from "./DesktopHeader";
 import DesktopFooter from "./DesktopFooter";
+import { INDIAN_STATES, STATE_COORDINATES, getStateForDistrict } from "@/lib/indiaLocationData";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
 
@@ -88,7 +89,7 @@ export default function DesktopPropertyListing({
     if (filters.purpose) queryParams.purpose = filters.purpose;
     if (filters.location) queryParams.search = filters.location;
     if (filters.state && filters.state !== "All States (India)") queryParams.state = filters.state;
-    if (filters.district && filters.district !== "All Kerala") queryParams.district = filters.district;
+    if (filters.district && !filters.district.startsWith("All ")) queryParams.district = filters.district;
     if (filters.propertyType && filters.propertyType !== "All Types") queryParams.propertyType = filters.propertyType;
 
     api.fetchProperties(queryParams)
@@ -97,19 +98,21 @@ export default function DesktopPropertyListing({
       .finally(() => setLoading(false));
   }, [filters]);
 
-  // Extract unique available property types & districts from dataset
+  // Extract unique available property types, states & districts from dataset
   const availableTypes = Array.from(new Set(properties.map((p) => p.propertyType))).filter(Boolean);
-  const locationSuggestions = Array.from(new Set([
+  const locationSuggestions: string[] = Array.from(new Set([
+    ...INDIAN_STATES,
     ...Object.keys(DISTRICT_COORDINATES),
-    ...properties.map((p) => p.district).filter(Boolean),
-  ])).sort();
+    ...properties.map((p) => p.district),
+    ...properties.map((p) => p.state),
+  ])).filter((loc): loc is string => Boolean(loc)).sort();
 
   const filteredLocationSuggestions = mapSearchQuery
     ? locationSuggestions.filter((loc) => loc.toLowerCase().includes(mapSearchQuery.toLowerCase()))
     : locationSuggestions;
 
   // Active Location Query (from map search input OR top header district filter)
-  const activeLocationQuery = selectedMapLocation || mapSearchQuery || (filters.district !== "All Kerala" ? filters.district : "");
+  const activeLocationQuery = selectedMapLocation || mapSearchQuery || (filters.district && !filters.district.startsWith("All ") ? filters.district : "");
   
   const mapFilteredProperties = properties.filter((p) => {
     if (!activeLocationQuery) return true;
@@ -117,7 +120,8 @@ export default function DesktopPropertyListing({
     return (
       p.district.toLowerCase().includes(q) ||
       p.address.toLowerCase().includes(q) ||
-      p.title.toLowerCase().includes(q)
+      p.title.toLowerCase().includes(q) ||
+      (p.state && p.state.toLowerCase().includes(q))
     );
   });
 
@@ -371,9 +375,38 @@ export default function DesktopPropertyListing({
                       <div
                         key={i}
                         onClick={() => {
-                          setMapSearchQuery(loc);
-                          setSelectedMapLocation(loc);
+                          if (!loc) return;
+                          const targetLoc: string = loc;
+                          setMapSearchQuery(targetLoc);
+                          setSelectedMapLocation(targetLoc);
                           setShowLocationDropdown(false);
+
+                          if ((INDIAN_STATES as readonly string[]).includes(targetLoc)) {
+                            setFilters(prev => ({
+                              ...prev,
+                              state: targetLoc,
+                              district: `All ${targetLoc}`
+                            }));
+                          } else {
+                            const parentState = getStateForDistrict(targetLoc);
+                            if (parentState) {
+                              setFilters(prev => ({
+                                ...prev,
+                                state: parentState,
+                                district: targetLoc
+                              }));
+                            }
+                          }
+
+                          if (mapRef.current) {
+                            const stateCoords = STATE_COORDINATES[targetLoc];
+                            const distCoords = DISTRICT_COORDINATES[targetLoc];
+                            if (distCoords) {
+                              mapRef.current.setView([distCoords.lat, distCoords.lng], 11);
+                            } else if (stateCoords) {
+                              mapRef.current.setView([stateCoords.lat, stateCoords.lng], 7);
+                            }
+                          }
                         }}
                         className="px-4 py-2.5 hover:bg-blue-50 text-xs font-semibold text-gray-800 cursor-pointer flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
                       >

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import CustomFilterDropdown from "./CustomFilterDropdown";
+import { INDIAN_STATES, getDistrictsForState, getAllDistricts, getStateForDistrict } from "@/lib/indiaLocationData";
 
 const TYPE_ICON_MAP: Record<string, { label: string; icon: string }> = {
   "All": { label: "All Properties", icon: "/images/all-properties.svg" },
@@ -36,39 +37,16 @@ const CATEGORY_ITEMS = [
 
 const STATES = [
   "All States (India)",
-  "Kerala",
-  "Tamil Nadu",
-  "Karnataka",
-  "Maharashtra",
-  "Delhi",
-  "Telangana",
-  "Andhra Pradesh",
-  "Goa",
-  "Gujarat",
-  "West Bengal",
-  "Rajasthan",
-  "Punjab",
-  "Haryana",
-  "Uttar Pradesh",
+  ...INDIAN_STATES
 ];
 
-const DISTRICTS = [
-  "All Kerala",
-  "Kochi",
-  "Trivandrum",
-  "Kozhikode",
-  "Thrissur",
-  "Wayanad",
-  "Kottayam",
-  "Alappuzha",
-  "Idukki",
-  "Kannur",
-  "Malappuram",
-  "Palakkad",
-  "Pathanamthitta",
-  "Kollam",
-  "Kasaragod",
-];
+const getDistrictOptionsForState = (st: string) => {
+  if (!st || st === "All States (India)") {
+    return ["All Districts", ...getAllDistricts()];
+  }
+  const dists = getDistrictsForState(st);
+  return [`All ${st}`, ...dists];
+};
 
 interface DesktopHeaderProps {
   onSearchChange?: (filters: { purpose: string; location: string; state: string; district: string; propertyType: string }) => void;
@@ -128,15 +106,29 @@ export default function DesktopHeader({
     }
   }, [availableTypes]);
 
+  const currentDistrictOptions = getDistrictOptionsForState(selectedState);
+
   const handleSearch = (newPurpose = purpose, newType = propertyType, newState = selectedState, newDistrict = district) => {
+    let effectiveState = newState;
+    let effectiveDistrict = newDistrict;
+    if (!effectiveState || effectiveState === "All States (India)") {
+      const matched = INDIAN_STATES.find((s) => s.toLowerCase() === locationInput.trim().toLowerCase());
+      if (matched) {
+        effectiveState = matched;
+        setSelectedState(effectiveState);
+        effectiveDistrict = `All ${matched}`;
+        setDistrict(effectiveDistrict);
+      }
+    }
+
     if (onSearchChange) {
-      onSearchChange({ purpose: newPurpose, location: locationInput, state: newState, district: newDistrict, propertyType: newType });
+      onSearchChange({ purpose: newPurpose, location: locationInput, state: effectiveState, district: effectiveDistrict, propertyType: newType });
     } else {
       const params = new URLSearchParams();
       if (newPurpose) params.set("purpose", newPurpose);
       if (locationInput) params.set("search", locationInput);
-      if (newState && newState !== "All States (India)") params.set("state", newState);
-      if (newDistrict && newDistrict !== "All Kerala") params.set("district", newDistrict);
+      if (effectiveState && effectiveState !== "All States (India)") params.set("state", effectiveState);
+      if (effectiveDistrict && !effectiveDistrict.startsWith("All ")) params.set("district", effectiveDistrict);
       if (newType && newType !== "All Types") params.set("propertyType", newType);
       navigate(`/search?${params.toString()}`);
     }
@@ -200,44 +192,60 @@ export default function DesktopHeader({
                     <img
                       src={cat.icon}
                       alt={cat.label}
-                      className="w-7 h-7 object-contain"
+                      className={`w-6 h-6 object-contain group-hover:scale-110 transition-transform ${
+                        isSelected ? "brightness-90" : "opacity-80"
+                      }`}
                     />
                   </div>
-                  <span className="text-[11px] tracking-tight">{cat.label}</span>
+                  <span className="text-[11.5px] tracking-tight truncate max-w-[120px]">
+                    {cat.label}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          {/* Auth & Submit Actions */}
-          <div className="flex items-center gap-3 shrink-0">
-            {user ? (
-              <button
-                onClick={() => navigate("/profile")}
-                className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 hover:border-[#1B5E4F] text-gray-700 font-medium text-sm transition"
-              >
-                <div className="w-7 h-7 rounded-full bg-[#E8F0EA] text-[#0F3D3E] flex items-center justify-center font-bold text-xs">
-                  {user.name ? user.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
-                </div>
-                <span className="hidden sm:inline font-medium text-[#0F3D3E] max-w-[100px] truncate">{user.name || "Profile"}</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate("/login")}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-300 hover:border-[#0F3D3E] text-[#0F3D3E] font-semibold text-sm transition shadow-xs"
-              >
-                <User className="w-4 h-4" />
-                <span>Sign in</span>
-              </button>
-            )}
-
+          {/* User Auth Info & Add Listing Button */}
+          <div className="flex items-center gap-4 shrink-0">
             <button
-              onClick={() => navigate(user ? "/add-property" : "/login?redirect=/add-property")}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all"
+              type="button"
+              onClick={() => navigate("/add-property")}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#60A963] hover:bg-[#529355] text-white rounded-full text-xs font-extrabold uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>Submit Property</span>
+              <span>Post Listing</span>
             </button>
+
+            {user ? (
+              <div 
+                onClick={() => navigate("/profile")}
+                className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full py-1.5 px-3 hover:bg-gray-100 cursor-pointer transition-colors"
+              >
+                {user.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt={user.name || "User"} 
+                    className="w-7 h-7 rounded-full object-cover border border-gray-300"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-[#60A963] text-white flex items-center justify-center text-xs font-bold uppercase">
+                    {(user.name || "U").charAt(0)}
+                  </div>
+                )}
+                <span className="text-xs font-bold text-gray-800 max-w-[100px] truncate">
+                  {user.name || "Profile"}
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-full text-xs font-bold shadow-sm transition-all cursor-pointer"
+              >
+                <User className="w-4 h-4" />
+                <span>Sign In</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -252,19 +260,19 @@ export default function DesktopHeader({
         }`}
       >
         <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 justify-between">
-          {/* Purpose Pills (All / For Rent / For Sale) */}
-          <div className="flex items-center bg-gray-200/70 p-1 rounded-full text-xs font-semibold">
-            {["All", "For Rent", "For Sale"].map((p) => {
-              const active = (p === "All" && !purpose) || purpose === p;
+          {/* Purpose Tabs (All / Buy / Rent) */}
+          <div className="flex items-center bg-gray-100/80 p-1 rounded-full border border-gray-200 shrink-0">
+            {["All", "For Sale", "For Rent"].map((p) => {
+              const isActive = (p === "All" && !purpose) || purpose === p;
               return (
                 <button
                   key={p}
                   type="button"
                   onClick={() => handlePurposeClick(p)}
-                  className={`px-4 py-2 rounded-full transition-all ${
-                    active
-                      ? "bg-blue-600 text-white shadow-sm font-bold"
-                      : "text-gray-700 hover:text-black font-medium"
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-white text-gray-900 shadow-xs"
+                      : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
                   {p === "All" ? "All Properties" : p}
@@ -280,7 +288,16 @@ export default function DesktopHeader({
               type="text"
               placeholder="Search location or keyword..."
               value={locationInput}
-              onChange={(e) => setLocationInput(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setLocationInput(val);
+                const matched = INDIAN_STATES.find((s) => s.toLowerCase() === val.trim().toLowerCase());
+                if (matched && matched !== selectedState) {
+                  setSelectedState(matched);
+                  const newDistOptions = getDistrictOptionsForState(matched);
+                  setDistrict(newDistOptions[0]);
+                }
+              }}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="w-full bg-transparent outline-none text-gray-800 placeholder-gray-400 font-medium"
             />
@@ -294,15 +311,18 @@ export default function DesktopHeader({
             maxHeight="150px"
             onChange={(newSt) => {
               setSelectedState(newSt);
-              if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: newSt, district, propertyType });
+              const newDistrictOpts = getDistrictOptionsForState(newSt);
+              const newDist = newDistrictOpts[0];
+              setDistrict(newDist);
+              if (onSearchChange) onSearchChange({ purpose, location: locationInput, state: newSt, district: newDist, propertyType });
             }}
           />
 
           {/* District Dropdown */}
           <CustomFilterDropdown
             value={district}
-            defaultValue="All Kerala"
-            options={DISTRICTS}
+            defaultValue={currentDistrictOptions[0]}
+            options={currentDistrictOptions}
             isMultiSelect={true}
             maxHeight="150px"
             onChange={(newDist) => {

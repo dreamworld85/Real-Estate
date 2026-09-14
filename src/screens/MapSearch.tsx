@@ -55,11 +55,11 @@ export default function MapSearch() {
       .then((data) => {
         setProperties(data || []);
         
-        // Extract distinct districts/cities
+        // Extract distinct states & districts/cities
         if (data) {
-          const unique = Array.from(new Set(data.map(p => p.district)))
-            .filter(Boolean)
-            .sort();
+          const states = data.map(p => p.state).filter((s): s is string => Boolean(s));
+          const districts = data.map(p => p.district).filter((d): d is string => Boolean(d));
+          const unique: string[] = Array.from(new Set([...states, ...districts])).sort();
           setAvailableDistricts(unique);
         }
       })
@@ -106,7 +106,7 @@ export default function MapSearch() {
   // Compute filtered properties
   const filteredProperties = properties.filter((p) => {
     // Filter by district/location select dropdown
-    if (district && p.district !== district) return false;
+    if (district && p.district !== district && p.state !== district) return false;
 
     // Filter by text search query
     if (query) {
@@ -134,6 +134,8 @@ export default function MapSearch() {
     });
     markersRef.current = [];
 
+    const latLngBounds: any[] = [];
+
     // Place markers for filtered properties
     filteredProperties.forEach((property) => {
       let lat = parseFloat(property.latitude as string);
@@ -148,6 +150,8 @@ export default function MapSearch() {
         lat = fallback.lat + offsetLat;
         lng = fallback.lng + offsetLng;
       }
+
+      latLngBounds.push([lat, lng]);
 
       const isSelected = selectedProperty?.id === property.id;
       const priceText = formatPrice(property.price);
@@ -179,6 +183,14 @@ export default function MapSearch() {
 
       markersRef.current.push(marker);
     });
+
+    if (latLngBounds.length > 0 && mapRef.current && !selectedProperty) {
+      if (latLngBounds.length === 1) {
+        mapRef.current.setView(latLngBounds[0], 12);
+      } else {
+        mapRef.current.fitBounds(latLngBounds, { padding: [40, 40] });
+      }
+    }
   }, [filteredProperties, selectedProperty]);
 
   const handleMarkerClick = (property: ApiProperty, lat: number, lng: number) => {

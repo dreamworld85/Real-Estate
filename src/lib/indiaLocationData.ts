@@ -270,3 +270,35 @@ export function getAllDistricts(): string[] {
   }
   return Array.from(new Set(all)).sort();
 }
+
+/**
+ * Returns the state that a district belongs to.
+ */
+export function getStateForDistrict(district?: string): string | null {
+  if (!district) return null;
+  const dLower = district.trim().toLowerCase();
+  for (const [state, districts] of Object.entries(STATE_DISTRICTS_MAP)) {
+    if (districts.some(d => d.toLowerCase() === dLower)) {
+      return state;
+    }
+  }
+  return null;
+}
+
+export const STATE_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  "Kerala": { lat: 10.8505, lng: 76.2711 },
+  "Tamil Nadu": { lat: 11.1271, lng: 78.6569 },
+  "Karnataka": { lat: 15.3173, lng: 75.7139 },
+  "Maharashtra": { lat: 19.7515, lng: 75.7139 },
+  "Telangana": { lat: 18.1124, lng: 79.0193 },
+  "Andhra Pradesh": { lat: 15.9129, lng: 79.7400 },
+  "Delhi": { lat: 28.7041, lng: 77.1025 },
+  "Goa": { lat: 15.2993, lng: 74.1240 },
+  "Gujarat": { lat: 22.2587, lng: 71.1924 },
+  "Uttar Pradesh": { lat: 26.8467, lng: 80.9462 },
+  "West Bengal": { lat: 22.9868, lng: 87.8550 },
+  "Rajasthan": { lat: 27.0238, lng: 74.2179 },
+  "Punjab": { lat: 31.1471, lng: 75.3412 },
+  "Haryana": { lat: 29.0588, lng: 76.0856 },
+  "Puducherry": { lat: 11.9416, lng: 79.8083 },
+};
