@@ -13,7 +13,9 @@ import {
   Sparkles, 
   ShieldCheck,
   Star,
-  ChevronRight
+  ChevronRight,
+  X,
+  Check
 } from "lucide-react";
 import DesktopHeader from "@/components/DesktopHeader";
 import DesktopFooter from "@/components/DesktopFooter";
@@ -22,11 +24,46 @@ import { useAuth } from "@/lib/AuthContext";
 
 type ServiceTab = "Owners" | "Dealers" | "Builders";
 
+const SERVICE_DETAILS: Record<string, { title: string; bullets: string[] }> = {
+  Banners: {
+    title: "Banners",
+    bullets: [
+      "Branding choices available across different pages such as home pages, search pages, project detail pages etc.",
+      "Choose between different type of banner campaigns based on your target audience, required reach & impact, city, locality, budget and purchase preferences"
+    ]
+  },
+  "Featured Listing": {
+    title: "Featured Listing",
+    bullets: [
+      "Provides guaranteed prominence and exposure in preferred locality on top search results pages.",
+      "Attract up to 5x more direct buyer inquiries and property views with eye-catching featured badges."
+    ]
+  },
+  "Featured Project": {
+    title: "Featured Project",
+    bullets: [
+      "Recommended product for getting new booking buyer leads for primary clients and builders.",
+      "Includes dedicated project showcase banner, virtual walkthrough links, and direct promoter contact options."
+    ]
+  },
+  "Premium Plan": {
+    title: "Premium Plan",
+    bullets: [
+      "Let your property stand out from the crowd with larger display on search results and added animation to attract buyers.",
+      "Enjoy priority listing promoter status, relationship manager support, and verified seller trust badge."
+    ]
+  }
+};
+
 export default function Services() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ServiceTab>("Dealers");
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1000);
+  
+  // Drawer popup state for Know More
+  const [selectedServiceKey, setSelectedServiceKey] = useState<string | null>(null);
+  const [callbackRequested, setCallbackRequested] = useState(false);
 
   // Responsive resize handler
   useState(() => {
@@ -35,8 +72,28 @@ export default function Services() {
     return () => window.removeEventListener("resize", handleResize);
   });
 
+  const handleOpenDrawer = (serviceKey: string) => {
+    setSelectedServiceKey(serviceKey);
+    setCallbackRequested(false);
+  };
+
+  const handleCloseDrawer = () => {
+    setSelectedServiceKey(null);
+    setCallbackRequested(false);
+  };
+
+  const handleGetCallback = () => {
+    setCallbackRequested(true);
+    setTimeout(() => {
+      setCallbackRequested(false);
+      setSelectedServiceKey(null);
+    }, 2500);
+  };
+
+  const activeService = selectedServiceKey ? SERVICE_DETAILS[selectedServiceKey] : null;
+
   return (
-    <div className="min-h-screen bg-[#FAF8F3] w-full flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FAF8F3] w-full flex flex-col font-sans relative overflow-x-hidden">
       {/* Top Header for Desktop */}
       <DesktopHeader />
 
@@ -125,14 +182,21 @@ export default function Services() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Card 1: Banners (Warm Peach / Yellow #FFF8EC) */}
-            <div className="bg-[#FFF8EC] border border-[#FDE6BA] rounded-3xl p-6 sm:p-8 flex items-start justify-between gap-4 shadow-xs relative overflow-hidden group hover:shadow-md transition-all">
+            <div 
+              onClick={() => handleOpenDrawer("Banners")}
+              className="bg-[#FFF8EC] border border-[#FDE6BA] rounded-3xl p-6 sm:p-8 flex items-start justify-between gap-4 shadow-xs relative overflow-hidden group hover:shadow-md transition-all cursor-pointer select-none"
+            >
               <div className="flex-1 space-y-3 z-10">
                 <h3 className="text-lg font-bold text-gray-900 font-display">Banners</h3>
                 <p className="text-xs text-gray-600 leading-relaxed font-medium">
                   Get your brand noticed by property buyers by securing brand space on India's top real estate website
                 </p>
                 <button
-                  onClick={() => navigate("/subscription")}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenDrawer("Banners");
+                  }}
                   className="text-[#0078D4] font-bold text-xs hover:underline inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>Know More</span>
@@ -150,14 +214,21 @@ export default function Services() {
             </div>
 
             {/* Card 2: Featured Listing (Light Sky Blue #F0F9FF) */}
-            <div className="bg-[#F0F9FF] border border-[#BAE6FD] rounded-3xl p-6 sm:p-8 flex items-start justify-between gap-4 shadow-xs relative overflow-hidden group hover:shadow-md transition-all">
+            <div 
+              onClick={() => handleOpenDrawer("Featured Listing")}
+              className="bg-[#F0F9FF] border border-[#BAE6FD] rounded-3xl p-6 sm:p-8 flex items-start justify-between gap-4 shadow-xs relative overflow-hidden group hover:shadow-md transition-all cursor-pointer select-none"
+            >
               <div className="flex-1 space-y-3 z-10">
                 <h3 className="text-lg font-bold text-gray-900 font-display">Featured Listing</h3>
                 <p className="text-xs text-gray-600 leading-relaxed font-medium">
                   Provides guaranteed prominence and exposure in preferred locality
                 </p>
                 <button
-                  onClick={() => navigate("/subscription")}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenDrawer("Featured Listing");
+                  }}
                   className="text-[#0078D4] font-bold text-xs hover:underline inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>Know More</span>
@@ -183,14 +254,21 @@ export default function Services() {
             </div>
 
             {/* Card 3: Featured Project (Warm Light Orange #FFF5E6) */}
-            <div className="bg-[#FFF5E6] border border-[#FFD8A8] rounded-3xl p-6 sm:p-8 flex items-start justify-between gap-4 shadow-xs relative overflow-hidden group hover:shadow-md transition-all">
+            <div 
+              onClick={() => handleOpenDrawer("Featured Project")}
+              className="bg-[#FFF5E6] border border-[#FFD8A8] rounded-3xl p-6 sm:p-8 flex items-start justify-between gap-4 shadow-xs relative overflow-hidden group hover:shadow-md transition-all cursor-pointer select-none"
+            >
               <div className="flex-1 space-y-3 z-10">
                 <h3 className="text-lg font-bold text-gray-900 font-display">Featured Project</h3>
                 <p className="text-xs text-gray-600 leading-relaxed font-medium">
                   Recommended product for getting new booking buyer leads for the primary clients
                 </p>
                 <button
-                  onClick={() => navigate("/subscription")}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenDrawer("Featured Project");
+                  }}
                   className="text-[#0078D4] font-bold text-xs hover:underline inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>Know More</span>
@@ -213,7 +291,10 @@ export default function Services() {
             </div>
 
             {/* Card 4: Premium Plan (Soft Blue #EFF6FF) */}
-            <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-3xl p-6 sm:p-8 flex items-start justify-between gap-4 shadow-xs relative overflow-hidden group hover:shadow-md transition-all">
+            <div 
+              onClick={() => handleOpenDrawer("Premium Plan")}
+              className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-3xl p-6 sm:p-8 flex items-start justify-between gap-4 shadow-xs relative overflow-hidden group hover:shadow-md transition-all cursor-pointer select-none"
+            >
               <div className="flex-1 space-y-3 z-10">
                 <h3 className="text-lg font-bold text-gray-900 font-display">Premium Plan</h3>
                 <p className="text-xs text-gray-600 leading-relaxed font-medium">
@@ -221,7 +302,11 @@ export default function Services() {
                 </p>
                 <div className="text-xs font-extrabold text-blue-700">₹899 Onwards</div>
                 <button
-                  onClick={() => navigate("/subscription")}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenDrawer("Premium Plan");
+                  }}
                   className="text-[#0078D4] font-bold text-xs hover:underline inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>Know More</span>
@@ -291,6 +376,67 @@ export default function Services() {
         </section>
 
       </main>
+
+      {/* Slide-over Drawer Popup matching media_1789386187538.png & media_1789386202353.png */}
+      {selectedServiceKey && activeService && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Backdrop */}
+          <div 
+            onClick={handleCloseDrawer}
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity animate-fade-in"
+          />
+
+          {/* Drawer Box */}
+          <div className="relative w-full max-w-md bg-white h-full shadow-2xl z-10 flex flex-col justify-between p-6 sm:p-8 animate-in slide-in-from-right duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <h2 className="text-xl font-bold text-gray-900 font-display">
+                {activeService.title}
+              </h2>
+              <button
+                onClick={handleCloseDrawer}
+                className="p-2 rounded-full hover:bg-gray-100 transition text-gray-600 hover:text-gray-900 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Content Body Bullets matching reference screenshot */}
+            <div className="flex-1 py-6 space-y-6 overflow-y-auto">
+              {activeService.bullets.map((bullet, idx) => (
+                <div key={idx} className="flex items-start gap-4">
+                  {/* Light Blue Circle with Checkmark matching screenshot */}
+                  <div className="w-9 h-9 rounded-full bg-[#EBF5FF] text-[#0078D4] flex items-center justify-center shrink-0 border border-blue-100 shadow-2xs mt-0.5">
+                    <Check className="w-5 h-5 stroke-[2.5]" />
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-medium">
+                    {bullet}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Footer Action */}
+            <div className="border-t border-gray-100 pt-4 flex flex-col gap-3">
+              {callbackRequested ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center flex items-center justify-center gap-2 text-emerald-800 font-bold text-xs">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>Request received! Our team will call you back shortly.</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGetCallback}
+                  className="w-full py-3.5 px-6 bg-[#42b85d] hover:bg-[#369a4d] text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer text-center"
+                >
+                  Get a callback
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer for Desktop */}
       <DesktopFooter />
