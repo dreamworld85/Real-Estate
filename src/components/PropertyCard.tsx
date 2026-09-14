@@ -126,7 +126,7 @@ export default function PropertyCard({
         </div>
 
         {/* Property Title */}
-        <h3 className="font-display font-medium text-[11px] text-white truncate leading-tight select-none">
+        <h3 className="font-display font-medium text-[11px] text-white group-hover:text-[#34a853] transition-colors truncate leading-tight select-none">
           {property.title.replace("Plot / Land", "Land").replace("Independent House / Villa", "House")}
         </h3>
 

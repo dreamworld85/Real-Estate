@@ -474,7 +474,7 @@ export default function DesktopPropertyDetailsView({
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-base text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                  <h3 className="font-medium text-base text-gray-900 group-hover:text-[#34a853] transition-colors truncate">
                     {property.ownerName || property.agencyName || property.brokerName || "Seller"}
                   </h3>
                   <p className="text-[11px] font-semibold text-blue-600 hover:underline mt-0.5">

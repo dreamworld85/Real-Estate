@@ -44,7 +44,7 @@ export default function FeaturedPropertyCard({ property }: { property: ApiProper
 
       {/* Bottom Left Content Info */}
       <div className="absolute bottom-12 left-5 right-5 z-10 text-white flex flex-col gap-0.5 text-left">
-        <h3 className="font-display font-extrabold text-[16px] leading-tight text-white drop-shadow-sm select-none truncate">
+        <h3 className="font-display font-medium text-[16px] leading-tight text-white group-hover:text-[#34a853] transition-colors drop-shadow-sm select-none truncate">
           {property.title.replace("Plot / Land", "Land").replace("Independent House / Villa", "House")}
         </h3>
         <p className="text-[10px] text-white/85 font-medium mt-0.5 drop-shadow-sm select-none">

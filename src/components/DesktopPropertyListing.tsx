@@ -648,7 +648,7 @@ export default function DesktopPropertyListing({
                   {/* Content Section */}
                   <div className="p-4 flex-1 flex flex-col justify-between gap-3">
                     <div>
-                      <h3 className="font-bold text-base text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                      <h3 className="font-medium text-base text-gray-900 line-clamp-1 group-hover:text-[#34a853] transition-colors">
                         {prop.title}
                       </h3>
                       <p className="text-xs text-gray-500 mt-1 truncate">
