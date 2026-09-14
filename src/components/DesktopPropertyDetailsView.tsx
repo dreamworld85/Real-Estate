@@ -62,19 +62,37 @@ export default function DesktopPropertyDetailsView({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
 
-  const images = property.images && property.images.length > 0 ? property.images : [];
-  const videos = property.videos || [];
-  const totalMedia = (images.length > 0 ? images.length : 1) + videos.length;
+  // Build unified media items array (images + videos)
+  const allMedia: Array<{ type: "image" | "video"; url: string }> = [];
 
-  const mediaList = images.length > 0
-    ? images.map((img: string) => img.startsWith("/uploads/") ? mediaUrl(img) : img)
-    : [FALLBACK_IMAGE];
-
-  const mainPhoto = mediaList[0] || FALLBACK_IMAGE;
-  const gridPhotos = mediaList.slice(1, 5);
-  while (gridPhotos.length < 4) {
-    gridPhotos.push(FALLBACK_IMAGE);
+  if (property.images && property.images.length > 0) {
+    property.images.forEach((img: string) => {
+      if (img) {
+        allMedia.push({
+          type: "image",
+          url: img.startsWith("/uploads/") ? mediaUrl(img) : img
+        });
+      }
+    });
   }
+
+  if (property.videos && property.videos.length > 0) {
+    property.videos.forEach((vid: string) => {
+      if (vid) {
+        allMedia.push({
+          type: "video",
+          url: vid.startsWith("/uploads/") ? mediaUrl(vid) : vid
+        });
+      }
+    });
+  }
+
+  if (allMedia.length === 0) {
+    allMedia.push({ type: "image", url: FALLBACK_IMAGE });
+  }
+
+  const totalMedia = allMedia.length;
+  const mainMedia = allMedia[0];
 
   // Keyboard navigation for Lightbox
   useEffect(() => {
@@ -243,11 +261,22 @@ export default function DesktopPropertyDetailsView({
             }}
             className="lg:col-span-7 relative h-full group bg-gray-100 cursor-pointer overflow-hidden"
           >
-            <img
-              src={mainPhoto}
-              alt={property.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
+            {mainMedia.type === "video" ? (
+              <div className="relative w-full h-full">
+                <video src={mainMedia.url} className="w-full h-full object-cover" muted playsInline />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                    <Play className="w-6 h-6 fill-gray-900 text-gray-900 ml-1" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <img
+                src={mainMedia.url}
+                alt={property.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            )}
             
             <button
               onClick={(e) => {
@@ -264,22 +293,37 @@ export default function DesktopPropertyDetailsView({
 
           {/* 4 Grid Photos (5 Columns, 2x2) */}
           <div className="lg:col-span-5 grid grid-cols-2 gap-4 h-full">
-            {gridPhotos.map((photo: string, i: number) => (
-              <div
-                key={i}
-                onClick={() => {
-                  setActivePhotoIdx(i + 1);
-                  setShowGalleryModal(true);
-                }}
-                className="relative h-full bg-gray-100 rounded-xl overflow-hidden group cursor-pointer"
-              >
-                <img
-                  src={photo}
-                  alt={`Sub view ${i + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-            ))}
+            {[0, 1, 2, 3].map((i) => {
+              const targetIdx = (i + 1) % totalMedia;
+              const mediaItem = allMedia[targetIdx];
+              return (
+                <div
+                  key={i}
+                  onClick={() => {
+                    setActivePhotoIdx(targetIdx);
+                    setShowGalleryModal(true);
+                  }}
+                  className="relative h-full bg-gray-100 rounded-xl overflow-hidden group cursor-pointer"
+                >
+                  {mediaItem.type === "video" ? (
+                    <div className="relative w-full h-full">
+                      <video src={mediaItem.url} className="w-full h-full object-cover brightness-90" muted playsInline />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center shadow-md">
+                          <Play className="w-4 h-4 fill-gray-900 text-gray-900 ml-0.5" />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      src={mediaItem.url}
+                      alt={`Sub view ${i + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -560,26 +604,20 @@ export default function DesktopPropertyDetailsView({
             {/* Media Content */}
             <div className="w-full h-full flex items-center justify-center">
               {(() => {
-                const totalImg = images.length > 0 ? images.length : 1;
-                const isVid = activePhotoIdx >= totalImg;
-
-                if (isVid) {
-                  const vidSrc = videos[activePhotoIdx - totalImg];
-                  const fullVidUrl = vidSrc.startsWith("/uploads/") ? mediaUrl(vidSrc) : vidSrc;
+                const current = allMedia[activePhotoIdx] || allMedia[0];
+                if (current.type === "video") {
                   return (
                     <video
-                      src={fullVidUrl}
+                      src={current.url}
                       controls
                       autoPlay
                       className="max-h-[75vh] max-w-full rounded-2xl shadow-2xl"
                     />
                   );
                 } else {
-                  const imgSrc = images.length > 0 ? images[activePhotoIdx] : FALLBACK_IMAGE;
-                  const fullImgUrl = imgSrc.startsWith("/uploads/") ? mediaUrl(imgSrc) : imgSrc;
                   return (
                     <img
-                      src={fullImgUrl}
+                      src={current.url}
                       alt={`Gallery view ${activePhotoIdx + 1}`}
                       className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl"
                     />
@@ -588,7 +626,7 @@ export default function DesktopPropertyDetailsView({
               })()}
             </div>
 
-            {/* Right Arrow Button */}
+            {/* Right Navigation Arrow */}
             {totalMedia > 1 && (
               <button
                 onClick={(e) => {
@@ -608,42 +646,28 @@ export default function DesktopPropertyDetailsView({
             className="w-full max-w-5xl px-4 overflow-x-auto no-scrollbar flex gap-2.5 justify-center py-2 z-20"
             onClick={(e) => e.stopPropagation()}
           >
-            {(images.length > 0 ? images : [FALLBACK_IMAGE]).map((img, idx) => {
-              const fullImgUrl = img.startsWith("/uploads/") ? mediaUrl(img) : img;
-              return (
-                <button
-                  key={`lightbox-thumb-${idx}`}
-                  onClick={() => setActivePhotoIdx(idx)}
-                  className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    activePhotoIdx === idx
-                      ? "border-blue-500 scale-105 shadow-md"
-                      : "border-transparent opacity-50 hover:opacity-100"
-                  }`}
-                >
-                  <img src={fullImgUrl} alt={`thumb ${idx}`} className="w-full h-full object-cover" />
-                </button>
-              );
-            })}
-            {videos.map((vid, idx) => {
-              const videoIdx = (images.length > 0 ? images.length : 1) + idx;
-              const fullVidUrl = vid.startsWith("/uploads/") ? mediaUrl(vid) : vid;
-              return (
-                <button
-                  key={`lightbox-thumb-vid-${idx}`}
-                  onClick={() => setActivePhotoIdx(videoIdx)}
-                  className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 relative transition-all cursor-pointer ${
-                    activePhotoIdx === videoIdx
-                      ? "border-blue-500 scale-105 shadow-md"
-                      : "border-transparent opacity-50 hover:opacity-100"
-                  }`}
-                >
-                  <video src={fullVidUrl} className="w-full h-full object-cover brightness-[0.6]" muted playsInline />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Play className="w-4 h-4 fill-white text-white" />
-                  </div>
-                </button>
-              );
-            })}
+            {allMedia.map((item, idx) => (
+              <button
+                key={`lightbox-thumb-${idx}`}
+                onClick={() => setActivePhotoIdx(idx)}
+                className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 relative transition-all cursor-pointer ${
+                  activePhotoIdx === idx
+                    ? "border-blue-500 scale-105 shadow-md"
+                    : "border-transparent opacity-50 hover:opacity-100"
+                }`}
+              >
+                {item.type === "video" ? (
+                  <>
+                    <video src={item.url} className="w-full h-full object-cover brightness-[0.6]" muted playsInline />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Play className="w-4 h-4 fill-white text-white" />
+                    </div>
+                  </>
+                ) : (
+                  <img src={item.url} alt={`thumb ${idx}`} className="w-full h-full object-cover" />
+                )}
+              </button>
+            ))}
           </div>
         </div>
       )}
