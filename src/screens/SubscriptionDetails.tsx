@@ -209,13 +209,14 @@ export default function SubscriptionDetails() {
                   >
                     {/* Badge */}
                     {isPopular && (
-                      <span className="absolute -top-3 right-6 bg-amber-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm select-none flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" /> Most Popular
+                      <span className="absolute -top-3.5 right-6 z-10 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-gray-950 font-black text-xs px-4 py-1 rounded-full uppercase tracking-wider shadow-md border border-amber-200 select-none flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 fill-gray-950 text-gray-950" />
+                        <span>★ Most Popular</span>
                       </span>
                     )}
                     {isBestValue && (
-                      <span className="absolute -top-3 right-6 bg-[#1B5E4F] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm select-none flex items-center gap-1">
-                        <Award className="w-3 h-3" /> Best Value
+                      <span className="absolute -top-3.5 right-6 z-10 bg-[#1B5E4F] text-white font-black text-xs px-4 py-1 rounded-full uppercase tracking-wider shadow-md border border-emerald-400 select-none flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5" /> Best Value
                       </span>
                     )}
 
@@ -272,9 +273,9 @@ export default function SubscriptionDetails() {
                         setSelectedDuration(planItem.duration_months);
                         setShowCheckout(true);
                       }}
-                      className={`w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-extrabold font-display flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] cursor-pointer ${
+                      className={`w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-black font-display flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] cursor-pointer ${
                         isPopular 
-                          ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20" 
+                          ? "bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-gray-950 shadow-amber-500/30" 
                           : isBestValue
                           ? "bg-[#1B5E4F] hover:bg-[#14483d] text-white shadow-emerald-700/20"
                           : "bg-gray-900 hover:bg-black text-white"
