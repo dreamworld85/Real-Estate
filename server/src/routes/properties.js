@@ -653,8 +653,16 @@ router.post("/", requireAuth, upload.any(), optimizeImages, async (req, res) => 
       isBrokerPersonalProperty, isPriceNegotiable, latitude, longitude,
     } = req.body;
 
-    if (!propertyType || !purpose || !price || !areaSqft || !address || !district) {
-      return res.status(400).json({ error: "Missing required property fields" });
+    const missing = [];
+    if (!propertyType) missing.push("Property Type");
+    if (!purpose) missing.push("Purpose");
+    if (!price || Number(price) <= 0) missing.push("Price");
+    if (!areaSqft || Number(areaSqft) <= 0) missing.push("Area");
+    if (!address) missing.push("Address");
+    if (!district) missing.push("District");
+
+    if (missing.length > 0) {
+      return res.status(400).json({ error: `Missing required property fields: ${missing.join(", ")}` });
     }
 
     await conn.beginTransaction();

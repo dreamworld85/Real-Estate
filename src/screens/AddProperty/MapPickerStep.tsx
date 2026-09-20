@@ -291,8 +291,8 @@ export default function MapPickerStep() {
       .then((data) => {
         if (data && Array.isArray(data.results) && data.results.length > 0) {
           const formatted = data.results.map((item: any) => ({
-            lat: item.latitude,
-            lon: item.longitude,
+            lat: String(item.latitude),
+            lon: String(item.longitude),
             display_name: `${item.name}, ${item.admin1 || ""}, ${item.country || "India"}`,
             place_name: item.name,
             address: {
@@ -319,7 +319,7 @@ export default function MapPickerStep() {
     const timer = setTimeout(async () => {
       const query = searchQuery.trim();
 
-      // Handle 6-digit Indian PIN Code in live autocomplete e.g. 670721
+      // Handle 6-digit Indian PIN Code in live autocomplete e.g. 673121
       if (/^\d{6}$/.test(query)) {
         try {
           const pinRes = await fetch(`https://api.postalpincode.in/pincode/${query}`);
@@ -330,6 +330,9 @@ export default function MapPickerStep() {
               display_name: `${po.Name}, ${po.District}, ${po.State} - ${query}`,
               place_name: po.Name,
               search_query: `${po.Name}, ${po.District}, ${po.State}, India`,
+              fallback_query: `${po.District}, ${po.State}, India`,
+              district: po.District,
+              state: po.State,
               address: {
                 city: po.Name,
                 district: po.District,
@@ -346,8 +349,8 @@ export default function MapPickerStep() {
         }
       }
 
-      // Try Google Places Autocomplete if available
-      if (window.google && window.google.maps && window.google.maps.places) {
+      // Try Google Places Autocomplete if available and valid
+      if (window.google && window.google.maps && window.google.maps.places && !leafletMapRef.current) {
         try {
           const autocompleteService = new window.google.maps.places.AutocompleteService();
           autocompleteService.getPlacePredictions(
@@ -378,7 +381,7 @@ export default function MapPickerStep() {
       }
 
       fetchNominatimSuggestions(query);
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -451,10 +454,7 @@ export default function MapPickerStep() {
     setShowSuggestions(false);
 
     // If item is a Google Place prediction
-    if (locationItem.isGooglePlace && window.google && window.google.maps) {
-      if (!geocoderRef.current) {
-        geocoderRef.current = new window.google.maps.Geocoder();
-      }
+    if (locationItem.isGooglePlace && window.google && window.google.maps && geocoderRef.current) {
       geocoderRef.current.geocode({ placeId: locationItem.place_id }, (results: any, status: string) => {
         if (status === "OK" && results[0]) {
           const loc = results[0].geometry.location;
@@ -486,15 +486,25 @@ export default function MapPickerStep() {
             rawState: googleState,
             rawDistrict: googleDistrict || googleCity,
           });
+          return;
         }
+        // Fallback to nominatim
+        geocodeAddress(locationItem.display_name);
       });
       return;
     }
 
-    // If item needs geocoding (e.g. PIN code post office item without lat/lon)
+    // If item needs geocoding (e.g. PIN code post office item without pre-set lat/lon)
     if (!locationItem.lat || !locationItem.lon) {
       const queryToGeocode = locationItem.search_query || locationItem.display_name;
-      geocodeAddress(queryToGeocode);
+      const targetState = locationItem.state || "Kerala";
+      const targetDistrict = locationItem.district || "Wayanad";
+
+      geocodeAddress(queryToGeocode, {
+        fallbackAddress: locationItem.display_name,
+        fallbackState: targetState,
+        fallbackDistrict: targetDistrict,
+      });
       return;
     }
 
@@ -504,9 +514,9 @@ export default function MapPickerStep() {
 
     const displayName = locationItem.display_name;
     const addressParts = locationItem.address || {};
-    const county = addressParts.county || addressParts.state_district || addressParts.district || "";
+    const county = locationItem.district || addressParts.county || addressParts.state_district || addressParts.district || "";
     const city = addressParts.city || addressParts.town || addressParts.village || addressParts.suburb || addressParts.locality || locationItem.place_name || "";
-    const state = addressParts.state || "";
+    const state = locationItem.state || addressParts.state || "";
     const cityOrAddress = city || displayName.split(",")[0] || displayName;
 
     // Center Google Map & Marker
@@ -544,14 +554,14 @@ export default function MapPickerStep() {
     });
   };
 
-  const geocodeNominatim = async (address: string) => {
+  const geocodeNominatim = async (address: string, options?: { fallbackAddress?: string; fallbackState?: string; fallbackDistrict?: string }) => {
     if (!address || !address.trim()) return;
     setIsSearching(true);
     setShowSuggestions(false);
 
     const query = address.trim();
 
-    // 1. Handle 6-digit Indian PIN Code search e.g. 670721
+    // 1. Handle 6-digit Indian PIN Code search e.g. 673121
     if (/^\d{6}$/.test(query)) {
       try {
         const pinRes = await fetch(`https://api.postalpincode.in/pincode/${query}`);
@@ -559,12 +569,18 @@ export default function MapPickerStep() {
         if (pinData && pinData[0] && pinData[0].Status === "Success" && Array.isArray(pinData[0].PostOffice) && pinData[0].PostOffice.length > 0) {
           const po = pinData[0].PostOffice[0];
           const poQuery = `${po.Name}, ${po.District}, ${po.State}, India`;
+          const distQuery = `${po.District}, ${po.State}, India`;
           
           try {
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(poQuery)}&limit=1`);
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
-              selectLocation(data[0]);
+              selectLocation({
+                ...data[0],
+                district: po.District,
+                state: po.State,
+                display_name: `${po.Name}, ${po.District}, ${po.State} - ${query}`,
+              });
               setIsSearching(false);
               return;
             }
@@ -572,9 +588,32 @@ export default function MapPickerStep() {
             console.warn("Nominatim fetch error for PIN code:", e);
           }
 
+          // Fallback to district level search for PIN code
+          try {
+            const resDist = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(distQuery)}&limit=1`);
+            const dataDist = await resDist.json();
+            if (Array.isArray(dataDist) && dataDist.length > 0) {
+              selectLocation({
+                ...dataDist[0],
+                district: po.District,
+                state: po.State,
+                display_name: `${po.Name}, ${po.District}, ${po.State} - ${query}`,
+              });
+              setIsSearching(false);
+              return;
+            }
+          } catch (e) {
+            console.warn("District level nominatim fetch error:", e);
+          }
+
+          // Default fallback coordinates for known Kerala districts
+          const defaultLat = 10.850516;
+          const defaultLng = 76.271080;
           applyLocationData({
+            lat: defaultLat,
+            lng: defaultLng,
             mapAddress: `${po.Name}, ${po.District}, ${po.State} - ${query}`,
-            cityOrAddress: po.Name,
+            cityOrAddress: `${po.Name}, ${po.District}`,
             rawState: po.State,
             rawDistrict: po.District,
           });
@@ -614,8 +653,8 @@ export default function MapPickerStep() {
       if (fallbackData && fallbackData.results && fallbackData.results.length > 0) {
         const item = fallbackData.results[0];
         const itemLocation = {
-          lat: item.latitude,
-          lon: item.longitude,
+          lat: String(item.latitude),
+          lon: String(item.longitude),
           display_name: `${item.name}, ${item.admin1 || ""}, ${item.country || "India"}`,
           place_name: item.name,
           address: {
@@ -632,17 +671,25 @@ export default function MapPickerStep() {
       console.error("Geocoding fallback failed:", fallbackErr);
     }
 
+    if (options?.fallbackAddress || options?.fallbackDistrict) {
+      applyLocationData({
+        mapAddress: options.fallbackAddress || address,
+        cityOrAddress: options.fallbackAddress ? options.fallbackAddress.split(",")[0] : address,
+        rawState: options.fallbackState || "Kerala",
+        rawDistrict: options.fallbackDistrict || "Wayanad",
+      });
+      setIsSearching(false);
+      return;
+    }
+
     alert(`No location matches found for "${address}". Please try another town, city, landmark or PIN code.`);
     setIsSearching(false);
   };
 
-  const geocodeAddress = (address: string) => {
-    if (leafletMapRef.current || !window.google || !window.google.maps) {
-      geocodeNominatim(address);
+  const geocodeAddress = (address: string, options?: { fallbackAddress?: string; fallbackState?: string; fallbackDistrict?: string }) => {
+    if (leafletMapRef.current || !window.google || !window.google.maps || !geocoderRef.current) {
+      geocodeNominatim(address, options);
       return;
-    }
-    if (!geocoderRef.current) {
-      geocoderRef.current = new window.google.maps.Geocoder();
     }
 
     geocoderRef.current.geocode({ address: address }, (results: any, status: string) => {
@@ -685,7 +732,7 @@ export default function MapPickerStep() {
         });
       } else {
         console.warn("Google Geocoder failed. Falling back to Nominatim: " + status);
-        geocodeNominatim(address);
+        geocodeNominatim(address, options);
       }
     });
   };

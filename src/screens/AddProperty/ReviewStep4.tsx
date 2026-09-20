@@ -56,14 +56,31 @@ export default function ReviewStep4() {
   ];
 
   async function handleSubmit() {
-    setSubmitting(true);
     setError(null);
+
+    const missing: string[] = [];
+    if (!form.propertyType) missing.push("Property Type");
+    if (!form.purpose) missing.push("Purpose");
+    if (!form.price || Number(form.price) <= 0) missing.push("Price");
+    const areaVal = Number(form.areaSqft) || Number(form.carpetArea) || 0;
+    if (areaVal <= 0) missing.push("Area (Sqft/Cents)");
+    const finalAddress = (form.mapAddress || form.address || "").trim();
+    if (!finalAddress) missing.push("Address / Location");
+    if (!form.district) missing.push("District");
+    if (!form.contactPhone) missing.push("Contact Phone");
+
+    if (missing.length > 0) {
+      setError(`Missing required property fields: ${missing.join(", ")}`);
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const fd = new FormData();
       fd.append("propertyType", form.propertyType);
       fd.append("purpose", form.purpose);
       fd.append("price", form.price);
-      let sqftVal = Number(form.areaSqft) || 0;
+      let sqftVal = Number(form.areaSqft) || Number(form.carpetArea) || 0;
       if (form.propertyType === "Land" || form.propertyType === "Plot / Land") {
         if (form.areaUnit === "Cents") {
           sqftVal = Math.round(sqftVal * 435.6);
@@ -72,19 +89,19 @@ export default function ReviewStep4() {
         }
       }
       fd.append("areaSqft", String(sqftVal));
-      fd.append("address", form.mapAddress || form.address);
+      fd.append("address", finalAddress);
       fd.append("state", form.state || "Kerala");
       
       let districtVal = form.district;
       if (!districtVal) {
-        const addr = (form.mapAddress || "").toLowerCase();
+        const addr = (finalAddress).toLowerCase();
         const districts = [
           "Wayanad", "Kozhikode", "Kannur", "Kasaragod", "Malappuram", "Palakkad",
           "Thrissur", "Ernakulam", "Idukki", "Kottayam", "Alappuzha", "Pathanamthitta",
           "Kollam", "Thiruvananthapuram"
         ];
         const found = districts.find(d => addr.includes(d.toLowerCase()));
-        districtVal = found || "Wayanad"; // Default fallback to Wayanad if not matched
+        districtVal = found || "Wayanad";
       }
       fd.append("district", districtVal);
 
@@ -237,7 +254,12 @@ export default function ReviewStep4() {
           </div>
         )}
 
-        {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
+        {error && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-[8px] flex flex-col gap-1 text-left shadow-sm">
+            <span className="text-xs font-bold text-rose-700">Action Required:</span>
+            <p className="text-xs font-semibold text-rose-600 leading-relaxed">{error}</p>
+          </div>
+        )}
       </div>
 
       <div className="px-6 pb-6 pt-5 flex gap-3">
