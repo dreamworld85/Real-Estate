@@ -130,10 +130,10 @@ export default function EditProfile() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">Rbone No</label>
+              <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">User Phone Number</label>
               <input
-                type="text"
-                placeholder="e.g. John Doe"
+                type="tel"
+                placeholder="e.g. +91 9876543210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"
@@ -146,7 +146,7 @@ export default function EditProfile() {
             <label className="text-[13.5px] font-medium text-charcoal/80 pl-0.5">Email</label>
             <input
               type="email"
-              placeholder="e.g. John Doe"
+              placeholder="e.g. john@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-11 rounded-xl border border-slate-200/80 bg-white px-4 text-[14px] font-medium text-charcoal placeholder:text-slate/40 outline-none shadow-[0_2px_6px_rgba(0,0,0,0.03)] focus:border-[#59AD63] transition-all"

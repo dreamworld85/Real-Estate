@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronDown, Crosshair, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronDown, Crosshair, MapPin, Search } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import BottomNav from "@/components/BottomNav";
 import { INDIAN_STATES, getDistrictsForState } from "@/lib/indiaLocationData";
@@ -8,6 +8,8 @@ import { INDIAN_STATES, getDistrictsForState } from "@/lib/indiaLocationData";
 declare global {
   interface Window {
     google: any;
+    L: any;
+    gm_authFailure?: () => void;
     initAutocomplete?: () => void;
   }
 }
@@ -22,6 +24,9 @@ export default function MapPickerStep() {
   const [fetchedAddress, setFetchedAddress] = useState(form.address || form.mapAddress || "");
   const [manualAddress, setManualAddress] = useState(form.address || form.mapAddress || "");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     setManualAddress(fetchedAddress);
@@ -30,20 +35,36 @@ export default function MapPickerStep() {
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const geocoderRef = useRef<any>(null);
+  const leafletMapRef = useRef<any>(null);
+  const leafletMarkerRef = useRef<any>(null);
 
   // Default coordinates (Kerala, India)
   const defaultLat = form.latitude || 10.850516;
   const defaultLng = form.longitude || 76.271080;
 
   useEffect(() => {
-    // Check if script already loaded
+    // Handle Google Maps API key / auth failure (e.g. invalid key or billing issue)
+    window.gm_authFailure = () => {
+      console.warn("Google Maps Auth Failure. Automatically switching to OpenStreetMap / Leaflet map picker...");
+      if (mapContainerRef.current) {
+        mapContainerRef.current.innerHTML = "";
+      }
+      initLeafletOrFallback();
+    };
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+    if (!apiKey) {
+      initLeafletOrFallback();
+      return;
+    }
+
     if (window.google && window.google.maps) {
       setLoading(false);
       initializeMap();
       return;
     }
 
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
@@ -53,11 +74,131 @@ export default function MapPickerStep() {
       initializeMap();
     };
     script.onerror = () => {
-      setLoading(false);
-      setApiError(true);
+      initLeafletOrFallback();
     };
     document.head.appendChild(script);
+
+    return () => {
+      delete window.gm_authFailure;
+    };
   }, []);
+
+  // Automatically request device location on mount if coordinates are not set
+  useEffect(() => {
+    if (!form.latitude && !form.longitude && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const coords = { lat: latitude, lng: longitude };
+
+          if (mapRef.current && markerRef.current) {
+            mapRef.current.setCenter(coords);
+            mapRef.current.setZoom(16);
+            markerRef.current.setPosition(coords);
+          }
+
+          if (leafletMapRef.current && leafletMarkerRef.current) {
+            leafletMapRef.current.setView([latitude, longitude], 16);
+            leafletMarkerRef.current.setLatLng([latitude, longitude]);
+          }
+
+          updateCoordinates(coords);
+          if (window.google && window.google.maps) {
+            reverseGeocode(coords);
+          } else {
+            reverseGeocodeNominatim(coords);
+          }
+        },
+        (error) => {
+          console.warn("Auto geolocation prompt/error:", error.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    }
+  }, []);
+
+  const initLeafletOrFallback = () => {
+    setLoading(false);
+    let attempts = 0;
+    const checkL = () => {
+      if (window.L && mapContainerRef.current) {
+        initializeLeafletMap();
+      } else if (attempts < 10) {
+        attempts++;
+        setTimeout(checkL, 200);
+      } else {
+        setApiError(true);
+      }
+    };
+    checkL();
+  };
+
+  const initializeLeafletMap = () => {
+    if (!mapContainerRef.current || !window.L) return;
+    if (leafletMapRef.current) return;
+
+    mapContainerRef.current.innerHTML = "";
+
+    const center: [number, number] = [defaultLat, defaultLng];
+
+    const map = window.L.map(mapContainerRef.current, {
+      center: center,
+      zoom: 13,
+      zoomControl: true,
+    });
+
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors",
+    }).addTo(map);
+
+    leafletMapRef.current = map;
+
+    // Force Leaflet to recalculate container bounds and load visible map tiles
+    setTimeout(() => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.invalidateSize();
+      }
+    }, 100);
+    setTimeout(() => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.invalidateSize();
+      }
+    }, 500);
+
+    const customIcon = window.L.divIcon({
+      className: "custom-leaflet-picker-gif-pin",
+      html: `<img src="/images/location.gif" style="width: 48px; height: 48px; display: block; cursor: grab; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));" />`,
+      iconSize: [48, 48],
+      iconAnchor: [24, 48]
+    });
+
+    const marker = window.L.marker(center, {
+      draggable: true,
+      icon: customIcon,
+    }).addTo(map);
+
+    leafletMarkerRef.current = marker;
+
+    if (!form.mapAddress && !form.address) {
+      reverseGeocodeNominatim({ lat: defaultLat, lng: defaultLng });
+    }
+
+    map.on("click", (e: any) => {
+      const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
+      marker.setLatLng(e.latlng);
+      map.panTo(e.latlng);
+      updateCoordinates(coords);
+      reverseGeocodeNominatim(coords);
+    });
+
+    marker.on("dragend", () => {
+      const latlng = marker.getLatLng();
+      const coords = { lat: latlng.lat, lng: latlng.lng };
+      updateCoordinates(coords);
+      reverseGeocodeNominatim(coords);
+    });
+  };
 
   const initializeMap = () => {
     if (!mapContainerRef.current) return;
@@ -87,12 +228,10 @@ export default function MapPickerStep() {
       draggable: true,
       animation: maps.Animation.DROP,
       icon: {
-        path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-        scale: 6,
-        fillColor: "#59AD63",
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: "#FFFFFF"
+        url: "/images/location.gif",
+        scaledSize: new maps.Size(48, 48),
+        origin: new maps.Point(0, 0),
+        anchor: new maps.Point(24, 48)
       }
     });
     markerRef.current = marker;
@@ -120,50 +259,385 @@ export default function MapPickerStep() {
     });
   };
 
-  const geocodeNominatim = (address: string) => {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(address)}&limit=1`)
-      .then(res => res.json())
-      .then(data => {
-        if (data && data[0]) {
-          const lat = parseFloat(data[0].lat);
-          const lng = parseFloat(data[0].lon);
-          const displayName = data[0].display_name;
-          const addressParts = data[0].address || {};
-          const county = addressParts.county || addressParts.state_district || addressParts.district || "";
-          const city = addressParts.city || addressParts.town || addressParts.village || addressParts.suburb || addressParts.locality || "";
-          const state = addressParts.state || "";
-          const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === state.toLowerCase());
-          const cleanDistrict = county.replace(" District", "").trim();
-          const cityOrAddress = city || displayName;
+  const fetchNominatimSuggestions = (query: string) => {
+    const fullQuery = query.toLowerCase().includes("india") ? query : `${query}, India`;
 
-          if (window.google && window.google.maps) {
-            const maps = window.google.maps;
-            const googleCoords = new maps.LatLng(lat, lng);
-            if (mapRef.current) {
-              mapRef.current.setCenter(googleCoords);
-              mapRef.current.setZoom(16);
-            }
-            if (markerRef.current) {
-              markerRef.current.setPosition(googleCoords);
-            }
-          }
-
-          update({
-            latitude: lat,
-            longitude: lng,
-            mapAddress: displayName,
-            address: cityOrAddress,
-            ...(cleanDistrict ? { district: cleanDistrict } : {}),
-            ...(matchedState ? { state: matchedState } : {})
-          });
-          setFetchedAddress(cityOrAddress);
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=in&q=${encodeURIComponent(query)}&limit=6`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSuggestions(data);
+          setShowSuggestions(true);
+        } else {
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(fullQuery)}&limit=6`)
+            .then((res) => res.json())
+            .then((fallbackData) => {
+              if (Array.isArray(fallbackData) && fallbackData.length > 0) {
+                setSuggestions(fallbackData);
+                setShowSuggestions(true);
+              } else {
+                fetchOpenMeteoSuggestions(query);
+              }
+            })
+            .catch(() => fetchOpenMeteoSuggestions(query));
         }
       })
-      .catch(err => console.error("Nominatim geocoding error:", err));
+      .catch(() => fetchOpenMeteoSuggestions(query));
+  };
+
+  const fetchOpenMeteoSuggestions = (query: string) => {
+    fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=en&format=json`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && Array.isArray(data.results) && data.results.length > 0) {
+          const formatted = data.results.map((item: any) => ({
+            lat: item.latitude,
+            lon: item.longitude,
+            display_name: `${item.name}, ${item.admin1 || ""}, ${item.country || "India"}`,
+            place_name: item.name,
+            address: {
+              city: item.name,
+              district: item.admin2 || item.admin1 || "",
+              state: item.admin1 || ""
+            }
+          }));
+          setSuggestions(formatted);
+          setShowSuggestions(true);
+        }
+      })
+      .catch((err) => console.error("OpenMeteo suggestions error:", err));
+  };
+
+  // Debounced search for live suggestions (No premature auto-pan while typing)
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const query = searchQuery.trim();
+
+      // Handle 6-digit Indian PIN Code in live autocomplete e.g. 670721
+      if (/^\d{6}$/.test(query)) {
+        try {
+          const pinRes = await fetch(`https://api.postalpincode.in/pincode/${query}`);
+          const pinData = await pinRes.json();
+          if (pinData && pinData[0] && pinData[0].Status === "Success" && Array.isArray(pinData[0].PostOffice)) {
+            const postOffices = pinData[0].PostOffice;
+            const pinSuggestions = postOffices.map((po: any) => ({
+              display_name: `${po.Name}, ${po.District}, ${po.State} - ${query}`,
+              place_name: po.Name,
+              search_query: `${po.Name}, ${po.District}, ${po.State}, India`,
+              address: {
+                city: po.Name,
+                district: po.District,
+                state: po.State,
+                postcode: query,
+              },
+            }));
+            setSuggestions(pinSuggestions);
+            setShowSuggestions(true);
+            return;
+          }
+        } catch (e) {
+          console.warn("PIN Code API fetch error:", e);
+        }
+      }
+
+      // Try Google Places Autocomplete if available
+      if (window.google && window.google.maps && window.google.maps.places) {
+        try {
+          const autocompleteService = new window.google.maps.places.AutocompleteService();
+          autocompleteService.getPlacePredictions(
+            {
+              input: query,
+              componentRestrictions: { country: "in" },
+            },
+            (predictions: any, status: any) => {
+              if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
+                const formatted = predictions.map((p: any) => ({
+                  display_name: p.description,
+                  place_id: p.place_id,
+                  isGooglePlace: true,
+                  place_name: p.structured_formatting?.main_text || p.description.split(",")[0],
+                  structured_formatting: p.structured_formatting,
+                }));
+                setSuggestions(formatted);
+                setShowSuggestions(true);
+              } else {
+                fetchNominatimSuggestions(query);
+              }
+            }
+          );
+          return;
+        } catch (e) {
+          console.warn("Google Places Autocomplete error:", e);
+        }
+      }
+
+      fetchNominatimSuggestions(query);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const applyLocationData = (params: {
+    lat?: number;
+    lng?: number;
+    mapAddress?: string;
+    cityOrAddress?: string;
+    rawState?: string;
+    rawDistrict?: string;
+  }) => {
+    const currentState = form.state || "Kerala";
+    let matchedState: string = currentState;
+
+    const fullAddressText = `${params.mapAddress || ""} ${params.cityOrAddress || ""} ${params.rawState || ""} ${params.rawDistrict || ""}`.toLowerCase();
+
+    if (params.rawState) {
+      const foundState = INDIAN_STATES.find((s) => s.toLowerCase() === params.rawState!.toLowerCase());
+      if (foundState) {
+        matchedState = foundState;
+      }
+    }
+    
+    if (!params.rawState || matchedState === currentState) {
+      const stateMatch = INDIAN_STATES.find((s) => fullAddressText.includes(s.toLowerCase()));
+      if (stateMatch) {
+        matchedState = stateMatch;
+      }
+    }
+
+    const dists = getDistrictsForState(matchedState);
+    let matchedDistrict: string | undefined = undefined;
+
+    if (params.rawDistrict) {
+      const cleanRaw = params.rawDistrict.replace(/ District/i, "").trim().toLowerCase();
+      const exactMatch = dists.find((d) => d.toLowerCase() === cleanRaw);
+      const partialMatch = dists.find((d) => cleanRaw.includes(d.toLowerCase()) || d.toLowerCase().includes(cleanRaw));
+      if (exactMatch) matchedDistrict = exactMatch;
+      else if (partialMatch) matchedDistrict = partialMatch;
+    }
+
+    if (!matchedDistrict) {
+      const addressDistrictMatch = dists.find((d) => fullAddressText.includes(d.toLowerCase()));
+      if (addressDistrictMatch) {
+        matchedDistrict = addressDistrictMatch;
+      }
+    }
+
+    if (!matchedDistrict || !dists.includes(matchedDistrict)) {
+      matchedDistrict = (form.district && dists.includes(form.district)) ? form.district : (dists[0] || "");
+    }
+
+    update({
+      ...(params.lat !== undefined ? { latitude: params.lat } : {}),
+      ...(params.lng !== undefined ? { longitude: params.lng } : {}),
+      ...(params.mapAddress ? { mapAddress: params.mapAddress } : {}),
+      ...(params.cityOrAddress ? { address: params.cityOrAddress } : {}),
+      state: matchedState,
+      district: matchedDistrict,
+    });
+
+    if (params.cityOrAddress) {
+      setFetchedAddress(params.cityOrAddress);
+      setManualAddress(params.cityOrAddress);
+    }
+  };
+
+  const selectLocation = (locationItem: any) => {
+    setShowSuggestions(false);
+
+    // If item is a Google Place prediction
+    if (locationItem.isGooglePlace && window.google && window.google.maps) {
+      if (!geocoderRef.current) {
+        geocoderRef.current = new window.google.maps.Geocoder();
+      }
+      geocoderRef.current.geocode({ placeId: locationItem.place_id }, (results: any, status: string) => {
+        if (status === "OK" && results[0]) {
+          const loc = results[0].geometry.location;
+          const coords = { lat: loc.lat(), lng: loc.lng() };
+
+          if (mapRef.current) {
+            mapRef.current.setCenter(loc);
+            mapRef.current.setZoom(15);
+            if (markerRef.current) markerRef.current.setPosition(loc);
+          }
+
+          let googleDistrict = "";
+          let googleState = "";
+          let googleCity = "";
+          for (const comp of results[0].address_components || []) {
+            if (comp.types.includes("administrative_area_level_1")) googleState = comp.long_name;
+            if (comp.types.includes("administrative_area_level_2")) googleDistrict = comp.long_name;
+            if (comp.types.includes("locality") || comp.types.includes("sublocality_level_1") || comp.types.includes("neighborhood")) {
+              if (!googleCity) googleCity = comp.long_name;
+            }
+          }
+          const cityOrAddress = googleCity || locationItem.display_name.split(",")[0];
+
+          applyLocationData({
+            lat: coords.lat,
+            lng: coords.lng,
+            mapAddress: results[0].formatted_address || locationItem.display_name,
+            cityOrAddress: cityOrAddress,
+            rawState: googleState,
+            rawDistrict: googleDistrict || googleCity,
+          });
+        }
+      });
+      return;
+    }
+
+    // If item needs geocoding (e.g. PIN code post office item without lat/lon)
+    if (!locationItem.lat || !locationItem.lon) {
+      const queryToGeocode = locationItem.search_query || locationItem.display_name;
+      geocodeAddress(queryToGeocode);
+      return;
+    }
+
+    const lat = parseFloat(locationItem.lat);
+    const lng = parseFloat(locationItem.lon);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const displayName = locationItem.display_name;
+    const addressParts = locationItem.address || {};
+    const county = addressParts.county || addressParts.state_district || addressParts.district || "";
+    const city = addressParts.city || addressParts.town || addressParts.village || addressParts.suburb || addressParts.locality || locationItem.place_name || "";
+    const state = addressParts.state || "";
+    const cityOrAddress = city || displayName.split(",")[0] || displayName;
+
+    // Center Google Map & Marker
+    if (window.google && window.google.maps && mapRef.current) {
+      const maps = window.google.maps;
+      const googleCoords = new maps.LatLng(lat, lng);
+      mapRef.current.setCenter(googleCoords);
+      mapRef.current.setZoom(15);
+      if (markerRef.current) {
+        markerRef.current.setPosition(googleCoords);
+      }
+    }
+
+    // Center Leaflet Map & Marker
+    if (leafletMapRef.current) {
+      leafletMapRef.current.setView([lat, lng], 15);
+      if (leafletMarkerRef.current) {
+        leafletMarkerRef.current.setLatLng([lat, lng]);
+      }
+      setTimeout(() => {
+        if (leafletMapRef.current) leafletMapRef.current.invalidateSize();
+      }, 50);
+      setTimeout(() => {
+        if (leafletMapRef.current) leafletMapRef.current.invalidateSize();
+      }, 200);
+    }
+
+    applyLocationData({
+      lat: lat,
+      lng: lng,
+      mapAddress: displayName,
+      cityOrAddress: cityOrAddress,
+      rawState: state,
+      rawDistrict: county || city,
+    });
+  };
+
+  const geocodeNominatim = async (address: string) => {
+    if (!address || !address.trim()) return;
+    setIsSearching(true);
+    setShowSuggestions(false);
+
+    const query = address.trim();
+
+    // 1. Handle 6-digit Indian PIN Code search e.g. 670721
+    if (/^\d{6}$/.test(query)) {
+      try {
+        const pinRes = await fetch(`https://api.postalpincode.in/pincode/${query}`);
+        const pinData = await pinRes.json();
+        if (pinData && pinData[0] && pinData[0].Status === "Success" && Array.isArray(pinData[0].PostOffice) && pinData[0].PostOffice.length > 0) {
+          const po = pinData[0].PostOffice[0];
+          const poQuery = `${po.Name}, ${po.District}, ${po.State}, India`;
+          
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(poQuery)}&limit=1`);
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              selectLocation(data[0]);
+              setIsSearching(false);
+              return;
+            }
+          } catch (e) {
+            console.warn("Nominatim fetch error for PIN code:", e);
+          }
+
+          applyLocationData({
+            mapAddress: `${po.Name}, ${po.District}, ${po.State} - ${query}`,
+            cityOrAddress: po.Name,
+            rawState: po.State,
+            rawDistrict: po.District,
+          });
+          setIsSearching(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("PIN Code API fetch error:", e);
+      }
+    }
+
+    // 2. Nominatim Search
+    const fullQuery = query.toLowerCase().includes("india") ? query : `${query}, India`;
+
+    try {
+      let res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(fullQuery)}&limit=5`);
+      let data = await res.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=5`);
+        data = await res.json();
+      }
+
+      if (Array.isArray(data) && data.length > 0) {
+        selectLocation(data[0]);
+        setIsSearching(false);
+        return;
+      }
+    } catch (err) {
+      console.warn("Nominatim search error, trying Open-Meteo fallback:", err);
+    }
+
+    // 3. Fallback to Open-Meteo Geocoding
+    try {
+      const fallbackRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
+      const fallbackData = await fallbackRes.json();
+      if (fallbackData && fallbackData.results && fallbackData.results.length > 0) {
+        const item = fallbackData.results[0];
+        const itemLocation = {
+          lat: item.latitude,
+          lon: item.longitude,
+          display_name: `${item.name}, ${item.admin1 || ""}, ${item.country || "India"}`,
+          place_name: item.name,
+          address: {
+            city: item.name,
+            district: item.admin2 || item.admin1 || "",
+            state: item.admin1 || ""
+          }
+        };
+        selectLocation(itemLocation);
+        setIsSearching(false);
+        return;
+      }
+    } catch (fallbackErr) {
+      console.error("Geocoding fallback failed:", fallbackErr);
+    }
+
+    alert(`No location matches found for "${address}". Please try another town, city, landmark or PIN code.`);
+    setIsSearching(false);
   };
 
   const geocodeAddress = (address: string) => {
-    if (!window.google || !window.google.maps) {
+    if (leafletMapRef.current || !window.google || !window.google.maps) {
       geocodeNominatim(address);
       return;
     }
@@ -199,19 +673,16 @@ export default function MapPickerStep() {
             if (!googleCity) googleCity = component.long_name;
           }
         }
-        const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === googleState.toLowerCase());
-        const cleanDistrict = googleDistrict.replace(" District", "").trim();
         const cityOrAddress = googleCity || results[0].formatted_address;
 
-        update({
-          latitude: coords.lat,
-          longitude: coords.lng,
+        applyLocationData({
+          lat: coords.lat,
+          lng: coords.lng,
           mapAddress: results[0].formatted_address,
-          address: cityOrAddress,
-          ...(cleanDistrict ? { district: cleanDistrict } : {}),
-          ...(matchedState ? { state: matchedState } : {})
+          cityOrAddress: cityOrAddress,
+          rawState: googleState,
+          rawDistrict: googleDistrict || googleCity,
         });
-        setFetchedAddress(cityOrAddress);
       } else {
         console.warn("Google Geocoder failed. Falling back to Nominatim: " + status);
         geocodeNominatim(address);
@@ -229,24 +700,21 @@ export default function MapPickerStep() {
           const county = addressParts.county || addressParts.state_district || addressParts.district || "";
           const city = addressParts.city || addressParts.town || addressParts.village || addressParts.suburb || addressParts.locality || "";
           const state = addressParts.state || "";
-          const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === state.toLowerCase());
-          const cleanDistrict = county.replace(" District", "").trim();
           const cityOrAddress = city || displayName;
 
-          update({
+          applyLocationData({
             mapAddress: displayName,
-            address: cityOrAddress,
-            ...(cleanDistrict ? { district: cleanDistrict } : {}),
-            ...(matchedState ? { state: matchedState } : {})
+            cityOrAddress: cityOrAddress,
+            rawState: state,
+            rawDistrict: county || city,
           });
-          setFetchedAddress(cityOrAddress);
         }
       })
       .catch(err => console.error("Nominatim reverse geocoding error:", err));
   };
 
   const reverseGeocode = (coords: { lat: number; lng: number }) => {
-    if (!window.google || !window.google.maps) {
+    if (leafletMapRef.current || !window.google || !window.google.maps) {
       reverseGeocodeNominatim(coords);
       return;
     }
@@ -272,17 +740,14 @@ export default function MapPickerStep() {
             if (!googleCity) googleCity = component.long_name;
           }
         }
-        const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === googleState.toLowerCase());
-        const cleanDistrict = googleDistrict.replace(" District", "").trim();
         const cityOrAddress = googleCity || formattedAddress;
 
-        update({
+        applyLocationData({
           mapAddress: formattedAddress,
-          address: cityOrAddress,
-          ...(cleanDistrict ? { district: cleanDistrict } : {}),
-          ...(matchedState ? { state: matchedState } : {})
+          cityOrAddress: cityOrAddress,
+          rawState: googleState,
+          rawDistrict: googleDistrict || googleCity,
         });
-        setFetchedAddress(cityOrAddress);
       } else {
         console.warn("Google reverse geocoding failed. Falling back to Nominatim: " + status);
         reverseGeocodeNominatim(coords);
@@ -314,8 +779,17 @@ export default function MapPickerStep() {
           markerRef.current.setPosition(coords);
         }
 
+        if (leafletMapRef.current && leafletMarkerRef.current) {
+          leafletMapRef.current.setView([latitude, longitude], 16);
+          leafletMarkerRef.current.setLatLng([latitude, longitude]);
+        }
+
         updateCoordinates(coords);
-        reverseGeocode(coords);
+        if (window.google && window.google.maps) {
+          reverseGeocode(coords);
+        } else {
+          reverseGeocodeNominatim(coords);
+        }
       },
       (error) => {
         alert("Geolocation error: " + error.message);
@@ -377,29 +851,85 @@ export default function MapPickerStep() {
         </div>
 
         {/* Search Location Bar */}
-        <div className="flex gap-2">
-          <div className="flex-1 relative border border-[#59AD63]/30 rounded-[8px] px-4 py-3 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] focus-within:ring-1 focus-within:ring-[#59AD63]/30 transition-all duration-150">
-            <input
-              type="text"
-              placeholder="Search location, town, or landmark..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  geocodeAddress(searchQuery);
-                }
-              }}
-              className="flex-1 text-[13.5px] font-semibold text-charcoal placeholder:text-slate/30 outline-none bg-transparent"
-            />
+        <div className="relative z-30">
+          <div className="flex gap-2">
+            <div className="flex-1 relative border border-[#59AD63]/40 rounded-[10px] px-4 py-3 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] focus-within:ring-2 focus-within:ring-[#59AD63]/20 transition-all duration-150">
+              <input
+                type="text"
+                placeholder="Search location, city or PIN code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  if (suggestions.length > 0) setShowSuggestions(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    geocodeAddress(searchQuery);
+                  }
+                }}
+                className="flex-1 text-[14px] font-medium text-[#091F40] placeholder:text-slate-400 outline-none bg-transparent pr-2"
+              />
+              <Search
+                size={19}
+                className="text-slate-400 hover:text-[#59AD63] shrink-0 cursor-pointer transition-colors"
+                onClick={() => geocodeAddress(searchQuery)}
+              />
+            </div>
+            <button
+              type="button"
+              disabled={isSearching}
+              onClick={() => geocodeAddress(searchQuery)}
+              className="px-5 rounded-[10px] font-bold text-xs text-white bg-[#59AD63] hover:bg-[#3F8F4B] transition-colors active:scale-95 cursor-pointer shadow-sm flex items-center justify-center shrink-0 disabled:opacity-60"
+            >
+              {isSearching ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                "Search"
+              )}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => geocodeAddress(searchQuery)}
-            className="px-5 rounded-[8px] font-bold text-xs text-white bg-[#59AD63] hover:bg-[#3F8F4B] transition-colors active:scale-95 cursor-pointer shadow-sm flex items-center justify-center shrink-0"
-          >
-            Search
-          </button>
+
+          {/* Search Autocomplete Suggestions Dropdown - Google Maps Style */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200/80 rounded-xl shadow-2xl z-50 overflow-hidden max-h-72 overflow-y-auto py-1">
+              {suggestions.map((item, idx) => {
+                const formatSuggestionItem = (locItem: any) => {
+                  if (locItem.isGooglePlace && locItem.structured_formatting) {
+                    return {
+                      main: locItem.structured_formatting.main_text || locItem.display_name.split(",")[0],
+                      secondary: locItem.structured_formatting.secondary_text || locItem.display_name.split(",").slice(1).join(", ").trim(),
+                    };
+                  }
+                  const parts = locItem.display_name ? locItem.display_name.split(",") : [locItem.place_name || "Location"];
+                  const main = locItem.place_name || parts[0].trim();
+                  const secondary = parts.slice(1).join(", ").trim();
+                  return { main, secondary };
+                };
+                const { main, secondary } = formatSuggestionItem(item);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => selectLocation(item)}
+                    className="w-full text-left px-4 py-3 hover:bg-slate-100/90 border-b border-slate-100 last:border-b-0 transition-colors flex items-center gap-3.5 cursor-pointer group"
+                  >
+                    <MapPin size={18} className="text-slate-500 group-hover:text-[#59AD63] shrink-0 transition-colors" />
+                    <div className="flex items-baseline gap-1.5 min-w-0 flex-wrap">
+                      <span className="text-[13.5px] font-bold text-[#091F40] tracking-tight">
+                        {main}
+                      </span>
+                      {secondary && (
+                        <span className="text-[12px] font-medium text-slate-500 truncate">
+                          {secondary}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Map Container */}

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutGrid, List, ChevronDown, MapPin, BedDouble, Bath, Maximize, X, Search as SearchIcon } from "lucide-react";
+import { LayoutGrid, List, ChevronDown, MapPin, X } from "lucide-react";
 import { ApiProperty, mediaUrl, api } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import DesktopHeader from "./DesktopHeader";
 import DesktopFooter from "./DesktopFooter";
-import { INDIAN_STATES, STATE_COORDINATES, getStateForDistrict } from "@/lib/indiaLocationData";
+import PropertyCard from "./PropertyCard";
+import { STATE_COORDINATES } from "@/lib/indiaLocationData";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
 
@@ -49,16 +50,12 @@ export default function DesktopPropertyListing({
   const { token } = useAuth();
   const [properties, setProperties] = useState<ApiProperty[]>(initialProperties || []);
   const [allProperties, setAllProperties] = useState<ApiProperty[]>([]);
+  const [visibleMapProperties, setVisibleMapProperties] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(!initialProperties);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("Default");
   const [selectedProperty, setSelectedProperty] = useState<ApiProperty | null>(null);
   const [showMap, setShowMap] = useState<boolean>(initialShowMap);
-
-  // Map Auto Search Location States
-  const [mapSearchQuery, setMapSearchQuery] = useState("");
-  const [selectedMapLocation, setSelectedMapLocation] = useState<string | null>(null);
-  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
 
   // Search Filters — Default purpose is empty to show ALL properties initially
   const [filters, setFilters] = useState({
@@ -72,7 +69,6 @@ export default function DesktopPropertyListing({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
-  const boundaryCircleRef = useRef<any>(null);
 
   // Fetch master list of all properties once for complete map coverage
   useEffect(() => {
@@ -98,36 +94,68 @@ export default function DesktopPropertyListing({
       .finally(() => setLoading(false));
   }, [filters]);
 
-  // Extract unique available property types, states & districts from dataset
+  // Extract unique available property types
   const availableTypes = Array.from(new Set(properties.map((p) => p.propertyType))).filter(Boolean);
-  const locationSuggestions: string[] = Array.from(new Set([
-    ...INDIAN_STATES,
-    ...Object.keys(DISTRICT_COORDINATES),
-    ...properties.map((p) => p.district),
-    ...properties.map((p) => p.state),
-  ])).filter((loc): loc is string => Boolean(loc)).sort();
 
-  const filteredLocationSuggestions = mapSearchQuery
-    ? locationSuggestions.filter((loc) => loc.toLowerCase().includes(mapSearchQuery.toLowerCase()))
-    : locationSuggestions;
+  // Filter properties based on Leaflet map bounds
+  const updateVisibleMapProperties = () => {
+    if (!mapRef.current || !window.L) return;
 
-  // Active Location Query (from map search input OR top header district filter)
-  const activeLocationQuery = selectedMapLocation || mapSearchQuery || (filters.district && !filters.district.startsWith("All ") ? filters.district : "");
-  
-  const mapFilteredProperties = properties.filter((p) => {
-    if (!activeLocationQuery) return true;
-    const q = activeLocationQuery.toLowerCase();
-    return (
-      p.district.toLowerCase().includes(q) ||
-      p.address.toLowerCase().includes(q) ||
-      p.title.toLowerCase().includes(q) ||
-      (p.state && p.state.toLowerCase().includes(q))
-    );
-  });
+    try {
+      const bounds = mapRef.current.getBounds();
+      const mapList = allProperties.length > 0 ? allProperties : (properties.length > 0 ? properties : []);
 
-  // Initialize OpenStreetMap (Leaflet) when map is visible
+      const visible = mapList.filter((prop, idx) => {
+        const distCoords = DISTRICT_COORDINATES[prop.district] || (prop.state ? STATE_COORDINATES[prop.state] : null);
+        const rawLat = prop.latitude ? parseFloat(String(prop.latitude)) : null;
+        const rawLng = prop.longitude ? parseFloat(String(prop.longitude)) : null;
+
+        const lat = (rawLat && !isNaN(rawLat) && rawLat !== 0) 
+          ? rawLat 
+          : (distCoords ? distCoords.lat + ((idx % 5) * 0.05) - 0.1 : 10.850516 + ((idx % 5) * 0.15) - 0.3);
+        const lng = (rawLng && !isNaN(rawLng) && rawLng !== 0) 
+          ? rawLng 
+          : (distCoords ? distCoords.lng + ((idx % 4) * 0.05) - 0.1 : 76.271080 + ((idx % 4) * 0.2) - 0.2);
+
+        return bounds.contains(window.L.latLng(lat, lng));
+      });
+
+      setVisibleMapProperties(visible);
+    } catch (err) {
+      console.error("Error updating visible map properties:", err);
+    }
+  };
+
+  // Handle filter state changes (Fly map to state location without page reload)
+  const handleSearchChange = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+
+    if (newFilters.state && newFilters.state !== "All States (India)" && mapRef.current && window.L) {
+      const stCoords = STATE_COORDINATES[newFilters.state];
+      if (stCoords) {
+        mapRef.current.flyTo([stCoords.lat, stCoords.lng], 7, { duration: 1.2 });
+      }
+    }
+  };
+
+  // Initialize OpenStreetMap (Leaflet) when map is visible & destroy cleanly when toggled off
   useEffect(() => {
-    if (!showMap) return;
+    if (!showMap) {
+      if (mapRef.current) {
+        try {
+          markersRef.current.forEach((m) => {
+            if (m && typeof m.remove === "function") m.remove();
+          });
+          markersRef.current = [];
+          mapRef.current.remove();
+        } catch (e) {
+          console.error("Error removing Leaflet map:", e);
+        }
+        mapRef.current = null;
+      }
+      setSelectedProperty(null);
+      return;
+    }
 
     let timer: NodeJS.Timeout;
 
@@ -157,15 +185,27 @@ export default function DesktopPropertyListing({
 
       if (mapContainerRef.current) {
         if (!mapRef.current) {
-          const map = window.L.map(mapContainerRef.current).setView([KERALA_COORDS.lat, KERALA_COORDS.lng], 8);
+          const initialLat = (filters.state && STATE_COORDINATES[filters.state]) 
+            ? STATE_COORDINATES[filters.state].lat 
+            : KERALA_COORDS.lat;
+          const initialLng = (filters.state && STATE_COORDINATES[filters.state]) 
+            ? STATE_COORDINATES[filters.state].lng 
+            : KERALA_COORDS.lng;
+
+          const map = window.L.map(mapContainerRef.current).setView([initialLat, initialLng], 7);
           window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
             attribution: "&copy; OpenStreetMap"
           }).addTo(map);
+
           mapRef.current = map;
+
+          // Event listeners for dragging, scrolling, panning map
+          map.on("moveend zoomend", () => {
+            updateVisibleMapProperties();
+          });
         }
 
-        // CRITICAL CANVAS RE-RENDER FIX: Invalidate size after animation frame so grey blank map never occurs
         setTimeout(() => {
           if (mapRef.current) {
             mapRef.current.invalidateSize();
@@ -178,29 +218,19 @@ export default function DesktopPropertyListing({
         });
         markersRef.current = [];
 
-        // Clear existing location boundary circle
-        if (boundaryCircleRef.current && typeof boundaryCircleRef.current.remove === "function") {
-          boundaryCircleRef.current.remove();
-          boundaryCircleRef.current = null;
-        }
-
-        const bounds: [number, number][] = [];
         const mapList = allProperties.length > 0 ? allProperties : (properties.length > 0 ? properties : []);
-
-        const activeStateName = (filters.state && filters.state !== "All States (India)") ? filters.state : activeLocationQuery;
 
         mapList.forEach((prop, idx) => {
           const rawLat = prop.latitude ? parseFloat(String(prop.latitude)) : null;
           const rawLng = prop.longitude ? parseFloat(String(prop.longitude)) : null;
-          
+          const distCoords = DISTRICT_COORDINATES[prop.district] || (prop.state ? STATE_COORDINATES[prop.state] : null);
+
           const lat = (rawLat && !isNaN(rawLat) && rawLat !== 0) 
             ? rawLat 
-            : 10.850516 + ((idx % 5) * 0.15) - 0.3;
+            : (distCoords ? distCoords.lat + ((idx % 5) * 0.05) - 0.1 : 10.850516 + ((idx % 5) * 0.15) - 0.3);
           const lng = (rawLng && !isNaN(rawLng) && rawLng !== 0) 
             ? rawLng 
-            : 76.271080 + ((idx % 4) * 0.15) - 0.2;
-
-          bounds.push([lat, lng]);
+            : (distCoords ? distCoords.lng + ((idx % 4) * 0.05) - 0.1 : 76.271080 + ((idx % 4) * 0.2) - 0.2);
 
           const priceNum = parseFloat(String(prop.price));
           const priceText = priceNum >= 10000000 
@@ -217,22 +247,16 @@ export default function DesktopPropertyListing({
           const purposeShort = (prop.purpose || "For Sale").replace("For ", "");
 
           const isSelectedPin = selectedProperty?.id === prop.id;
-          const isStateMatch = activeStateName && prop.state && prop.state.toLowerCase() === activeStateName.toLowerCase();
-          const isLocMatch = activeLocationQuery && (
-            prop.district.toLowerCase().includes(activeLocationQuery.toLowerCase()) ||
-            prop.address.toLowerCase().includes(activeLocationQuery.toLowerCase()) ||
-            (prop.state && prop.state.toLowerCase().includes(activeLocationQuery.toLowerCase()))
-          );
-
-          const bgStyle = isSelectedPin ? "#0F3D3E" : ((isStateMatch || isLocMatch) ? "#1B5E4F" : "#3B82F6");
-          const borderStyle = isSelectedPin ? "3px solid #E5C158" : "2px solid #ffffff";
+          const bgStyle = isSelectedPin ? "#0F3D3E" : "#ffffff";
+          const textColor = isSelectedPin ? "#ffffff" : "#000000";
+          const borderStyle = isSelectedPin ? "2px solid #0F3D3E" : "1px solid #cbd5e1";
           const scaleStyle = isSelectedPin ? "transform: scale(1.15); z-index: 99999;" : "";
 
           const customIcon = window.L.divIcon({
             className: `custom-leaflet-pill ${isSelectedPin ? "active-pill" : ""}`,
-            html: `<div style="background:${bgStyle}; color:#ffffff; padding:4px 10px; border-radius:18px; font-weight:700; border:${borderStyle}; ${scaleStyle} box-shadow:0 4px 12px rgba(0,0,0,0.4); white-space:nowrap; cursor:pointer; text-align:center; line-height:1.2; transition:all 0.2s ease;">
-              <div style="font-size:12px; font-weight:800; color:#FFFFFF;">${priceText}</div>
-              <div style="font-size:9.5px; font-weight:600; color:#E8F0EA; text-transform:capitalize; margin-top:1px;">${typeShort} • ${purposeShort}</div>
+            html: `<div style="background:${bgStyle}; color:${textColor}; padding:4px 10px; border-radius:16px; border:${borderStyle}; ${scaleStyle} box-shadow:0 3px 10px rgba(0,0,0,0.2); white-space:nowrap; cursor:pointer; text-align:center; line-height:1.2; transition:all 0.2s ease;">
+              <div style="font-size:11.5px; font-weight:800;">${priceText}</div>
+              <div style="font-size:9px; font-weight:700; color:${isSelectedPin ? '#e2e8f0' : '#059669'}; text-transform:capitalize; margin-top:1px;">${typeShort} • ${purposeShort}</div>
             </div>`,
             iconSize: [85, 34],
             iconAnchor: [42, 17]
@@ -246,75 +270,29 @@ export default function DesktopPropertyListing({
           markersRef.current.push(marker);
         });
 
-        // DRAW RED DASHED BOUNDARY MARKER OVERLAY AROUND SEARCHED / SELECTED LOCATION OR STATE
-        const matchedLocationKey = Object.keys(DISTRICT_COORDINATES).find(
-          (key) => key.toLowerCase() === activeLocationQuery.toLowerCase()
-        );
-
-        const matchedStateKey = Object.keys(STATE_COORDINATES).find(
-          (key) => key.toLowerCase() === activeStateName.toLowerCase()
-        );
-
-        if (matchedLocationKey && mapRef.current) {
-          const locInfo = DISTRICT_COORDINATES[matchedLocationKey];
-          const circle = window.L.circle([locInfo.lat, locInfo.lng], {
-            radius: locInfo.radius,
-            color: "#EF4444", // Red outline
-            weight: 2.5,
-            dashArray: "6, 8", // Dashed border matching Image 1
-            fillColor: "#EF4444",
-            fillOpacity: 0.08
-          }).addTo(mapRef.current);
-
-          boundaryCircleRef.current = circle;
-          mapRef.current.fitBounds(circle.getBounds(), { padding: [30, 30] });
-        } else if (matchedStateKey && STATE_COORDINATES[matchedStateKey] && mapRef.current) {
-          const stCoords = STATE_COORDINATES[matchedStateKey];
-          const circle = window.L.circle([stCoords.lat, stCoords.lng], {
-            radius: 90000,
-            color: "#EF4444",
-            weight: 2.5,
-            dashArray: "6, 8",
-            fillColor: "#EF4444",
-            fillOpacity: 0.08
-          }).addTo(mapRef.current);
-
-          boundaryCircleRef.current = circle;
-
-          const statePinBounds = mapList
-            .filter(p => p.state && p.state.toLowerCase() === matchedStateKey.toLowerCase())
-            .map(p => {
-              const lat = parseFloat(String(p.latitude));
-              const lng = parseFloat(String(p.longitude));
-              return (!isNaN(lat) && !isNaN(lng) && lat !== 0) ? [lat, lng] as [number, number] : null;
-            })
-            .filter((b): b is [number, number] => Boolean(b));
-
-          if (statePinBounds.length > 0 && !selectedProperty) {
-            mapRef.current.fitBounds(statePinBounds, { padding: [50, 50] });
-          } else {
-            mapRef.current.setView([stCoords.lat, stCoords.lng], 7);
-          }
-        } else if (bounds.length > 0 && mapRef.current && !selectedProperty) {
-          mapRef.current.fitBounds(bounds, { padding: [40, 40] });
-        } else if (mapRef.current) {
-          mapRef.current.setView([KERALA_COORDS.lat, KERALA_COORDS.lng], 8);
-        }
-
-        // Invalidate map size so Leaflet map canvas never remains gray/blank
-        setTimeout(() => {
-          if (mapRef.current) {
-            mapRef.current.invalidateSize();
-          }
-        }, 120);
+        updateVisibleMapProperties();
       } else {
         timer = setTimeout(initMap, 300);
       }
     };
 
     initMap();
-    return () => clearTimeout(timer);
-  }, [allProperties, properties, mapFilteredProperties, selectedProperty, showMap, activeLocationQuery, filters.state]);
+    return () => {
+      clearTimeout(timer);
+      if (mapRef.current) {
+        try {
+          markersRef.current.forEach((m) => {
+            if (m && typeof m.remove === "function") m.remove();
+          });
+          markersRef.current = [];
+          mapRef.current.remove();
+        } catch (e) {
+          console.error("Error destroying map on cleanup:", e);
+        }
+        mapRef.current = null;
+      }
+    };
+  }, [allProperties, properties, selectedProperty, showMap]);
 
   // Smoothly scroll selected property card into view when selected from map
   useEffect(() => {
@@ -326,17 +304,16 @@ export default function DesktopPropertyListing({
     }
   }, [selectedProperty]);
 
-  const handlePropertyClick = (propId: number) => {
-    if (!token) {
-      navigate(`/login?redirect=/property/${propId}`);
-    } else {
-      navigate(`/property/${propId}`);
-    }
-  };
-
   // Sort properties
-  const displayProperties = activeLocationQuery ? mapFilteredProperties : properties;
+  const displayProperties = properties;
   const sortedProperties = [...displayProperties].sort((a, b) => {
+    if (sortBy === "PriceAsc") return Number(a.price) - Number(b.price);
+    if (sortBy === "PriceDesc") return Number(b.price) - Number(a.price);
+    if (sortBy === "Newest") return b.id - a.id;
+    return 0;
+  });
+
+  const sortedVisibleMapProperties = [...visibleMapProperties].sort((a, b) => {
     if (sortBy === "PriceAsc") return Number(a.price) - Number(b.price);
     if (sortBy === "PriceDesc") return Number(b.price) - Number(a.price);
     if (sortBy === "Newest") return b.id - a.id;
@@ -353,355 +330,236 @@ export default function DesktopPropertyListing({
         initialDistrict={filters.district}
         initialType={filters.propertyType}
         availableTypes={availableTypes}
-        onSearchChange={(newFilters) => setFilters(newFilters)}
+        onSearchChange={handleSearchChange}
         onToggleMap={() => setShowMap((prev) => !prev)}
         isMapOpen={showMap}
       />
 
-      {/* TOGGLEABLE INTERACTIVE MAP VIEW WITH "FADE IN DOWN" ANIMATION */}
-      {showMap && (
-        <div className="w-full max-w-7xl mx-auto px-6 pt-6 animate-fade-in-down">
-          <div className="bg-white rounded-3xl p-3 border border-gray-200 shadow-xl overflow-visible relative z-20">
-            {/* Top Bar for Map matching user mockup (Image 2) */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 border-b border-gray-100 mb-2 relative z-30">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center p-1.5 rounded-full bg-blue-50 border border-blue-200">
-                  <img src="/google_maps_icon.png" alt="Google Maps" className="w-5 h-5 object-contain" />
-                </div>
+      {/* DUAL SPLIT-SCREEN VIEW WHEN MAP IS ON (Matching Image 1) */}
+      {showMap ? (
+        <div className="w-full max-w-[1750px] mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT COLUMN: Properties Grid Listing (Col 6 of 12) */}
+            <div className="lg:col-span-6 flex flex-col gap-4">
+              {/* Header Bar showing Available Properties count */}
+              <div className="flex items-center justify-between border-b border-gray-200/80 pb-3">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                    Interactive Map Explorer
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                      mapFilteredProperties.length > 0
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-900"
-                    }`}>
-                      {mapFilteredProperties.length > 0
-                        ? `${mapFilteredProperties.length} Pins Active`
-                        : `0 Pins Active in ${filters.state !== "All States (India)" ? filters.state : activeLocationQuery || "Area"}`}
-                    </span>
-                  </h3>
-                  <p className="text-[11px] text-gray-500 font-medium">
-                    Click any price pin box on the map to inspect property details
+                  <h1 className="text-xl font-bold text-gray-900 tracking-tight font-display">
+                    {sortedVisibleMapProperties.length} Properties Available in This Area
+                  </h1>
+                  <p className="text-xs text-gray-500 font-medium mt-0.5">
+                    Updated automatically as you pan or zoom the map
                   </p>
                 </div>
-              </div>
 
-              {/* AUTO SEARCH LOCATION INPUT BAR IN MAP BOX (Matching Image 2) */}
-              <div className="relative min-w-[260px] max-w-sm flex-1 mx-2 z-40">
-                <div className="flex items-center bg-gray-50 border border-gray-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 rounded-full px-3.5 py-1.5 text-xs shadow-xs transition-all">
-                  <MapPin className="w-4 h-4 text-blue-600 mr-2 shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Search location or keyword (e.g. Wayanad)..."
-                    value={mapSearchQuery}
-                    onChange={(e) => {
-                      setMapSearchQuery(e.target.value);
-                      setSelectedMapLocation(null);
-                      setShowLocationDropdown(true);
-                    }}
-                    onFocus={() => setShowLocationDropdown(true)}
-                    className="w-full bg-transparent outline-none text-gray-900 font-medium placeholder-gray-400"
-                  />
-                  {mapSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMapSearchQuery("");
-                        setSelectedMapLocation(null);
-                        setShowLocationDropdown(false);
-                      }}
-                      className="text-gray-400 hover:text-gray-700 ml-1 p-0.5 rounded-full"
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-1.5 pr-7 text-xs font-semibold text-gray-700 cursor-pointer shadow-xs focus:outline-none"
                     >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Auto-complete suggestions dropdown - High Z-Index & Overflow Fix */}
-                {showLocationDropdown && filteredLocationSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-2xl z-[99999] overflow-hidden py-1 max-h-60 overflow-y-auto">
-                    {filteredLocationSuggestions.map((loc, i) => (
-                      <div
-                        key={i}
-                        onClick={() => {
-                          if (!loc) return;
-                          const targetLoc: string = loc;
-                          setMapSearchQuery(targetLoc);
-                          setSelectedMapLocation(targetLoc);
-                          setShowLocationDropdown(false);
-
-                          if ((INDIAN_STATES as readonly string[]).includes(targetLoc)) {
-                            setFilters(prev => ({
-                              ...prev,
-                              state: targetLoc,
-                              district: `All ${targetLoc}`
-                            }));
-                          } else {
-                            const parentState = getStateForDistrict(targetLoc);
-                            if (parentState) {
-                              setFilters(prev => ({
-                                ...prev,
-                                state: parentState,
-                                district: targetLoc
-                              }));
-                            }
-                          }
-
-                          if (mapRef.current) {
-                            const stateCoords = STATE_COORDINATES[targetLoc];
-                            const distCoords = DISTRICT_COORDINATES[targetLoc];
-                            if (distCoords) {
-                              mapRef.current.setView([distCoords.lat, distCoords.lng], 11);
-                            } else if (stateCoords) {
-                              mapRef.current.setView([stateCoords.lat, stateCoords.lng], 7);
-                            }
-                          }
-                        }}
-                        className="px-4 py-2.5 hover:bg-blue-50 text-xs font-semibold text-gray-800 cursor-pointer flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                          <span>{loc}</span>
-                        </div>
-                        <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">Show on Map</span>
-                      </div>
-                    ))}
+                      <option value="Default">Sort by (Default)</option>
+                      <option value="PriceAsc">Price: Low to High</option>
+                      <option value="PriceDesc">Price: High to Low</option>
+                      <option value="Newest">Newest First</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2 top-2 pointer-events-none" />
                   </div>
-                )}
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowMap(false)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition active:scale-95 cursor-pointer shrink-0"
-              >
-                <X className="w-4 h-4" />
-                <span>Hide Map</span>
-              </button>
-            </div>
-
-            {/* Map Container - Explicitly scoped z-0 */}
-            <div className="h-[420px] w-full rounded-2xl overflow-hidden relative z-0 bg-gray-100 border border-gray-200/80">
-              <div ref={mapContainerRef} className="w-full h-full" />
-
-              {/* Selected Property Banner Overlay on Map */}
-              {selectedProperty && (
-                <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md bg-white rounded-2xl p-4 shadow-2xl border border-gray-100 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300 z-20">
-                  <img
-                    src={selectedProperty.images && selectedProperty.images.length > 0 ? (selectedProperty.images[0].startsWith("/uploads/") ? mediaUrl(selectedProperty.images[0]) : selectedProperty.images[0]) : FALLBACK_IMAGE}
-                    alt={selectedProperty.title}
-                    className="w-20 h-20 rounded-xl object-cover shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block mb-1">
-                      {selectedProperty.purpose}
-                    </span>
-                    <h4 className="font-bold text-sm text-gray-900 truncate">{selectedProperty.title}</h4>
-                    <p className="text-xs text-gray-500 truncate">{selectedProperty.address || selectedProperty.district}</p>
-                    <div className="font-extrabold text-sm text-gray-900 mt-1">{formatPrice(selectedProperty.price)}</div>
-                  </div>
-                  <button
-                    onClick={() => handlePropertyClick(selectedProperty.id)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shrink-0 shadow-xs transition cursor-pointer"
-                  >
-                    View Details
-                  </button>
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="h-56 bg-gray-200 rounded-2xl"></div>
+                  ))}
                 </div>
-              )}
-
-              {/* Empty State Banner Overlay on Map when 0 pins found in location */}
-              {mapFilteredProperties.length === 0 && !selectedProperty && (
-                <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-gray-200 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 duration-300 z-20">
-                  <div className="flex items-center gap-2 text-amber-800 font-extrabold text-xs">
-                    <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Map Centered on {filters.state !== "All States (India)" ? filters.state : activeLocationQuery || "Selected Location"}</span>
+              ) : sortedVisibleMapProperties.length === 0 ? (
+                /* ERROR MESSAGE WITH FADE-IN EFFECT WHEN NO PROPERTIES ARE IN VISIBLE MAP REGION */
+                <div className="bg-white rounded-3xl p-10 text-center border border-gray-200/80 shadow-xs flex flex-col items-center justify-center gap-3 my-4 animate-fade-in">
+                  <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center shadow-xs">
+                    <MapPin size={26} />
                   </div>
-                  <p className="text-[11px] text-gray-600 leading-relaxed font-medium">
-                    No properties are currently listed in {filters.state !== "All States (India)" ? filters.state : activeLocationQuery || "this region"}.
+                  <h3 className="text-base font-bold text-gray-900">
+                    No properties listed in this location
+                  </h3>
+                  <p className="text-xs text-gray-500 max-w-xs">
+                    Try zooming out or moving the map to another region like Kerala or Karnataka to see available listings.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/add-property")}
-                    className="mt-1 w-full py-2 bg-[#60A963] hover:bg-[#529355] text-white rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer text-center"
-                  >
-                    + Post a Property Listing
-                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {sortedVisibleMapProperties.map((prop) => (
+                    <div
+                      key={prop.id}
+                      id={`property-card-${prop.id}`}
+                      onMouseEnter={() => setSelectedProperty(prop)}
+                      className="rounded-2xl transition-all duration-200 cursor-pointer"
+                    >
+                      <PropertyCard
+                        property={prop}
+                        onToggleSave={(id, isSaved) => {
+                          setProperties((prev) =>
+                            prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
+                          );
+                          setAllProperties((prev) =>
+                            prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
+                          );
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Main Listing Grid Body */}
-      <div className="max-w-7xl mx-auto w-full px-6 py-8 flex-1 flex flex-col gap-6">
-        {/* Listing Control Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200/80 pb-4">
-          <div>
-            <h1 className="text-[1.4rem] font-semibold text-gray-900 tracking-tight font-display">
-              Property Listings
-            </h1>
-            <p className="text-xs text-gray-500 font-medium mt-1">
-              Showing {sortedProperties.length} available properties {filters.district !== "All Kerala" ? `in ${filters.district}` : "across Kerala"}
-            </p>
-          </div>
+            {/* RIGHT COLUMN: Sticky Map Container (Col 6 of 12) */}
+            <div className="lg:col-span-6 sticky top-24 h-[calc(100vh-120px)] rounded-3xl overflow-hidden border border-gray-200 shadow-lg relative">
+              <div ref={mapContainerRef} id="leaflet-map-desktop" className="w-full h-full z-10" />
 
-          <div className="flex items-center gap-4 self-end sm:self-auto">
-            {/* View Toggle */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-md transition cursor-pointer ${viewMode === "grid" ? "bg-white text-blue-600 shadow-xs" : "text-gray-500 hover:text-gray-800"}`}
-                title="Grid View"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 rounded-md transition cursor-pointer ${viewMode === "list" ? "bg-white text-blue-600 shadow-xs" : "text-gray-500 hover:text-gray-800"}`}
-                title="List View"
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-xs font-semibold text-gray-700 cursor-pointer shadow-xs focus:outline-none"
-              >
-                <option value="Default">Sort by (Default)</option>
-                <option value="PriceAsc">Price: Low to High</option>
-                <option value="PriceDesc">Price: High to Low</option>
-                <option value="Newest">Newest First</option>
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2.5 top-2.5 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* Cards Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-pulse">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div key={i} className="h-72 bg-gray-200 rounded-2xl"></div>
-            ))}
-          </div>
-        ) : sortedProperties.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center border border-gray-200/80 shadow-xs">
-            <p className="text-gray-500 font-medium">No properties found matching your search criteria.</p>
-          </div>
-        ) : (
-          <div className={
-            viewMode === "grid" 
-              ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
-              : "flex flex-col gap-4"
-          }>
-            {sortedProperties.map((prop) => {
-              const firstImg = prop.images && prop.images.length > 0 ? prop.images[0] : null;
-              const img = firstImg ? (firstImg.startsWith("/uploads/") ? mediaUrl(firstImg) : firstImg) : FALLBACK_IMAGE;
-              const priceText = formatPrice(prop.price);
-              const isSelected = selectedProperty?.id === prop.id;
-
-              return (
+              {/* OVERLAY CARD FOR SELECTED PROPERTY ON MAP CLICK (TOP-RIGHT MATCHING USER IMAGE) */}
+              {selectedProperty && (
                 <div
-                  key={prop.id}
-                  id={`property-card-${prop.id}`}
-                  onClick={() => handlePropertyClick(prop.id)}
-                  onMouseEnter={() => setSelectedProperty(prop)}
-                  className={`group bg-white rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer flex flex-col ${
-                    isSelected
-                      ? "border-2 border-[#1B5E4F] ring-4 ring-[#1B5E4F]/25 shadow-2xl scale-[1.01] z-10"
-                      : "border border-gray-200/80 shadow-xs hover:shadow-xl"
-                  }`}
+                  onClick={() => window.open(`/property/${selectedProperty.id}`, "_blank")}
+                  className="absolute top-4 right-4 w-[380px] max-w-[calc(100%-32px)] bg-white/95 backdrop-blur-md rounded-2xl p-3 shadow-xl border-2 border-sky-200/90 flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-300 z-20 cursor-pointer hover:shadow-2xl transition-all group select-none"
                 >
-                  {/* Media Container */}
-                  <div className="relative h-48 w-full overflow-hidden bg-gray-100">
-                    <img
-                      src={img}
-                      alt={prop.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
-                    />
-                    
-                    {/* Top Badges */}
-                    <div className="absolute top-3 left-3 flex items-center gap-2">
-                      {prop.isFeatured && (
-                        <span className="px-3 py-1 bg-blue-600 text-white font-bold text-[10px] rounded-full uppercase tracking-wider shadow-sm">
-                          Featured
-                        </span>
-                      )}
-                      <span className="px-3 py-1 bg-gray-900/80 text-white font-semibold text-[10px] rounded-full uppercase tracking-wider backdrop-blur-xs">
-                        {prop.purpose || "For Sale"}
+                  <img
+                    src={
+                      selectedProperty.images && selectedProperty.images.length > 0
+                        ? mediaUrl(selectedProperty.images[0])
+                        : FALLBACK_IMAGE
+                    }
+                    alt={selectedProperty.title}
+                    className="w-20 h-20 rounded-xl object-cover shrink-0 shadow-xs border border-gray-100"
+                  />
+                  <div className="flex-1 min-w-0 flex flex-col justify-between min-h-20 py-0.5">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-200/60 truncate max-w-[200px]">
+                        {selectedProperty.propertyType}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-gray-600 bg-gray-100 border border-gray-200/60 shrink-0">
+                        {(selectedProperty.purpose || "For Sale").replace("For ", "")}
                       </span>
                     </div>
 
-                    {/* Map pin icon overlay bottom left */}
-                    <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs text-white p-1.5 rounded-full">
-                      <MapPin className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
+                    <p className="text-[11px] font-medium text-gray-500 truncate my-1">
+                      {selectedProperty.address || selectedProperty.district}
+                    </p>
 
-                  {/* Content Section */}
-                  <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-                    <div>
-                      <h3 className="font-medium text-base text-gray-900 line-clamp-1 group-hover:text-[#34a853] transition-colors">
-                        {prop.title}
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-1 truncate">
-                        {prop.address || prop.district}
-                      </p>
-                    </div>
-
-                    {/* Specs */}
-                    <div className="flex items-center gap-4 text-xs text-gray-600 pt-2 border-t border-gray-100 font-medium">
-                      {prop.bedrooms !== undefined && (
-                        <div className="flex items-center gap-1">
-                          <BedDouble className="w-4 h-4 text-gray-400" />
-                          <span>Beds: {prop.bedrooms}</span>
-                        </div>
-                      )}
-                      {prop.bathrooms !== undefined && (
-                        <div className="flex items-center gap-1">
-                          <Bath className="w-4 h-4 text-gray-400" />
-                          <span>Baths: {prop.bathrooms}</span>
-                        </div>
-                      )}
-                      {prop.areaSqft && (
-                        <div className="flex items-center gap-1">
-                          <Maximize className="w-4 h-4 text-gray-400" />
-                          <span>Sqft: {prop.areaSqft}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer Row: Owner info & Price */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-auto">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(prop.ownerName || "owner")}`}
-                          alt="Owner"
-                          className="w-7 h-7 rounded-full object-cover bg-gray-200"
-                        />
-                        <span className="text-xs font-semibold text-gray-700 truncate max-w-[100px]">
-                          {prop.ownerName || "Agent"}
-                        </span>
-                      </div>
-
-                      <div className="text-base font-extrabold text-gray-900 font-heading">
-                        {priceText}
-                      </div>
+                    <div className="flex items-baseline justify-between gap-2 mt-auto">
+                      <span className="font-extrabold text-base text-gray-900 tracking-tight">
+                        {formatPrice(selectedProperty.price)}
+                      </span>
+                      <span className="text-xs font-bold text-gray-800 truncate text-right">
+                        {selectedProperty.ownerName || "Agent"} ({selectedProperty.listingRole || "Broker"})
+                      </span>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* FULL WIDTH GRID VIEW WHEN MAP IS OFF */
+        <div className="w-full max-w-[1750px] mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col">
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200/80">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight font-display">
+                Properties in {filters.district !== "All Kerala" ? filters.district : filters.state}
+              </h1>
+              <p className="text-xs text-gray-500 font-medium mt-1">
+                Showing {sortedProperties.length} results
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Grid / List View Mode buttons */}
+              <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2 rounded-lg transition cursor-pointer ${
+                    viewMode === "grid"
+                      ? "bg-white text-emerald-600 shadow-xs font-bold"
+                      : "text-gray-500 hover:text-gray-800"
+                  }`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 rounded-lg transition cursor-pointer ${
+                    viewMode === "list"
+                      ? "bg-white text-emerald-600 shadow-xs font-bold"
+                      : "text-gray-500 hover:text-gray-800"
+                  }`}
+                  title="List View"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Sort Dropdown */}
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-xs font-semibold text-gray-700 cursor-pointer shadow-xs focus:outline-none"
+                >
+                  <option value="Default">Sort by (Default)</option>
+                  <option value="PriceAsc">Price: Low to High</option>
+                  <option value="PriceDesc">Price: High to Low</option>
+                  <option value="Newest">Newest First</option>
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2.5 top-2.5 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          {loading ? (
+            <div className="property-responsive-grid animate-pulse">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((i) => (
+                <div key={i} className="h-60 bg-gray-200 rounded-2xl"></div>
+              ))}
+            </div>
+          ) : sortedProperties.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center border border-gray-200/80 shadow-xs">
+              <p className="text-gray-500 font-medium">No properties found matching your search criteria.</p>
+            </div>
+          ) : (
+            <div className={
+              viewMode === "grid" 
+                ? "property-responsive-grid"
+                : "flex flex-col gap-4"
+            }>
+              {sortedProperties.map((prop) => (
+                <div
+                  key={prop.id}
+                  id={`property-card-${prop.id}`}
+                  onMouseEnter={() => setSelectedProperty(prop)}
+                  className="rounded-2xl transition-all duration-200"
+                >
+                  <PropertyCard
+                    property={prop}
+                    onToggleSave={(id, isSaved) => {
+                      setProperties((prev) =>
+                        prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
+                      );
+                      setAllProperties((prev) =>
+                        prev.map((p) => (p.id === id ? { ...p, isSaved } : p))
+                      );
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Desktop Footer — same as homepage */}
       <DesktopFooter />

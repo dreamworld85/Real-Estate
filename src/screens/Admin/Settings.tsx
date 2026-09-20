@@ -15,7 +15,7 @@ import {
   MapPin
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
-import { api, mediaUrl } from "@/lib/api";
+import { api, mediaUrl, getApiUrl } from "@/lib/api";
 
 export default function Settings() {
   const location = useLocation();
@@ -98,7 +98,7 @@ export default function Settings() {
   const loadPageSetting = async (pageId: string) => {
     setLoadingPageSetting(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const apiUrl = getApiUrl();
       if (pageId === "contact") {
         const emailRes = await fetch(`${apiUrl}/api/settings/contact_email`).then(r => r.json()).catch(() => ({}));
         const phoneRes = await fetch(`${apiUrl}/api/settings/contact_phone`).then(r => r.json()).catch(() => ({}));
@@ -163,7 +163,7 @@ export default function Settings() {
   const loadLandingContent = async () => {
     setLoadingLanding(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/landing/content`);
+      const res = await fetch(`${getApiUrl()}/api/admin/landing/content`);
       if (res.ok) {
         const data = await res.json();
         setLandingHeroTitle(data.settings.landing_hero_title || "");
@@ -249,7 +249,7 @@ export default function Settings() {
     setSaving(true);
     try {
       const token = localStorage.getItem("kerala_realty_admin_token") || "";
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const apiUrl = getApiUrl();
       await fetch(`${apiUrl}/api/admin/settings/landing_hero_title`, {
         method: "PUT",
         headers: { "x-admin-auth": token, "Content-Type": "application/json" },
@@ -278,7 +278,7 @@ export default function Settings() {
     setSaving(true);
     try {
       const token = localStorage.getItem("kerala_realty_admin_token") || "";
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const apiUrl = getApiUrl();
       await fetch(`${apiUrl}/api/admin/settings/landing_app_title`, {
         method: "PUT",
         headers: { "x-admin-auth": token, "Content-Type": "application/json" },
@@ -316,7 +316,7 @@ export default function Settings() {
     setSaving(true);
     try {
       const token = localStorage.getItem("kerala_realty_admin_token") || "";
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const apiUrl = getApiUrl();
       if (editingFeature.id) {
         const res = await fetch(`${apiUrl}/api/admin/landing/features/${editingFeature.id}`, {
           method: "PUT",
@@ -355,7 +355,7 @@ export default function Settings() {
     setSaving(true);
     try {
       const token = localStorage.getItem("kerala_realty_admin_token") || "";
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const apiUrl = getApiUrl();
       const res = await fetch(`${apiUrl}/api/admin/landing/features/${id}`, {
         method: "DELETE",
         headers: { "x-admin-auth": token }
@@ -372,7 +372,7 @@ export default function Settings() {
 
   useEffect(() => {
     // Fetch welcome banner setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/welcome_banner_url`)
+    fetch(`${getApiUrl()}/api/admin/settings/welcome_banner_url`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -382,7 +382,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading welcome banner:", err));
 
     // Fetch login banner setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/login_banner_url`)
+    fetch(`${getApiUrl()}/api/admin/settings/login_banner_url`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -392,7 +392,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading login banner:", err));
 
     // Fetch loading banner setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/loading_banner_url`)
+    fetch(`${getApiUrl()}/api/admin/settings/loading_banner_url`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -402,7 +402,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading loading banner setting:", err));
 
     // Fetch default_trial_days_broker setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days_broker`)
+    fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_broker`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -412,7 +412,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading default_trial_days_broker setting:", err));
 
     // Fetch default_trial_days_agency setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days_agency`)
+    fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_agency`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -422,7 +422,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading default_trial_days_agency setting:", err));
 
     // Fetch default_trial_days setting (Owner)
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days`)
+    fetch(`${getApiUrl()}/api/admin/settings/default_trial_days`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -432,7 +432,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading default_trial_days setting:", err));
 
     // Fetch admin_email setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/admin_email`)
+    fetch(`${getApiUrl()}/api/admin/settings/admin_email`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -442,7 +442,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading admin_email setting:", err));
 
     // Fetch admin_contact_number setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/admin_contact_number`)
+    fetch(`${getApiUrl()}/api/admin/settings/admin_contact_number`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -452,7 +452,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading admin_contact_number setting:", err));
 
     // Fetch default_trial_days_user setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days_user`)
+    fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_user`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -462,7 +462,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading default_trial_days_user setting:", err));
 
     // Fetch default_free_inquiries_limit setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_free_inquiries_limit`)
+    fetch(`${getApiUrl()}/api/admin/settings/default_free_inquiries_limit`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -472,7 +472,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading default_free_inquiries_limit setting:", err));
 
     // Fetch contact_email setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/contact_email`)
+    fetch(`${getApiUrl()}/api/admin/settings/contact_email`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -482,7 +482,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading contact_email setting:", err));
 
     // Fetch contact_phone setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/contact_phone`)
+    fetch(`${getApiUrl()}/api/admin/settings/contact_phone`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -492,7 +492,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading contact_phone setting:", err));
 
     // Fetch contact_address setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/contact_address`)
+    fetch(`${getApiUrl()}/api/admin/settings/contact_address`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -502,7 +502,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading contact_address setting:", err));
 
     // Fetch featured_price setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/featured_price`)
+    fetch(`${getApiUrl()}/api/admin/settings/featured_price`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -512,7 +512,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading featured_price setting:", err));
 
     // Fetch featured_text setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/featured_text`)
+    fetch(`${getApiUrl()}/api/admin/settings/featured_text`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value) {
@@ -522,7 +522,7 @@ export default function Settings() {
       .catch(err => console.error("Error loading featured_text setting:", err));
 
     // Fetch enable_schedule_visit setting
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/enable_schedule_visit`)
+    fetch(`${getApiUrl()}/api/admin/settings/enable_schedule_visit`)
       .then(res => res.json())
       .then(data => {
         if (data && data.value !== undefined) {
@@ -770,27 +770,27 @@ export default function Settings() {
                   "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || ""
                 };
                 await Promise.all([
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/admin_email`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/admin_email`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: adminEmail })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/admin_contact_number`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/admin_contact_number`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: adminPhone })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/contact_email`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/contact_email`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: contactEmail })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/contact_phone`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/contact_phone`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: contactPhoneState })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/contact_address`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/contact_address`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: contactAddress })
@@ -928,37 +928,37 @@ export default function Settings() {
                   "x-admin-auth": localStorage.getItem("kerala_realty_admin_token") || ""
                 };
                 await Promise.all([
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/default_trial_days`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(defaultTrialDaysOwner) })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days_broker`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_broker`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(defaultTrialDaysBroker) })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days_agency`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_agency`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(defaultTrialDaysAgency) })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_trial_days_user`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/default_trial_days_user`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(defaultTrialDaysUser) })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/default_free_inquiries_limit`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/default_free_inquiries_limit`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(defaultFreeInquiriesLimit) })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/featured_price`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/featured_price`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: String(featuredPrice) })
                   }),
-                  fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/admin/settings/featured_text`, {
+                  fetch(`${getApiUrl()}/api/admin/settings/featured_text`, {
                     method: "PUT",
                     headers,
                     body: JSON.stringify({ value: featuredText })
@@ -1495,7 +1495,7 @@ export default function Settings() {
       setSaving(true);
       try {
         const token = localStorage.getItem("kerala_realty_admin_token") || "";
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+        const apiUrl = getApiUrl();
         
         const response = await fetch(`${apiUrl}/api/admin/database/export`, {
           method: "GET",

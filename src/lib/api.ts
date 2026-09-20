@@ -1,5 +1,16 @@
 /// <reference types="vite/client" />
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+export function getApiUrl(): string {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+    return envUrl;
+  }
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    return "https://api.greensparrows.com";
+  }
+  return envUrl || "http://localhost:4000";
+}
+
+export const API_URL = getApiUrl();
 
 const originalFetch = window.fetch;
 window.fetch = function (input, init) {

@@ -463,11 +463,83 @@ router.post("/facebook", async (req, res) => {
   }
 });
 
+// Helper functions for OAuth URL resolution
+function getFrontendUrl(req) {
+  const host = req ? (req.headers["x-forwarded-host"] || req.get("host") || "") : "";
+  const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("api.greensparrows.com") ||
+                       host.includes("greensparrows.com") ||
+                       referer.includes("greensparrows.com");
+
+  const envFrontend = process.env.FRONTEND_URL;
+  if (isProduction) {
+    if (envFrontend && !envFrontend.includes("localhost") && !envFrontend.includes("127.0.0.1")) {
+      return envFrontend.replace(/\/$/, "");
+    }
+    return "https://property.greensparrows.com";
+  }
+
+  if (envFrontend) {
+    return envFrontend.replace(/\/$/, "");
+  }
+
+  return "http://localhost:5173";
+}
+
+function getGoogleCallbackUrl(req) {
+  const host = req ? (req.headers["x-forwarded-host"] || req.get("host") || "") : "";
+  const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("api.greensparrows.com") ||
+                       host.includes("greensparrows.com") ||
+                       referer.includes("greensparrows.com");
+
+  const envCallback = process.env.GOOGLE_CALLBACK_URL;
+  if (isProduction) {
+    if (envCallback && !envCallback.includes("localhost") && !envCallback.includes("127.0.0.1")) {
+      return envCallback;
+    }
+    return "https://api.greensparrows.com/api/auth/google/callback";
+  }
+
+  if (envCallback) {
+    return envCallback;
+  }
+
+  const protocol = req ? (req.headers["x-forwarded-proto"] || req.protocol || "http") : "http";
+  return `${protocol}://${host || "localhost:4000"}/api/auth/google/callback`;
+}
+
+function getFacebookCallbackUrl(req) {
+  const host = req ? (req.headers["x-forwarded-host"] || req.get("host") || "") : "";
+  const referer = req ? (req.headers.referer || req.headers.origin || "") : "";
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       process.cwd().includes("api.greensparrows.com") ||
+                       host.includes("greensparrows.com") ||
+                       referer.includes("greensparrows.com");
+
+  const envCallback = process.env.FACEBOOK_CALLBACK_URL;
+  if (isProduction) {
+    if (envCallback && !envCallback.includes("localhost") && !envCallback.includes("127.0.0.1")) {
+      return envCallback;
+    }
+    return "https://api.greensparrows.com/api/auth/facebook/callback";
+  }
+
+  if (envCallback) {
+    return envCallback;
+  }
+
+  const protocol = req ? (req.headers["x-forwarded-proto"] || req.protocol || "http") : "http";
+  return `${protocol}://${host || "localhost:4000"}/api/auth/facebook/callback`;
+}
+
 // GET /api/auth/google - Initiate Google OAuth Redirect Flow
 router.get("/google", (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_CALLBACK_URL || `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const redirectUri = getGoogleCallbackUrl(req);
+  const frontendUrl = getFrontendUrl(req);
 
   if (!clientId) {
     return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("Google OAuth is not configured on the server (missing GOOGLE_CLIENT_ID).")}`);
@@ -496,7 +568,8 @@ router.get("/google", (req, res) => {
 
 // GET /api/auth/google/callback - Handle Google OAuth Callback
 router.get("/google/callback", async (req, res) => {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = getFrontendUrl(req);
+  const redirectUri = getGoogleCallbackUrl(req);
   const { code, state, error: oauthError } = req.query;
   const savedState = getCookie(req, "oauth_state");
 
@@ -522,7 +595,6 @@ router.get("/google/callback", async (req, res) => {
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_CALLBACK_URL || `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
 
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -566,8 +638,8 @@ router.get("/google/callback", async (req, res) => {
 // GET /api/auth/facebook - Initiate Facebook OAuth Redirect Flow
 router.get("/facebook", (req, res) => {
   const appId = process.env.FACEBOOK_APP_ID || "1793278805029823";
-  const redirectUri = process.env.FACEBOOK_CALLBACK_URL || `${req.protocol}://${req.get("host")}/api/auth/facebook/callback`;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const redirectUri = getFacebookCallbackUrl(req);
+  const frontendUrl = getFrontendUrl(req);
 
   if (!appId) {
     return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent("Facebook OAuth is not configured on the server (missing FACEBOOK_APP_ID).")}`);
@@ -594,7 +666,8 @@ router.get("/facebook", (req, res) => {
 
 // GET /api/auth/facebook/callback - Handle Facebook OAuth Callback
 router.get("/facebook/callback", async (req, res) => {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = getFrontendUrl(req);
+  const redirectUri = getFacebookCallbackUrl(req);
   const { code, state, error: oauthError, error_description } = req.query;
   const savedState = getCookie(req, "oauth_state");
 
@@ -620,7 +693,6 @@ router.get("/facebook/callback", async (req, res) => {
   try {
     const appId = process.env.FACEBOOK_APP_ID || "1793278805029823";
     const appSecret = process.env.FACEBOOK_APP_SECRET || "e310c814c2b3207084adbe0a07b3786a";
-    const redirectUri = process.env.FACEBOOK_CALLBACK_URL || `${req.protocol}://${req.get("host")}/api/auth/facebook/callback`;
 
     const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?` + new URLSearchParams({
       client_id: appId,

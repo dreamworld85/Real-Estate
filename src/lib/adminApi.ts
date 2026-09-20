@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+import { getApiUrl } from "./api";
+
+const API_URL = getApiUrl();
 
 function getAdminHeaders() {
   const token = localStorage.getItem("kerala_realty_admin_token") || "";

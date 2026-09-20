@@ -1,45 +1,34 @@
 import { useState, useEffect } from "react";
-import { Heart, MapPin, BedDouble, Bath, Star, Eye } from "lucide-react";
-import { ApiProperty, mediaUrl, formatArea, api } from "@/lib/api";
+import { Heart, Star } from "lucide-react";
+import { ApiProperty, mediaUrl, api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80";
 
-function formatPrice(price: number): string {
-  if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
-  if (price >= 100000) return `₹${(price / 100000).toFixed(1)} L`;
-  return `₹${price.toLocaleString("en-IN")}`;
-}
+function formatPrice(price: number, purpose?: string): string {
+  let text = "";
+  if (price >= 10000000) text = `₹${(price / 10000000).toFixed(2)} Cr`;
+  else if (price >= 100000) text = `₹${(price / 100000).toFixed(1)} L`;
+  else text = `₹${price.toLocaleString("en-IN")}`;
 
-function formatPostedDate(dateStr: string): string {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays < 1) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  
-  // If posted in a different calendar year, include the year
-  if (date.getFullYear() !== now.getFullYear()) {
-    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  if (purpose === "For Rent") {
+    return `${text} for 1 night`;
   }
-  
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return text;
 }
 
 export default function PropertyCard({ 
   property,
   onToggleSave,
-  compact = false
+  compact = false,
+  onClick
 }: { 
   property: ApiProperty;
   onToggleSave?: (id: number, isSaved: boolean) => void;
   compact?: boolean;
+  onClick?: () => void;
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -68,74 +57,80 @@ export default function PropertyCard({
     }
   }
 
-  const image = property.images[0] ? mediaUrl(property.images[0]) : FALLBACK_IMAGE;
-  const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 4.5;
+  const firstImg = property.images && property.images[0] ? property.images[0] : null;
+  const image = firstImg
+    ? (firstImg.startsWith("/uploads/") ? mediaUrl(firstImg) : firstImg)
+    : FALLBACK_IMAGE;
+
+  const rating = property.avgRating !== undefined && property.avgRating > 0 ? property.avgRating : 5.0;
+
+  const displayTag = property.purpose === "For Rent"
+    ? "For Rent"
+    : (property.purpose === "For Sale" ? "Sales" : (property.purpose || "Sales"));
+
+  const displayTitle = property.title.toLowerCase().includes(property.district.toLowerCase())
+    ? property.title
+    : `${property.title} in ${property.district}`;
+
+  const priceFormatted = formatPrice(property.price, property.purpose);
+  const roleFormatted = property.purpose === "For Rent" ? "" : (property.listingRole || "Broker");
 
   return (
-    <button
-      onClick={() => navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`)}
-      className="relative w-full aspect-[4/4.1] rounded-[16px] overflow-hidden group hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-md text-left cursor-pointer border border-charcoal/5"
+    <div
+      onClick={() => {
+        if (onClick) {
+          onClick();
+        } else {
+          navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`);
+        }
+      }}
+      className="group bg-transparent transition-all duration-300 cursor-pointer flex flex-col text-left select-none w-full"
     >
-      {/* Background Image */}
-      <img
-        src={image}
-        alt={property.title}
-        style={{ objectFit: "cover" }}
-        className="absolute inset-0 w-full h-full group-hover:scale-105 transition-transform duration-500"
-      />
+      {/* Property Image Container */}
+      <div className="relative aspect-[4/3.1] w-full overflow-hidden rounded-2xl bg-gray-100 shadow-xs">
+        <img
+          src={image}
+          alt={property.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+        />
 
-      {/* Dark Vignette Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-      {/* Top Left: Verification Badge */}
-      {property.isFeatured && (
-        <div 
-          style={{ width: "15px", height: "15px" }}
-          className="absolute top-3 left-3 z-10 flex items-center justify-center bg-blue-500 text-white rounded-full shadow-sm border border-dashed border-white"
-        >
-          <svg 
-            style={{ width: "10px", height: "10px" }}
-            className="fill-current" 
-            viewBox="0 0 20 20"
-          >
-            <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
-          </svg>
+        {/* Top Left Overlay Tag (Sales / For Rent / etc.) */}
+        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
+          <span className="px-2.5 py-0.5 bg-white/95 text-gray-900 font-semibold text-[10.5px] rounded-full shadow-xs backdrop-blur-xs select-none">
+            {displayTag}
+          </span>
         </div>
-      )}
 
-      {/* Top Right: Price Tag */}
-      <div className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm text-charcoal text-[10px] font-medium px-2.5 py-1 rounded-full shadow-sm">
-        {formatPrice(property.price)}
-        {property.purpose === "For Rent" && <span className="text-[8px] font-medium text-slate-500">/ Mo</span>}
+        {/* Top Right Overlay Favorite Heart Icon */}
+        <button
+          type="button"
+          onClick={handleSaveClick}
+          className="absolute top-2.5 right-2.5 z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/25 hover:bg-black/50 backdrop-blur-md text-white flex items-center justify-center transition-all shadow-xs active:scale-90 cursor-pointer"
+          title="Favorite"
+        >
+          <Heart size={15} className={saved ? "fill-rose-500 text-rose-500" : "text-white"} />
+        </button>
       </div>
 
-      {/* Absolute Favorite Button (below price tag) */}
-      <span
-        onClick={handleSaveClick}
-        className="absolute top-11 right-3 z-10 bg-black/45 backdrop-blur-sm hover:bg-black/60 active:scale-90 text-white rounded-full p-2 transition-all shadow-sm cursor-pointer"
-      >
-        <Heart size={15} className={saved ? "fill-coral text-coral" : "text-white"} />
-      </span>
-
-      {/* Bottom Content Container */}
-      <div className="absolute bottom-3.5 left-3.5 right-3.5 z-10 flex flex-col pointer-events-none">
-        {/* Star Rating Badge */}
-        <div className="bg-white/95 backdrop-blur-sm text-charcoal text-[8px] font-medium px-2 py-0.5 rounded-full flex items-center gap-0.5 w-fit mb-1.5 shadow-sm">
-          <Star size={11} className="fill-gold text-gold" />
-          <span>{rating.toFixed(1)}</span>
-        </div>
-
-        {/* Property Title */}
-        <h3 className="font-display font-medium text-[11px] text-white group-hover:text-[#34a853] transition-colors truncate leading-tight select-none">
-          {property.title.replace("Plot / Land", "Land").replace("Independent House / Villa", "House")}
+      {/* Text Section Below Image */}
+      <div className="pt-2 px-0.5 flex flex-col">
+        {/* Line 1: Property Location / Title */}
+        <h3 className="font-semibold text-[13px] sm:text-[13.5px] text-gray-900 truncate leading-tight group-hover:text-emerald-700 transition-colors">
+          {displayTitle}
         </h3>
 
-        {/* Location Row */}
-        <div className="flex items-center gap-1 text-[8.5px] text-white/80 mt-0.5 select-none truncate">
-          <MapPin size={11} className="shrink-0 text-white/80" />
-          <span>{compact ? [property.district, property.state].filter(Boolean).join(", ") : [property.address, property.district, property.state].filter(Boolean).join(", ")}</span>
-        </div>
+        {/* Line 2: Price + Agent/Broker/Owner + Rating Number */}
+        <p className="text-xs text-gray-600 font-medium mt-1 truncate flex items-center gap-1">
+          <span>{priceFormatted} {roleFormatted}</span>
+          <span className="text-gray-400">·</span>
+          <span className="flex items-center gap-0.5 text-gray-800 font-semibold">
+            <Star size={12} className="fill-amber-400 text-amber-400 inline" />
+            <span>{rating.toFixed(rating % 1 === 0 ? 1 : 2)}</span>
+          </span>
+        </p>
       </div>
-    </button>
+    </div>
   );
 }
+

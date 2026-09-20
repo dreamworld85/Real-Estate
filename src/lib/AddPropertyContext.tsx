@@ -50,6 +50,7 @@ export interface NewPropertyForm {
   latitude?: number;
   longitude?: number;
   mapAddress?: string;
+  maintenancePrice?: string;
 }
 
 const initialForm: NewPropertyForm = {

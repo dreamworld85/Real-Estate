@@ -72,6 +72,7 @@ export default function MoreInfoStep3() {
   };
 
   const isLand = form.propertyType === "Plot / Land" || form.propertyType === "Land";
+  const isRentOrPG = form.purpose === "For Rent" || form.purpose === "Paying Guest";
 
   useEffect(() => {
     if (isLand && form.areaUnit !== "Cents" && form.areaUnit !== "Acres") {
@@ -344,20 +345,6 @@ export default function MoreInfoStep3() {
           )}
 
           <div className="flex flex-col gap-2.5 mt-1 pl-0.5">
-            {/* All inclusive price */}
-            <label className="flex items-center gap-2.5 cursor-pointer select-none self-start">
-              <input
-                type="checkbox"
-                checked={!!form.isAllInclusive}
-                onChange={(e) => update({ isAllInclusive: e.target.checked })}
-                className="w-4.5 h-4.5 rounded border-[#59AD63]/30 text-[#59AD63] focus:ring-[#59AD63]"
-              />
-              <span className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">
-                <span>All inclusive price</span>
-                <HelpCircle size={13} className="text-slate/40" />
-              </span>
-            </label>
-
             {/* Price Negotiable */}
             <label className="flex items-center gap-2.5 cursor-pointer select-none self-start">
               <input
@@ -368,41 +355,19 @@ export default function MoreInfoStep3() {
               />
               <span className="text-[13px] font-semibold text-slate-700">Price Negotiable</span>
             </label>
-
-            {/* Tax excluded */}
-            <label className="flex items-center gap-2.5 cursor-pointer select-none self-start">
+          </div>          {/* Maintenance Price (Monthly) - Only shown for Rent / Lease or Paying Guest */}
+          {isRentOrPG && (
+            <div className="relative border border-[#59AD63]/30 rounded-[8px] px-4 pt-5 pb-2.5 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] transition-all mt-2">
+              <span className="absolute top-1.5 left-4 text-[10px] font-semibold text-slate/60 select-none">
+                Maintenance Price (Monthly)
+              </span>
               <input
-                type="checkbox"
-                checked={!!form.isTaxExcluded}
-                onChange={(e) => update({ isTaxExcluded: e.target.checked })}
-                className="w-4.5 h-4.5 rounded border-[#59AD63]/30 text-[#59AD63] focus:ring-[#59AD63]"
+                type="number"
+                placeholder="₹ e.g. 2,000"
+                value={form.maintenancePrice || ""}
+                onChange={(e) => update({ maintenancePrice: e.target.value })}
+                className="flex-1 text-[13.5px] font-bold text-charcoal placeholder:text-slate/30 outline-none bg-transparent"
               />
-              <span className="text-[13px] font-semibold text-slate-700">Tax and Govt. charges excluded</span>
-            </label>
-          </div>
-
-          {!showMorePricing && (
-            <button
-              type="button"
-              onClick={() => setShowMorePricing(true)}
-              className="text-xs font-bold text-[#59AD63] hover:underline self-start active:scale-95 transition-all select-none pl-0.5 mt-0.5"
-            >
-              + Add more pricing details
-            </button>
-          )}
-
-          {showMorePricing && (
-            <div className="flex flex-col gap-2 mt-1 animate-fade-in">
-              <div className="relative border border-[#59AD63]/30 rounded-[8px] px-4 pt-5 pb-2.5 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] transition-all">
-                <span className="absolute top-1.5 left-4 text-[10px] font-semibold text-slate/60 select-none">
-                  Maintenance Price (Monthly)
-                </span>
-                <input
-                  type="number"
-                  placeholder="₹ e.g. 2,000"
-                  className="flex-1 text-[13.5px] font-bold text-charcoal placeholder:text-slate/30 outline-none bg-transparent"
-                />
-              </div>
             </div>
           )}
         </div>
