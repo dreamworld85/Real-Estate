@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronDown, Crosshair, MapPin, Search } from "lucide-react";
+import { ChevronLeft, ChevronDown, Crosshair, MapPin } from "lucide-react";
 import { useAddProperty } from "@/lib/AddPropertyContext";
 import BottomNav from "@/components/BottomNav";
 import { INDIAN_STATES, getDistrictsForState } from "@/lib/indiaLocationData";
@@ -893,90 +893,8 @@ export default function MapPickerStep() {
             Pin Property Location
           </h1>
           <p className="text-xs text-slate/60 mt-1.5 font-medium leading-relaxed">
-            Drag the green marker or search for the address to set the exact property location on the map.
+            Drag the green marker to set the exact property location on the map.
           </p>
-        </div>
-
-        {/* Search Location Bar */}
-        <div className="relative z-30">
-          <div className="flex gap-2">
-            <div className="flex-1 relative border border-[#59AD63]/40 rounded-[10px] px-4 py-3 bg-white flex items-center shadow-sm focus-within:border-[#59AD63] focus-within:ring-2 focus-within:ring-[#59AD63]/20 transition-all duration-150">
-              <input
-                type="text"
-                placeholder="Search location, city or PIN code..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => {
-                  if (suggestions.length > 0) setShowSuggestions(true);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    geocodeAddress(searchQuery);
-                  }
-                }}
-                className="flex-1 text-[14px] font-medium text-[#091F40] placeholder:text-slate-400 outline-none bg-transparent pr-2"
-              />
-              <Search
-                size={19}
-                className="text-slate-400 hover:text-[#59AD63] shrink-0 cursor-pointer transition-colors"
-                onClick={() => geocodeAddress(searchQuery)}
-              />
-            </div>
-            <button
-              type="button"
-              disabled={isSearching}
-              onClick={() => geocodeAddress(searchQuery)}
-              className="px-5 rounded-[10px] font-bold text-xs text-white bg-[#59AD63] hover:bg-[#3F8F4B] transition-colors active:scale-95 cursor-pointer shadow-sm flex items-center justify-center shrink-0 disabled:opacity-60"
-            >
-              {isSearching ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                "Search"
-              )}
-            </button>
-          </div>
-
-          {/* Search Autocomplete Suggestions Dropdown - Google Maps Style */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200/80 rounded-xl shadow-2xl z-50 overflow-hidden max-h-72 overflow-y-auto py-1">
-              {suggestions.map((item, idx) => {
-                const formatSuggestionItem = (locItem: any) => {
-                  if (locItem.isGooglePlace && locItem.structured_formatting) {
-                    return {
-                      main: locItem.structured_formatting.main_text || locItem.display_name.split(",")[0],
-                      secondary: locItem.structured_formatting.secondary_text || locItem.display_name.split(",").slice(1).join(", ").trim(),
-                    };
-                  }
-                  const parts = locItem.display_name ? locItem.display_name.split(",") : [locItem.place_name || "Location"];
-                  const main = locItem.place_name || parts[0].trim();
-                  const secondary = parts.slice(1).join(", ").trim();
-                  return { main, secondary };
-                };
-                const { main, secondary } = formatSuggestionItem(item);
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => selectLocation(item)}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-100/90 border-b border-slate-100 last:border-b-0 transition-colors flex items-center gap-3.5 cursor-pointer group"
-                  >
-                    <MapPin size={18} className="text-slate-500 group-hover:text-[#59AD63] shrink-0 transition-colors" />
-                    <div className="flex items-baseline gap-1.5 min-w-0 flex-wrap">
-                      <span className="text-[13.5px] font-bold text-[#091F40] tracking-tight">
-                        {main}
-                      </span>
-                      {secondary && (
-                        <span className="text-[12px] font-medium text-slate-500 truncate">
-                          {secondary}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* Map Container */}

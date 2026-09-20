@@ -12,9 +12,10 @@ const items = [
 export default function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const isAddProperty = location.pathname.startsWith("/add-property");
 
   return (
-    <nav className="bottom-nav-container fixed bottom-0 left-0 right-0 mx-auto max-w-[420px] bg-white shadow-nav border-t border-charcoal/5 px-2 pb-safe z-30">
+    <nav className={`bottom-nav-container fixed bottom-0 left-0 right-0 mx-auto ${isAddProperty ? "max-w-[420px] min-[1000px]:max-w-[500px]" : "max-w-[420px]"} bg-white shadow-nav border-t border-charcoal/5 px-2 pb-safe z-30`}>
       <div className="flex items-center justify-between px-2 py-2">
         {items.map(({ icon: Icon, label, path }) => {
           const active =

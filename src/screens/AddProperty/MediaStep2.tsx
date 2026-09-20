@@ -462,7 +462,7 @@ export default function MediaStep2() {
           onClick={() => setShowSourceSelector(false)}
         >
           <div 
-            className="bg-white rounded-t-[8px] p-5 shadow-2xl animate-slide-up flex flex-col gap-4 max-w-[420px] mx-auto w-full"
+            className="bg-white rounded-t-[8px] p-5 shadow-2xl animate-slide-up flex flex-col gap-4 max-w-[420px] min-[1000px]:max-w-[500px] mx-auto w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-charcoal/6 pb-2.5">

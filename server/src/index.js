@@ -25,6 +25,136 @@ import paymentRoutes from "./routes/payments.js";
 // Auto-migrate database table columns for subscription offers
 async function checkDbMigration() {
   try {
+    // Ensure base tables exist before checking columns
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(120) NOT NULL,
+        email VARCHAR(160) UNIQUE,
+        phone VARCHAR(20) UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        location VARCHAR(160),
+        avatar_url VARCHAR(500),
+        role VARCHAR(50) NOT NULL DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS properties (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        owner_id INT NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        property_type ENUM('House','Villa','Apartment','Land','Commercial Space') NOT NULL,
+        purpose ENUM('For Sale','For Rent') NOT NULL,
+        price DECIMAL(14,2) NOT NULL,
+        area_sqft INT NOT NULL,
+        address VARCHAR(255) NOT NULL,
+        district VARCHAR(80) NOT NULL,
+        bedrooms INT DEFAULT 0,
+        bathrooms INT DEFAULT 0,
+        furnishing ENUM('Unfurnished','Semi-Furnished','Fully Furnished') DEFAULT NULL,
+        facing VARCHAR(20),
+        property_age VARCHAR(30),
+        description TEXT,
+        listing_role ENUM('Owner','Broker','Agency') NOT NULL,
+        contact_number VARCHAR(20),
+        whatsapp_number VARCHAR(20),
+        owner_name VARCHAR(120),
+        broker_name VARCHAR(120),
+        agency_name VARCHAR(120),
+        agency_logo_url VARCHAR(500),
+        status ENUM('Draft','Pending','Active','Inactive','Rejected') DEFAULT 'Pending',
+        views INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS property_media (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        property_id INT NOT NULL,
+        media_type ENUM('image','video') NOT NULL,
+        url VARCHAR(500) NOT NULL,
+        sort_order INT DEFAULT 0,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS saved_properties (
+        user_id INT NOT NULL,
+        property_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, property_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS enquiries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        property_id INT NOT NULL,
+        visitor_id INT NOT NULL,
+        message VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+        FOREIGN KEY (visitor_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscription_plans (
+        role VARCHAR(50) NOT NULL,
+        duration_months INT NOT NULL DEFAULT 1,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        description VARCHAR(255) NULL DEFAULT '',
+        features TEXT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (role, duration_months)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS role_switch_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        requested_role ENUM('Broker', 'Agency') NOT NULL,
+        status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reported_listings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        property_id INT NOT NULL,
+        reporter_id INT NOT NULL,
+        reason VARCHAR(255) NOT NULL,
+        status ENUM('Pending', 'Resolved') DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+        FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        action VARCHAR(255) NOT NULL,
+        category ENUM('Users', 'Properties', 'System') NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     const [userCols] = await pool.query("SHOW COLUMNS FROM users");
     const userColNames = userCols.map(c => c.Field);
     if (!userColNames.includes("reset_otp")) {

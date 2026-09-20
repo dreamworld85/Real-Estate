@@ -117,16 +117,20 @@ export default function App() {
           path="/add-property/*"
           element={
             <ProtectedRoute>
-              <Routes>
-                <Route index element={<Navigate to="role" replace />} />
-                <Route path="role" element={<ChooseRole />} />
-                <Route path="details" element={<DetailsStep1 />} />
-                <Route path="media" element={<MediaStep2 />} />
-                <Route path="more-info" element={<MoreInfoStep3 />} />
-                <Route path="map-picker" element={<MapPickerStep />} />
-                <Route path="review" element={<ReviewStep4 />} />
-                <Route path="success" element={<Success />} />
-              </Routes>
+              <div className="w-full min-h-screen min-[1000px]:bg-[#FAF8F3] flex justify-center">
+                <div className="w-full min-[1000px]:max-w-[500px] min-[1000px]:shadow-xl min-[1000px]:border-x min-[1000px]:border-slate-200 bg-white min-h-screen relative flex flex-col">
+                  <Routes>
+                    <Route index element={<Navigate to="role" replace />} />
+                    <Route path="role" element={<ChooseRole />} />
+                    <Route path="details" element={<DetailsStep1 />} />
+                    <Route path="media" element={<MediaStep2 />} />
+                    <Route path="more-info" element={<MoreInfoStep3 />} />
+                    <Route path="map-picker" element={<MapPickerStep />} />
+                    <Route path="review" element={<ReviewStep4 />} />
+                    <Route path="success" element={<Success />} />
+                  </Routes>
+                </div>
+              </div>
             </ProtectedRoute>
           }
         />
