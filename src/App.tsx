@@ -85,8 +85,30 @@ export default function App() {
         <Route path="/top-locations" element={<ProtectedRoute><TopLocations /></ProtectedRoute>} />
         <Route path="/location/:locationName" element={<ProtectedRoute><LocationProperties /></ProtectedRoute>} />
         <Route path="/saved" element={<ProtectedRoute><Saved /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <div className="w-full min-h-screen min-[1000px]:bg-[#FAF8F3] flex justify-center">
+                <div className="w-full min-[1000px]:max-w-[500px] min-[1000px]:shadow-xl min-[1000px]:border-x min-[1000px]:border-slate-200 bg-cream min-h-screen relative flex flex-col">
+                  <Profile />
+                </div>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/edit"
+          element={
+            <ProtectedRoute>
+              <div className="w-full min-h-screen min-[1000px]:bg-[#FAF8F3] flex justify-center">
+                <div className="w-full min-[1000px]:max-w-[500px] min-[1000px]:shadow-xl min-[1000px]:border-x min-[1000px]:border-slate-200 bg-[#FAF8F3] min-h-screen relative flex flex-col">
+                  <EditProfile />
+                </div>
+              </div>
+            </ProtectedRoute>
+          }
+        />
         <Route path="/visitors-enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
         <Route path="/enquiries" element={<ProtectedRoute><VisitorsEnquiries /></ProtectedRoute>} />
         <Route path="/subscription" element={<ProtectedRoute><SubscriptionDetails /></ProtectedRoute>} />
