@@ -3,13 +3,22 @@ import path from "path";
 import fs from "fs";
 import sharp from "sharp";
 
-const uploadDir = process.env.UPLOADS_DIR 
-  ? path.resolve(process.env.UPLOADS_DIR) 
-  : path.resolve("src/uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+export function getUploadDir() {
+  if (process.env.UPLOADS_DIR) {
+    return path.resolve(process.env.UPLOADS_DIR);
+  }
+  if (process.cwd().includes("api.greensparrows.com") || fs.existsSync("/home/u859202671/domains/api.greensparrows.com/uploads")) {
+    return "/home/u859202671/domains/api.greensparrows.com/uploads";
+  }
+  return path.resolve("src/uploads");
+}
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
+  destination: (_req, _file, cb) => {
+    const dir = getUploadDir();
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
   filename: (_req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `${unique}${path.extname(file.originalname)}`);

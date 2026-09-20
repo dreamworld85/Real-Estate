@@ -4,11 +4,18 @@ import dotenv from "dotenv";
 dotenv.config({ override: true });
 import path from "path";
 import fs from "fs";
+
+// Auto-configure persistent UPLOADS_DIR on Hostinger server immediately at startup
+const hostingerUploadsDir = "/home/u859202671/domains/api.greensparrows.com/uploads";
+if (!process.env.UPLOADS_DIR && (process.cwd().includes("api.greensparrows.com") || fs.existsSync(hostingerUploadsDir))) {
+  process.env.UPLOADS_DIR = hostingerUploadsDir;
+}
+
 import { fileURLToPath } from "url";
 import { pool } from "./db.js";
 
 // Ensure uploads directory exists
-const serverUploadsDir = path.join(process.cwd(), "uploads");
+const serverUploadsDir = process.env.UPLOADS_DIR ? path.resolve(process.env.UPLOADS_DIR) : path.join(process.cwd(), "uploads");
 if (!fs.existsSync(serverUploadsDir)) {
   console.log("Creating uploads directory...");
   fs.mkdirSync(serverUploadsDir, { recursive: true });
@@ -930,32 +937,100 @@ app.use(express.json());
 
 const uploadsDir = process.env.UPLOADS_DIR 
   ? path.resolve(process.env.UPLOADS_DIR) 
-  : path.resolve("src/uploads");
+  : (fs.existsSync(hostingerUploadsDir) ? hostingerUploadsDir : path.resolve("src/uploads"));
 
 // Ensure persistent upload directory exists
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Auto-migrate files from Git folder to persistent uploads folder
-const gitUploadsDir = path.resolve("src/uploads");
-if (fs.existsSync(gitUploadsDir) && gitUploadsDir !== uploadsDir) {
+// Auto-migrate files from all candidate folders to persistent uploads folder
+const candidateDirs = [
+  path.resolve("src/uploads"),
+  path.resolve("uploads"),
+  path.join(process.cwd(), "src", "uploads"),
+  path.join(process.cwd(), "uploads"),
+  path.join(process.cwd(), "..", "src", "uploads"),
+  path.join(process.cwd(), "..", "uploads"),
+];
+
+const versionsDir = path.resolve(process.cwd(), "..", "..");
+if (fs.existsSync(versionsDir) && versionsDir.includes("versions")) {
   try {
-    const files = fs.readdirSync(gitUploadsDir);
-    files.forEach(file => {
-      const srcFile = path.join(gitUploadsDir, file);
-      const destFile = path.join(uploadsDir, file);
-      if (!fs.existsSync(destFile)) {
-        fs.copyFileSync(srcFile, destFile);
-        console.log(`Migrated upload asset: ${file}`);
-      }
-    });
-  } catch (err) {
-    console.error("Failed to migrate upload assets:", err);
+    const versionFolders = fs.readdirSync(versionsDir);
+    for (const v of versionFolders) {
+      candidateDirs.push(path.join(versionsDir, v, "nodejs", "src", "uploads"));
+      candidateDirs.push(path.join(versionsDir, v, "nodejs", "uploads"));
+    }
+  } catch (e) {
+    console.error("Error reading versionsDir:", e);
+  }
+}
+
+for (const cand of candidateDirs) {
+  if (fs.existsSync(cand) && path.resolve(cand) !== path.resolve(uploadsDir)) {
+    try {
+      const files = fs.readdirSync(cand);
+      files.forEach(file => {
+        const srcFile = path.join(cand, file);
+        const destFile = path.join(uploadsDir, file);
+        try {
+          if (fs.statSync(srcFile).isFile() && !fs.existsSync(destFile)) {
+            fs.copyFileSync(srcFile, destFile);
+            console.log(`Migrated upload asset from ${cand}: ${file}`);
+          }
+        } catch (copyErr) {}
+      });
+    } catch (err) {
+      console.error(`Failed to migrate upload assets from ${cand}:`, err);
+    }
   }
 }
 
 app.use("/uploads", express.static(uploadsDir));
+app.use("/uploads", express.static(path.resolve("src/uploads")));
+app.use("/uploads", express.static(path.resolve("uploads")));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// Dynamic fallback route for /uploads/:filename to catch and auto-sync any missed files
+app.get("/uploads/:filename", (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  const searchPaths = [
+    path.join(uploadsDir, filename),
+    path.join(path.resolve("src/uploads"), filename),
+    path.join(path.resolve("uploads"), filename),
+    path.join(process.cwd(), "src", "uploads", filename),
+    path.join(process.cwd(), "uploads", filename),
+    path.join(hostingerUploadsDir, filename),
+  ];
+
+  if (fs.existsSync(versionsDir) && versionsDir.includes("versions")) {
+    try {
+      const versionFolders = fs.readdirSync(versionsDir);
+      for (const v of versionFolders) {
+        searchPaths.push(path.join(versionsDir, v, "nodejs", "src", "uploads", filename));
+        searchPaths.push(path.join(versionsDir, v, "nodejs", "uploads", filename));
+      }
+    } catch (e) {}
+  }
+
+  for (const p of searchPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const dest = path.join(uploadsDir, filename);
+        if (path.resolve(p) !== path.resolve(dest) && !fs.existsSync(dest)) {
+          fs.copyFileSync(p, dest);
+          console.log(`Auto-synced /uploads/${filename} from ${p} to ${dest}`);
+        }
+      } catch (copyErr) {
+        console.error("Auto-sync error:", copyErr);
+      }
+      return res.sendFile(p);
+    }
+  }
+  next();
+});
+
 app.use("/apk", express.static(uploadsDir));
 
 app.get(["/apk", "/apk/"], (_req, res) => {
@@ -1004,17 +1079,51 @@ app.get("/api/settings/:key", async (req, res) => {
   }
 });
 
-app.get("/api/debug-files", (_req, res) => {
+app.get("/api/debug-files", (req, res) => {
   try {
     const cwd = process.cwd();
     const exists = fs.existsSync(uploadsDir);
-    const files = exists ? fs.readdirSync(uploadsDir) : [];
+    let files = [];
+    if (exists) {
+      files = fs.readdirSync(uploadsDir).map(name => {
+        const filePath = path.join(uploadsDir, name);
+        try {
+          const stat = fs.statSync(filePath);
+          return { name, size: stat.size, mtime: stat.mtimeMs };
+        } catch (e) {
+          return { name, size: 0, mtime: 0 };
+        }
+      });
+      // Sort newest files first
+      files.sort((a, b) => b.mtime - a.mtime);
+    }
+
+    const checkFile = req.query.file || "1789930502497-33597333.webp";
+    const foundInUploads = fs.existsSync(path.join(uploadsDir, checkFile));
+    let foundInOther = null;
+
+    for (const cand of candidateDirs) {
+      const p = path.join(cand, checkFile);
+      if (fs.existsSync(p)) {
+        foundInOther = p;
+        // Auto-copy to uploadsDir immediately
+        try {
+          fs.copyFileSync(p, path.join(uploadsDir, checkFile));
+        } catch (e) {}
+        break;
+      }
+    }
+
     res.json({
       cwd,
       uploadsDir,
       exists,
       filesCount: files.length,
-      files: files.slice(0, 100),
+      checkFile,
+      foundInUploads: foundInUploads || !!foundInOther,
+      foundInOther,
+      candidateDirs: candidateDirs.map(d => ({ dir: d, exists: fs.existsSync(d) })),
+      latestFiles: files.slice(0, 30).map(f => f.name),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
