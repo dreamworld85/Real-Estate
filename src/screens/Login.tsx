@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { api, mediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -20,9 +20,15 @@ const countries = [
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, token, user } = useAuth();
 
-  const [mode, setMode] = useState<"loading" | "login" | "register" | "forgot_email" | "reset_password">("loading");
+  const [mode, setMode] = useState<"loading" | "login" | "register" | "forgot_email" | "reset_password">(() => {
+    if (typeof window !== "undefined" && (localStorage.getItem("pending_deep_link") || (location.state as any)?.from)) {
+      return "login";
+    }
+    return "loading";
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
@@ -51,6 +57,12 @@ export default function Login() {
 
   useEffect(() => {
     if (token && user) {
+      const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
+      if (pendingLink) {
+        localStorage.removeItem("pending_deep_link");
+        navigate(pendingLink, { replace: true });
+        return;
+      }
       navigate("/home", { replace: true });
       return;
     }
@@ -61,7 +73,7 @@ export default function Login() {
       }, 1800);
       return () => clearTimeout(timer);
     }
-  }, [token, user, navigate, mode]);
+  }, [token, user, navigate, mode, location]);
 
   const [connectingProvider, setConnectingProvider] = useState<"google" | "facebook" | null>(null);
 
@@ -91,7 +103,7 @@ export default function Login() {
           if (data && data.user) {
             const finalToken = oauthToken || localStorage.getItem("kr_token") || "";
             login(finalToken, data.user);
-            const pendingLink = localStorage.getItem("pending_deep_link");
+            const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
             if (pendingLink) {
               localStorage.removeItem("pending_deep_link");
               navigate(pendingLink, { replace: true });
@@ -223,12 +235,14 @@ export default function Login() {
         login(token, user);
       }
 
-      const pendingLink = localStorage.getItem("pending_deep_link");
+      const pendingLink = localStorage.getItem("pending_deep_link") || (location.state as any)?.from;
       if (pendingLink) {
         localStorage.removeItem("pending_deep_link");
-        navigate(pendingLink);
-      } else {
+        navigate(pendingLink, { replace: true });
+      } else if (mode === "register") {
         navigate("/profile/edit");
+      } else {
+        navigate("/home");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -349,6 +363,12 @@ export default function Login() {
               ? "Forgot Password"
               : "Reset Password"}
           </h2>
+
+          {((location.state as any)?.from || (typeof window !== "undefined" && localStorage.getItem("pending_deep_link"))) && (
+            <div className="bg-emerald-50 border border-emerald-500/20 text-emerald-800 text-xs font-semibold px-4 py-2.5 rounded-xl mb-4 flex items-center gap-2">
+              <span>Please sign in to view property details.</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Full Name field (Register only) */}

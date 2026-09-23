@@ -169,12 +169,12 @@ export default function Landing() {
               <ArrowRight size={14} />
             </button>
           ) : (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate("/login")}
-                className="text-ink hover:text-forest text-xs font-bold font-display cursor-pointer"
+                className="bg-black hover:bg-neutral-800 text-white px-5 py-2.5 rounded-2xl text-xs font-bold font-display shadow-md transition-all active:scale-[0.97] cursor-pointer"
               >
-                Log In
+                Sign In
               </button>
               <button
                 onClick={() => navigate("/login")}
@@ -255,9 +255,18 @@ export default function Landing() {
               <div 
                 key={p.id}
                 onClick={() => {
-                  const element = document.getElementById("download");
-                  if (element) {
-                    element.scrollIntoView({ behavior: "smooth" });
+                  if (window.innerWidth >= 1000) {
+                    if (!token) {
+                      localStorage.setItem("pending_deep_link", `/property/${p.id}`);
+                      navigate("/login", { state: { from: `/property/${p.id}` } });
+                    } else {
+                      navigate(`/property/${p.id}`);
+                    }
+                  } else {
+                    const element = document.getElementById("download");
+                    if (element) {
+                      element.scrollIntoView({ behavior: "smooth" });
+                    }
                   }
                 }}
                 className="group cursor-pointer bg-white rounded-3xl border border-charcoal/5 shadow-sm hover:shadow-xl hover:scale-[1.005] transition-all duration-300 overflow-hidden flex flex-col"

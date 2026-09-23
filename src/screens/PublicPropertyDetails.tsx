@@ -174,6 +174,16 @@ export default function PublicPropertyDetails() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!token && window.innerWidth >= 1000) {
+      if (id) {
+        localStorage.setItem("pending_deep_link", `/property/${id}`);
+      }
+      navigate("/login", { replace: true, state: { from: `/property/${id}` } });
+    }
+  }, [token, id, navigate]);
+
   const isOwner = user && property && user.id === property.ownerId;
   const hasAccess = !!property?.contactAccess;
 
@@ -299,6 +309,17 @@ export default function PublicPropertyDetails() {
   }
   if (error || !property) {
     return <p className="px-4 py-10 text-sm text-coral">{error || "Property not found."}</p>;
+  }
+
+  if (!token && (isDesktop || window.innerWidth >= 1000)) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F3] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-[#1B5E4F] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-semibold text-gray-700">Please sign in to view property details...</p>
+        </div>
+      </div>
+    );
   }
 
   const showInterstitial = !token && !bypassInterstitial;

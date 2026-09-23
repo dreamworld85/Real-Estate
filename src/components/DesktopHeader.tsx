@@ -240,9 +240,9 @@ export default function DesktopHeader({
               <button
                 type="button"
                 onClick={() => navigate("/login")}
-                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-full text-xs font-bold shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold shadow-sm transition-all cursor-pointer"
               >
-                <User className="w-4 h-4" />
+                <User className="w-4 h-4 text-white" />
                 <span>Sign In</span>
               </button>
             )}

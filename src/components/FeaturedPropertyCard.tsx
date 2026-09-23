@@ -14,7 +14,7 @@ function formatPrice(price: number): string {
 
 export default function FeaturedPropertyCard({ property }: { property: ApiProperty }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const isOwner = user && user.id === property.ownerId;
 
   const image = property.images[0] ? mediaUrl(property.images[0]) : FALLBACK_IMAGE;
@@ -22,7 +22,14 @@ export default function FeaturedPropertyCard({ property }: { property: ApiProper
 
   return (
     <div
-      onClick={() => navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`)}
+      onClick={() => {
+        if (!token && window.innerWidth >= 1000) {
+          localStorage.setItem("pending_deep_link", `/property/${property.id}`);
+          navigate("/login", { state: { from: `/property/${property.id}` } });
+        } else {
+          navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`);
+        }
+      }}
       className="relative w-full aspect-[16/10] rounded-[16px] overflow-hidden group hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-md text-left cursor-pointer border border-charcoal/5 bg-slate-100 select-none"
     >
       {/* Background Image */}

@@ -31,7 +31,7 @@ export default function PropertyCard({
   onClick?: () => void;
 }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [saved, setSaved] = useState(property.isSaved || false);
   const [busy, setBusy] = useState(false);
   const isOwner = user && user.id === property.ownerId;
@@ -80,6 +80,9 @@ export default function PropertyCard({
       onClick={() => {
         if (onClick) {
           onClick();
+        } else if (!token && window.innerWidth >= 1000) {
+          localStorage.setItem("pending_deep_link", `/property/${property.id}`);
+          navigate("/login", { state: { from: `/property/${property.id}` } });
         } else {
           navigate(isOwner ? `/my-properties/${property.id}` : `/property/${property.id}`);
         }

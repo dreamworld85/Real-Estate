@@ -421,7 +421,14 @@ export default function DesktopPropertyListing({
               {/* OVERLAY CARD FOR SELECTED PROPERTY ON MAP CLICK (TOP-RIGHT MATCHING USER IMAGE) */}
               {selectedProperty && (
                 <div
-                  onClick={() => window.open(`/property/${selectedProperty.id}`, "_blank")}
+                  onClick={() => {
+                    if (!token) {
+                      localStorage.setItem("pending_deep_link", `/property/${selectedProperty.id}`);
+                      navigate("/login", { state: { from: `/property/${selectedProperty.id}` } });
+                    } else {
+                      window.open(`/property/${selectedProperty.id}`, "_blank");
+                    }
+                  }}
                   className="absolute top-4 right-4 w-[380px] max-w-[calc(100%-32px)] bg-white/95 backdrop-blur-md rounded-2xl p-3 shadow-xl border-2 border-sky-200/90 flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-300 z-20 cursor-pointer hover:shadow-2xl transition-all group select-none"
                 >
                   <img
