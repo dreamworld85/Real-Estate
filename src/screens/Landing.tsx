@@ -546,12 +546,12 @@ export default function Landing() {
       {/* Detailed Footer */}
       <footer 
         id="contact" 
-        className="w-full bg-white text-gray-700 pt-12 pb-24 px-8 border-t border-gray-200 font-sans select-none relative"
+        className="w-full bg-white text-gray-700 pt-12 pb-44 px-8 border-t border-gray-200 font-sans select-none relative"
         style={{
           backgroundImage: "url('/images/footer-image.png')",
           backgroundRepeat: "repeat-x",
           backgroundPosition: "bottom center",
-          backgroundSize: "auto 90px",
+          backgroundSize: "auto 166px",
         }}
       >
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 mb-8 text-left">

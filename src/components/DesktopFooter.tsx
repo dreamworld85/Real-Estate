@@ -6,12 +6,12 @@ export default function DesktopFooter() {
 
   return (
     <footer 
-      className="w-full bg-white text-gray-700 pt-12 pb-24 px-8 border-t border-gray-200 font-sans mt-auto select-none relative"
+      className="w-full bg-white text-gray-700 pt-12 pb-44 px-8 border-t border-gray-200 font-sans mt-auto select-none relative"
       style={{
         backgroundImage: "url('/images/footer-image.png')",
         backgroundRepeat: "repeat-x",
         backgroundPosition: "bottom center",
-        backgroundSize: "auto 90px",
+        backgroundSize: "auto 166px",
       }}
     >
       <div className="max-w-7xl mx-auto flex flex-col gap-8">

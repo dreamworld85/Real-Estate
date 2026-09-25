@@ -3,12 +3,12 @@ import { Link } from "react-router-dom";
 export default function Footer() {
   return (
     <footer 
-      className="bg-white border-t border-gray-200 px-6 pt-8 pb-24 mt-12 text-center select-none relative"
+      className="bg-white border-t border-gray-200 px-6 pt-8 pb-44 mt-12 text-center select-none relative"
       style={{
         backgroundImage: "url('/images/footer-image.png')",
         backgroundRepeat: "repeat-x",
         backgroundPosition: "bottom center",
-        backgroundSize: "auto 70px",
+        backgroundSize: "auto 166px",
       }}
     >
       <div className="flex flex-col items-center gap-4">
