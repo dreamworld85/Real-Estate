@@ -543,58 +543,74 @@ export default function Landing() {
       </section>
 
       {/* Detailed Footer */}
-      <footer id="contact" className="bg-charcoal text-white pt-12 pb-6 px-8 border-t border-white/5">
+      {/* Detailed Footer */}
+      <footer 
+        id="contact" 
+        className="w-full bg-white text-gray-700 pt-12 pb-24 px-8 border-t border-gray-200 font-sans select-none relative"
+        style={{
+          backgroundImage: "url('/images/footer-image.png')",
+          backgroundRepeat: "repeat-x",
+          backgroundPosition: "bottom center",
+          backgroundSize: "auto 90px",
+        }}
+      >
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 mb-8 text-left">
           <div className="md:col-span-4 flex flex-col gap-4">
             <div className="flex items-center select-none shrink-0">
               <img 
-                src="/brand_logo.png" 
+                src="/brand_logo-web.png" 
                 alt="Brand Logo" 
-                className="h-10 w-auto object-contain brightness-110"
+                className="h-10 w-auto object-contain"
               />
             </div>
-            <p className="text-xs text-white/65 leading-relaxed max-w-sm">
+            <p className="text-xs text-gray-600 leading-relaxed max-w-sm font-medium">
               Discover, buy, and lease properties across Kerala. GreenReal is the premier real estate platform connecting buyers and verified listing promoters.
             </p>
           </div>
 
-          <div className="md:col-span-2 flex flex-col gap-4 text-xs font-semibold text-white/70">
-            <h4 className="text-gold font-bold uppercase tracking-wider text-[10px]">Properties</h4>
-            <a href="#showcase" className="hover:text-white transition-colors">Villas & Houses</a>
-            <a href="#showcase" className="hover:text-white transition-colors">Apartments & Flats</a>
-            <a href="#showcase" className="hover:text-white transition-colors">Land Plots</a>
-            <a href="#showcase" className="hover:text-white transition-colors">Commercial Space</a>
+          <div className="md:col-span-2 flex flex-col gap-3 text-xs font-semibold text-gray-900">
+            <h4 className="text-gray-900 font-bold uppercase tracking-wider text-[11px]">Properties</h4>
+            <a href="#showcase" className="text-gray-900 hover:text-[#60A963] transition-colors">Villas & Houses</a>
+            <a href="#showcase" className="text-gray-900 hover:text-[#60A963] transition-colors">Apartments & Flats</a>
+            <a href="#showcase" className="text-gray-900 hover:text-[#60A963] transition-colors">Land Plots</a>
+            <a href="#showcase" className="text-gray-900 hover:text-[#60A963] transition-colors">Commercial Space</a>
           </div>
 
-          <div className="md:col-span-2 flex flex-col gap-4 text-xs font-semibold text-white/70">
-            <h4 className="text-gold font-bold uppercase tracking-wider text-[10px]">Legal Policies</h4>
-            <span onClick={() => navigate("/privacy")} className="hover:text-white transition-colors cursor-pointer">Privacy Policy</span>
-            <span onClick={() => navigate("/terms")} className="hover:text-white transition-colors cursor-pointer">Terms & Conditions</span>
-            <span onClick={() => navigate("/refund")} className="hover:text-white transition-colors cursor-pointer">Refund Policy</span>
+          <div className="md:col-span-2 flex flex-col gap-3 text-xs font-semibold text-gray-900">
+            <h4 className="text-gray-900 font-bold uppercase tracking-wider text-[11px]">Legal Policies</h4>
+            <span onClick={() => navigate("/privacy")} className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit">Privacy Policy</span>
+            <span onClick={() => navigate("/terms")} className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit">Terms & Conditions</span>
+            <span onClick={() => navigate("/refund")} className="text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit">Refund Policy</span>
           </div>
 
-          <div className="md:col-span-4 flex flex-col gap-4">
-            <h4 className="text-gold font-bold uppercase tracking-wider text-[10px]">Customer Support</h4>
-            <div className="flex flex-col gap-2.5 text-xs text-white/75">
-              <div className="flex items-center gap-2">
-                <Mail size={14} className="text-gold shrink-0" />
+          <div className="md:col-span-4 flex flex-col gap-3">
+            <h4 className="text-gray-900 font-bold uppercase tracking-wider text-[11px]">Customer Support</h4>
+            <div className="flex flex-col gap-2.5 text-xs text-gray-700 font-medium">
+              <a 
+                href="mailto:support@greensparrows.com" 
+                className="flex items-center gap-2 text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit"
+              >
+                <Mail size={14} className="text-[#60A963] shrink-0" />
                 <span>support@greensparrows.com</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone size={14} className="text-gold shrink-0" />
+              </a>
+              <a 
+                href="tel:+914842901234" 
+                className="flex items-center gap-2 text-gray-900 hover:text-[#60A963] transition-colors cursor-pointer w-fit"
+              >
+                <Phone size={14} className="text-[#60A963] shrink-0" />
                 <span>+91 484 2901234 (10 AM - 6 PM)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin size={14} className="text-gold shrink-0" />
+              </a>
+              <div className="flex items-start gap-2 text-gray-700">
+                <MapPin size={14} className="text-[#60A963] shrink-0 mt-0.5" />
                 <span>Green Sparrows, Infopark Phase II, Kochi, Kerala</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] text-white/45">
+        <div className="max-w-7xl mx-auto border-t border-gray-200 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-gray-600 font-medium">
           <p>© {new Date().getFullYear()} Kerala Realty. All rights reserved. Managed by Green Sparrows.</p>
-          <div className="flex gap-6">
+          <div className="flex items-center gap-6">
             <span>Standard SSL Secured checkout</span>
             <span>Certified payment processes</span>
           </div>
